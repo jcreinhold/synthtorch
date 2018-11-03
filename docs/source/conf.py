@@ -17,13 +17,15 @@ import mock
 import os
 import sys
 
-MOCK_MODULES = ['nibabel','numpy','matplotlib','matplotlib.pyplot','torch','torch.nn','torch.util',]
+MOCK_MODULES = ['nibabel','numpy','matplotlib','matplotlib.pyplot','torch','torch.nn','torch.utils',
+                'torch.utils.data','torch.utils.data.sampler','niftidataset','niftidataset.transforms','torchvision',
+                'torchvision.transforms']
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
 # this should not be needed with the above, but meh
-autodoc_mock_imports = ['nibabel','numpy','torch','matplotlib']
+autodoc_mock_imports = ['nibabel','numpy','torch','torchvision','matplotlib','niftidataset']
 
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 

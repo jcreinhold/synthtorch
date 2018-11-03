@@ -20,9 +20,11 @@ with open('README.md') as f:
 with open('LICENSE') as f:
     license = f.read()
 
+version = '0.1.0'
+
 args = dict(
     name='synthnn',
-    version='0.1.0',
+    version=version,
     description="pytorch-based image synthesis",
     long_description=readme,
     author='Jacob Reinhold',
@@ -35,10 +37,12 @@ args = dict(
         'console_scripts': ['nn-train=synthnn.exec.nn_train:main',
                             'nn-predict=synthnn.exec.nn_predict:main', ]
     },
-    dependency_links=['git+git://github.com/jcreinhold/niftidataset.git']
+    dependency_links=[f'git+git://github.com/jcreinhold/niftidataset.git@master#egg=niftidataset-{version}']
 )
 
-setup(install_requires=['nibabel',
+setup(install_requires=['matplotlib',
+                        'nibabel',
+                        'niftidataset',
                         'numpy',
                         'torch',
                         'torchvision'], **args)

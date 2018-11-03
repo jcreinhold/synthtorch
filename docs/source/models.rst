@@ -4,11 +4,11 @@ Models
 U-net
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthit.models.unet
+.. automodule:: synthnn.models.unet
    :members:
 
 N-layer CNN
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthit.models.nconvnet
+.. automodule:: synthnn.models.nconvnet
    :members:

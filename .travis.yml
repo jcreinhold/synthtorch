@@ -19,10 +19,11 @@ install:
   - python --version
   - which python
   - pip --version
-  - travis_retry conda install numpy --yes
+  - travis_retry conda install numpy matplotlib --yes
   - travis_retry conda install pytorch-cpu torchvision-cpu -c pytorch --yes
   - travis_retry conda install nibabel -c conda-forge --yes
   # coveralls requires coverage==4.0.3, recent versions of pytest-cov require coverage>=4.4
+  - travis_retry pip install git+git://github.com/jcreinhold/niftidataset.git
   - travis_retry pip install coverage==4.0.3 nose pytest-pep8 pytest-cov==2.5.1 python-coveralls
   - travis_retry python setup.py install
 before_script: # configure a headless display to test plot generation

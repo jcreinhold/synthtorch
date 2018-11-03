@@ -8,7 +8,7 @@ The easiest way to install the package is with the following command:
     
 You can also download the package through git, i.e.,
 
-    git clone https://github.com/jcreinhold/synthit.git
+    git clone https://github.com/jcreinhold/synthnn.git
 
 then you can try to install the package via the setup.py script, i.e.,
 inside the `synthit` directory, run the following command:

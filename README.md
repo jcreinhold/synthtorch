@@ -4,6 +4,7 @@ synthnn
 [![Build Status](https://travis-ci.org/jcreinhold/synthnn.svg?branch=master)](https://travis-ci.org/jcreinhold/synthnn)
 [![Coverage Status](https://coveralls.io/repos/github/jcreinhold/synthnn/badge.svg?branch=master)](https://coveralls.io/github/jcreinhold/synthnn?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/synthnn/badge/?version=latest)](http://synthnn.readthedocs.io/en/latest/)
+[![Docker Automated Build](https://img.shields.io/docker/build/jcreinhold/synthnn.svg)](https://hub.docker.com/r/jcreinhold/synthnn/)
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
 This package contains deep neural network-based (pytorch) modules to synthesize magnetic resonance (MR) and computed 
@@ -26,7 +27,9 @@ This package was developed by [Jacob Reinhold](https://jcreinhold.github.io) and
 Requirements
 ------------
 
+- matplotlib
 - nibabel
+- [niftidataset](https://github.com/jcreinhold/niftidataset)
 - numpy
 - torch
 - torchvision
@@ -42,6 +45,13 @@ Tutorial
 [5 minute Overview](https://github.com/jcreinhold/synthnn/blob/master/tutorials/5min-tutorial.ipynb)
 
 In addition to the above small tutorial, there is consolidated documentation [here](https://synthnn.readthedocs.io/en/latest/).
+
+Singularity
+-----------
+
+You can build a singularity image from the docker image hosted on dockerhub via the following command:
+
+    singularity pull --name synthnn.simg docker://jcreinhold/synthnn
 
 Test Package
 ------------
