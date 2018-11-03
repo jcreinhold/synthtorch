@@ -1,0 +1,6 @@
+matplotlib
+seaborn
+numpy
+torch
+torchvision
+git+git://github.com/jcreinhold/niftidataset.git
