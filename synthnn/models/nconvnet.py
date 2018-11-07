@@ -5,7 +5,8 @@ synthnn.models.nconvnet
 
 define the class for a N layer CNN with
 no max pool, increase in channels, or any of that
-fancy stuff
+fancy stuff. This is generally used for testing
+purposes
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 

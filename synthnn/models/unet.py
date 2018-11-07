@@ -24,7 +24,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from synthnn import get_act, get_norm
+from synthnn import get_act, get_norm3d
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ class Unet(torch.nn.Module):
                    act: Optional[str]=None, norm: Optional[str]=None) -> nn.Sequential:
         ksz = self.kernel_sz if kernel_sz is None else kernel_sz
         activation = get_act(act) if act is not None else get_act('relu')
-        normalization = get_norm(norm, out_c) if norm is not None else get_norm('instance', out_c)
+        normalization = get_norm3d(norm, out_c) if norm is not None else get_norm3d('instance', out_c)
         ca = nn.Sequential(
             self.__conv(in_c, out_c, ksz),
             normalization,

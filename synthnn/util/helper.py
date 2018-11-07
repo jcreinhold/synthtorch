@@ -11,16 +11,22 @@ Created on: Nov 2, 2018
 """
 
 __all__ = ['get_act',
-           'get_norm']
+           'get_norm3d']
 
-from typing import Optional
+from typing import Optional, Union
 
 from torch import nn
 
 from ..errors import SynthNNError
 
+activation = Union[nn.modules.activation.ReLU, nn.modules.activation.LeakyReLU,
+                   nn.modules.activation.Tanh, nn.modules.activation.Sigmoid]
 
-def get_act(name: str, inplace: bool=True, params: Optional[dict]=None):
+normalization_3d_layer = Union[nn.modules.instancenorm.InstanceNorm3d,
+                               nn.modules.batchnorm.BatchNorm3d]
+
+
+def get_act(name: str, inplace: bool=True, params: Optional[dict]=None) -> activation:
     """
     get activation module from pytorch
     must be one of: relu, lrelu, linear, tanh, sigmoid
@@ -31,7 +37,7 @@ def get_act(name: str, inplace: bool=True, params: Optional[dict]=None):
         params (dict): dictionary of parameters (as per pytorch documentation)
 
     Returns:
-        act: instance of activation class
+        act (activation): instance of activation class
     """
     if name.lower() == 'relu':
         act = nn.ReLU(inplace=inplace)
@@ -48,9 +54,9 @@ def get_act(name: str, inplace: bool=True, params: Optional[dict]=None):
     return act
 
 
-def get_norm(name: str, num_features: int, params: Optional[dict]=None):
+def get_norm3d(name: str, num_features: int, params: Optional[dict]=None) -> normalization_3d_layer:
     """
-    get normalization module from pytorch
+    get a 3d normalization module from pytorch
     must be one of: instance, batch, none
 
     Args:

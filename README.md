@@ -5,7 +5,7 @@ synthnn
 [![Coverage Status](https://coveralls.io/repos/github/jcreinhold/synthnn/badge.svg?branch=master)](https://coveralls.io/github/jcreinhold/synthnn?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/synthnn/badge/?version=latest)](http://synthnn.readthedocs.io/en/latest/)
 [![Docker Automated Build](https://img.shields.io/docker/build/jcreinhold/synthnn.svg)](https://hub.docker.com/r/jcreinhold/synthnn/)
-[![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
+[![Python Versions](https://img.shields.io/badge/python-3.6%20%7C%203.7-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
 This package contains deep neural network-based (pytorch) modules to synthesize magnetic resonance (MR) and computed 
 tomography (CT) brain images. Synthesis is the procedure of learning the transformation that takes a specific contrast image to another estimate contrast.

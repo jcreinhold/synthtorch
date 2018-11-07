@@ -146,9 +146,13 @@ def main(args=None):
         if torch.cuda.is_available() and not args.disable_cuda:
             model.cuda()
 
+        # define device to put tensors on
+        device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
+
         # control random cropping patch size (or if used at all)
         crop = [tfms.RandomCrop3D(args.patch_size)] if args.patch_size > 0 else []
         crop.append(tfms.ToTensor())
+        crop.append(tfms.AddChannel())
 
         # define dataset and split into training/validation set
         dataset = NiftiDataset(args.source_dir, args.target_dir, Compose(crop))
@@ -176,11 +180,13 @@ def main(args=None):
             # training
             losses = []
             for src, tgt in train_loader:
+                src, tgt = src.to(device), tgt.to(device)
+
                 # Forward pass: Compute predicted y by passing x to the model
-                tgt_pred = model(src.unsqueeze(1))  # add (empty) channel axis
+                tgt_pred = model(src)  # add (empty) channel axis
 
                 # Compute and print loss
-                loss = criterion(tgt_pred, tgt.unsqueeze(1))
+                loss = criterion(tgt_pred, tgt)
                 logger.info(f'Training - Epoch: {t+1}, Loss: {loss.item():.2f}')
                 losses.append(loss.item())
 
@@ -197,10 +203,12 @@ def main(args=None):
             # validation
             losses = []
             for src, tgt in validation_loader:
-                tgt_pred = model(src.unsqueeze(1))  # add (empty) channel axis
+                src, tgt = src.to(device), tgt.to(device)
+
+                tgt_pred = model(src)  # add (empty) channel axis
 
                 # Compute and print loss
-                loss = criterion(tgt_pred, tgt.unsqueeze(1))
+                loss = criterion(tgt_pred, tgt)
                 logger.info(f'Validation - Epoch: {t+1}, Loss: {loss.item():.2f}')
                 losses.append(loss.item())
 
