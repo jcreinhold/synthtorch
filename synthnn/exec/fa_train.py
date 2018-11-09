@@ -19,17 +19,14 @@ import warnings
 with warnings.catch_warnings():
     warnings.filterwarnings('ignore', category=FutureWarning)
     warnings.filterwarnings('ignore', category=UserWarning)
-    import matplotlib
-    matplotlib.use('agg')  # do not pull in GUI
-    import numpy as np
+    import fastai as fai
+    import fastai.vision as faiv
     import torch
     from torch import nn
-    from torch.utils.data import DataLoader
     from torchvision.transforms import Compose
-    from torch.utils.data.sampler import SubsetRandomSampler
     from niftidataset import NiftiDataset
-    import niftidataset.transforms as tfms
-    from synthnn import SynthNNError
+    import niftidataset.transforms as nd_tfms
+    from synthnn.models.unet import Unet
     from synthnn.util.io import AttrDict
 
 
@@ -43,16 +40,21 @@ def arg_parser():
                           help='path to directory with target images')
 
     options = parser.add_argument_group('Options')
+    options.add_argument('-vs', '--valid-source-dir', type=str,
+                          help='path to directory with source images for validation')
+    options.add_argument('-vt', '--valid-target-dir', type=str,
+                          help='path to directory with target images for validation')
+
     options.add_argument('-o', '--output', type=str, default=None,
                          help='path to output the trained model')
     options.add_argument('-m', '--mask-dir', type=str, default=None,
                          help='optional directory of brain masks for images')
-    options.add_argument('-na', '--nn-arch', type=str, default='unet', choices=('unet', 'nconv'),
-                         help='specify neural network architecture to use')
     options.add_argument('-v', '--verbosity', action="count", default=0,
                          help="increase output verbosity (e.g., -vv is more than -v)")
     options.add_argument('-vc', '--validation-count', type=int, default=0,
                          help="number of datasets to use in validation")
+    options.add_argument('-csv', '--out-csv', type=str, default='history',
+                         help='name of output csv which holds training log')
     options.add_argument('-ocf', '--out-config-file', type=str, default=None,
                          help='output a config file for the options used in this experiment '
                               '(saves them as a json file with the name as input in this argument)')
@@ -62,14 +64,20 @@ def arg_parser():
                                help='patch size^3 extracted from image [Default=64]')
 
     nn_options = parser.add_argument_group('Neural Network Options')
-    nn_options.add_argument('-n', '--n-jobs', type=int, default=0,
-                            help='number of CPU processors to use (use 0 if CUDA enabled) [Default=0]')
+    nn_options.add_argument('-n', '--n-jobs', type=int, default=None,
+                            help='number of CPU processors to use for data loading [Default=None (all cpus)]')
     nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,
                             help='number of epochs [Default=100]')
     nn_options.add_argument('-nl', '--n-layers', type=int, default=3,
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
     nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
                             help='convolutional kernel size (cubed) [Default=3]')
+    nn_options.add_argument('-sa', '--sample-axis', type=int, default=None,
+                            help='axis on which to sample for 2d (None for random orientation) [Default=None]')
+    nn_options.add_argument('-ag', '--data-augment', action='store_true', default=False,
+                            help='use flip lr, rotation, and scale for data augmentation')
+    nn_options.add_argument('-in', '--include-neighbors', action='store_true', default=False,
+                            help='take the nearest two slices when doing 2d sampling and append as new channels [Default=False]')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
                             help='dropout probability per conv block [Default=0]')
     nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
@@ -116,31 +124,14 @@ def main(args=None):
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=level)
     logger = logging.getLogger(__name__)
     try:
-        # import and initialize mixed precision training package
-        amp_handle = None
-        if args.fp16:
-           try:
-               from apex import amp
-               amp_handle = amp.init()
-           except ImportError:
-               logger.info('Mixed precision training (i.e., the package `apex`) not available.')
-
-        # set number of threads if using CPU
-        torch.set_num_threads(args.n_jobs)
 
         # get the desired neural network architecture
-        if args.nn_arch == 'nconv':
-            from synthnn.models.nconvnet import Conv3dNLayerNet
-            logger.warning('The nconv network is for basic testing.')
-            model = Conv3dNLayerNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size)
-        elif args.nn_arch == 'unet':
-            from synthnn.models.unet import Unet
-            model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
-                         channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
-                         activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv)
-        else:
-            raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
-        logger.debug(model)
+        model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
+                     channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
+                     activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv, is_3d=False,
+                     is_3_channel=args.include_neighbors)
+
+        #logger.debug(model)
 
         # put the model on the GPU if available and desired
         if torch.cuda.is_available() and not args.disable_cuda:
@@ -149,71 +140,39 @@ def main(args=None):
         # define device to put tensors on
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
 
-        # control random cropping patch size (or if used at all)
-        crop = [tfms.RandomCrop3D(args.patch_size)] if args.patch_size > 0 else []
-        crop.append(tfms.ToTensor())
-        if args.patch_size == 0:
-            crop.append(tfms.AddChannel())
+        # setup all transforms
+        nii_tfms = Compose([nd_tfms.RandomCrop2D(args.patch_size, args.sample_axis, include_neighbors=args.include_neighbors),
+                            nd_tfms.ToTensor(),
+                            nd_tfms.ToFastaiImage()])
 
-        # define dataset and split into training/validation set
-        dataset = NiftiDataset(args.source_dir, args.target_dir, Compose(crop))
+        tds = NiftiDataset(args.source_dir, args.target_dir, nii_tfms)
+        if args.valid_source_dir is not None and args.valid_target_dir is not None:
+            vds = NiftiDataset(args.valid_source_dir, args.valid_target_dir, nii_tfms)
+        else:
+            vds = None
 
-        # setup training and validation set
-        num_train = len(dataset)
-        indices = list(range(num_train))
-        split = args.validation_count
-        validation_idx = np.random.choice(indices, size=split, replace=False)
-        train_idx = list(set(indices) - set(validation_idx))
+        if args.data_augment:
+            tfms = [
+                faiv.flip_lr(p=0.5),
+                faiv.rotate(degrees=(-45, 45.), p=0.5),
+                faiv.zoom(scale=(0.97, 1.03), p=0.8)
+            ]
+        else:
+            tfms = []
 
-        train_sampler = SubsetRandomSampler(train_idx)
-        validation_sampler = SubsetRandomSampler(validation_idx)
+        # define the fastai data class
+        n_jobs = args.n_jobs if args.n_jobs is not None else fai.defaults.cpus
+        idb = faiv.ImageDataBunch.create(tds, vds, bs=args.batch_size, ds_tfms=(tfms, []), num_workers=n_jobs,
+                                         tfm_y=True, device=device)
 
-        # set up data loader for nifti images
-        train_loader = DataLoader(dataset, sampler=train_sampler, batch_size=args.batch_size, num_workers=args.n_jobs)
-        validation_loader = DataLoader(dataset, sampler=validation_sampler, batch_size=args.batch_size, num_workers=args.n_jobs)
+        # setup the learner
+        loss = nn.MSELoss()
+        loss.__name__ = 'MSE'
+        learner = fai.Learner(idb, model, loss_func=loss, metrics=[loss])
 
-        # train the model
-        criterion = nn.MSELoss()
-        logger.info(f'LR: {args.learning_rate:.5f}')
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-        train_losses, validation_losses = [], []
-        for t in range(args.n_epochs):
-            # training
-            losses = []
-            for src, tgt in train_loader:
-                src, tgt = src.to(device), tgt.to(device)
-
-                # Forward pass: Compute predicted y by passing x to the model
-                tgt_pred = model(src)  # add (empty) channel axis
-
-                # Compute and print loss
-                loss = criterion(tgt_pred, tgt)
-                logger.info(f'Training - Epoch: {t+1}, Loss: {loss.item():.2f}')
-                losses.append(loss.item())
-
-                # Zero gradients, perform a backward pass, and update the weights.
-                optimizer.zero_grad()
-                if args.fp16 and amp_handle is not None:
-                    with amp_handle.scale_loss(loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    loss.backward()
-                optimizer.step()
-            train_losses.append(losses)
-
-            # validation
-            losses = []
-            for src, tgt in validation_loader:
-                src, tgt = src.to(device), tgt.to(device)
-
-                tgt_pred = model(src)  # add (empty) channel axis
-
-                # Compute and print loss
-                loss = criterion(tgt_pred, tgt)
-                logger.info(f'Validation - Epoch: {t+1}, Loss: {loss.item():.2f}')
-                losses.append(loss.item())
-
-            validation_losses.append(losses)
+        # train the learner
+        cb = fai.CSVLogger(learner, args.out_csv)
+        learner.fit(args.n_epochs, args.learning_rate, callbacks=cb)
 
         # output a config file if desired
         if args.out_config_file is not None:
@@ -228,22 +187,14 @@ def main(args=None):
                 json.dump(arg_dict, f, sort_keys=True, indent=2)
 
         # save the trained model
-        if not no_config_file or args.out_config_file is not None:
-            torch.save(model.state_dict(), args.output)
-        else:
-            # save the whole model (if changes occur to pytorch, then this model will probably not be loadable)
-            logger.warning('Saving the entire model. Preferred to create a config file and only save model weights')
-            torch.save(model, args.output)
+        learner.save(args.output)
 
         # plot the loss vs epoch (if desired)
         if args.plot_loss is not None:
-            plot_error = True if args.n_epochs <= 50 else False
-            from synthnn import plot_loss
-            if matplotlib.get_backend() != 'agg':
-                import matplotlib.pyplot as plt
-                plt.switch_backend('agg')
-            ax = plot_loss(train_losses, ecolor='maroon', label='Train', plot_error=plot_error)
-            _ = plot_loss(validation_losses, filename=args.plot_loss, ecolor='firebrick', ax=ax, label='Validation', plot_error=plot_error)
+            import matplotlib.pyplot as plt
+            plt.switch_backend('agg')
+            learner.recorder.plot_losses()
+            plt.savefig(args.plot_loss)
 
         return 0
     except Exception as e:

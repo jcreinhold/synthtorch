@@ -11,6 +11,7 @@ Created on: Nov 2, 2018
 """
 
 __all__ = ['get_act',
+           'get_norm2d',
            'get_norm3d']
 
 from typing import Optional, Union
@@ -52,6 +53,31 @@ def get_act(name: str, inplace: bool=True, params: Optional[dict]=None) -> activ
     else:
         raise SynthNNError(f'Activation: "{name}" not a valid activation function or not supported.')
     return act
+
+
+def get_norm2d(name: str, num_features: int, params: Optional[dict]=None) -> normalization_3d_layer:
+    """
+    get a 2d normalization module from pytorch
+    must be one of: instance, batch, none
+
+    Args:
+        name (str): name of normalization function desired
+        num_features (int): number of channels in the normalization layer
+        params (dict): dictionary of optional other parameters for the normalization layer
+            as specified by the pytorch documentation
+
+    Returns:
+        norm: instance of normalization layer
+    """
+    if name.lower() == 'instance':
+        norm = nn.InstanceNorm2d(num_features, affine=True) if params is None else nn.InstanceNorm2d(num_features, **params)
+    elif name.lower() == 'batch':
+        norm = nn.BatchNorm2d(num_features) if params is None else nn.BatchNorm2d(num_features, **params)
+    elif name.lower() == 'none':
+        norm = None
+    else:
+        raise SynthNNError(f'Normalization: "{name}" not a valid normalization routine or not supported.')
+    return norm
 
 
 def get_norm3d(name: str, num_features: int, params: Optional[dict]=None) -> normalization_3d_layer:
