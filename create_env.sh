@@ -21,8 +21,10 @@ packages=(
     matplotlib 
 )
 
-# assume that linux is GPU enabled but OS X is not
-if [[ "$OSTYPE" == "linux-gnu" ]]; then
+# assume that linux is GPU enabled (except for in CI) but OS X is not
+ONTRAVIS=${TRAVIS:-false}
+
+if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" != true ]]; then
     pytorch_packages=(
         pytorch-nightly
         cuda92
@@ -48,7 +50,7 @@ conda_forge_packages=(
 
 # create the environment and switch to that environment
 conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} ${pytorch_packages[@]} --yes 
-conda activate synthnn
+source activate synthnn
 
 # add a few other packages
 conda install -c conda-forge ${conda_forge_packages[@]} --yes 
@@ -57,8 +59,5 @@ pip install git+git://github.com/NVIDIA/apex.git
 
 # install this package
 python setup.py install
-
-# create environment yaml file to hold env specifications
-conda env export > synthnn_env.yml
 
 echo "synthnn conda env script finished (verify yourself if everything installed correctly)"

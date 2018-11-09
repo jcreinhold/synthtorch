@@ -12,7 +12,7 @@ ADD . /app
 # 2) Install this package into the container
 # 3) Setup matplotlib to not pull in a GUI
 # 4) Set Docker to automatically start the created env
-RUN source ./create_env.sh && \
+RUN /bin/bash -c "source ./create_env.sh" && \
     python setup.py install && \
     echo "backend: agg" > matplotlibrc && \
     sed -i '/conda activate base/d' ~/.bashrc && \
