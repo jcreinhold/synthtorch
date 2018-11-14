@@ -20,7 +20,7 @@ with open('README.md') as f:
 with open('LICENSE') as f:
     license = f.read()
 
-version = '0.1.0'
+version = '0.1.1'
 
 args = dict(
     name='synthnn',
@@ -35,7 +35,9 @@ args = dict(
     keywords="mr image-synthesis",
     entry_points={
         'console_scripts': ['nn-train=synthnn.exec.nn_train:main',
-                            'nn-predict=synthnn.exec.nn_predict:main', ]
+                            'nn-predict=synthnn.exec.nn_predict:main',
+                            'fa-train=synthnn.exec.fa_train:main',
+                            'fa-predict=synthnn.exec.fa_predict:main']
     },
     dependency_links=[f'git+git://github.com/jcreinhold/niftidataset.git@master#egg=niftidataset-{version}']
 )
