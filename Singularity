@@ -1,8 +1,8 @@
 Bootstrap: docker
 From: jcreinhold/synthnn
 
-%post
-echo "source activate synthnn" >> /environment
+%environment
+. /opt/conda/bin/activate synthnn
 
 %runscript
 exec python $@

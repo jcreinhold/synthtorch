@@ -55,7 +55,7 @@ def arg_parser():
                          help="number of datasets to use in validation")
     options.add_argument('-csv', '--out-csv', type=str, default='history',
                          help='name of output csv which holds training log')
-    options.add_argument('-ocf', '--out-config-file', type=str, default=None,
+    options.add_argument('-ocf', '--out-config-file', type=str, default='config.json',
                          help='output a config file for the options used in this experiment '
                               '(saves them as a json file with the name as input in this argument)')
 

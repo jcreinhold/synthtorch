@@ -112,7 +112,7 @@ class Unet(torch.nn.Module):
         return y
 
     def __dropout(self):
-        d = nn.Dropout3d(self.dropout_p, inplace=True) if self.is_3d else nn.Dropout2d(self.dropout_p, inplace=True)
+        d = nn.Dropout3d(self.dropout_p, inplace=False) if self.is_3d else nn.Dropout2d(self.dropout_p, inplace=False)
         return d
 
     def __conv(self, in_c: int, out_c: int, kernel_sz: Optional[int]=None) -> nn.Sequential:
