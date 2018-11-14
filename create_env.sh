@@ -31,7 +31,7 @@ if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" != true ]]; then
     )
     fastai_packages=(
         torchvision-nightly
-        fastai
+        fastai==1.0.22
     )
 else
     pytorch_packages=(
@@ -39,7 +39,7 @@ else
     )
     fastai_packages=(
         torchvision-nightly-cpu
-        fastai
+        fastai==1.0.22
     )
 fi
 
