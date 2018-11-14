@@ -13,6 +13,7 @@ Created on: Nov 2, 2018
 
 import argparse
 import logging
+import os
 import sys
 import warnings
 
@@ -100,7 +101,10 @@ def main(args=None):
 
         # set convenience variables and grab filenames of images to synthesize
         psz = model.patch_sz
-        predict_fns = glob_nii(args.predict_dir)
+        predict_dir = args.predict_dir if args.predict_dir is not None else args.source_dir
+        output_dir = args.predict_out if args.predict_out is not None else os.getcwd() + '/syn_'
+        print(predict_dir)
+        predict_fns = glob_nii(predict_dir)
         for k, fn in enumerate(predict_fns):
             _, base, _ = split_filename(fn)
             logger.info(f'Starting synthesis of image: {base}. ({k+1}/{len(predict_fns)})')
@@ -132,7 +136,7 @@ def main(args=None):
                 test_img_t = torch.from_numpy(img).to(device)[None, None, ...]
                 out_img = np.squeeze(model.forward(test_img_t).cpu().data.numpy())
                 out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
-            out_fn = args.predict_out + str(k) + '.nii.gz'
+            out_fn = output_dir + str(k) + '.nii.gz'
             out_img_nib.to_filename(out_fn)
             logger.info(f'Finished synthesis. Saved as: {out_fn}.')
 

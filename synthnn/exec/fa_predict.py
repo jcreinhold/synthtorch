@@ -13,6 +13,7 @@ Created on: Nov 2, 2018
 
 import logging
 from math import floor
+import os
 import sys
 import warnings
 
@@ -81,7 +82,9 @@ def main(args=None):
 
         axis = 0 if args.sample_axis is None else args.sample_axis
         bs = args.batch_size
-        predict_fns = glob_nii(args.predict_dir)
+        predict_dir = args.predict_dir if args.predict_dir is not None else args.valid_source_dir
+        output_dir = args.predict_out if args.predict_out is not None else os.getcwd() + '/syn_'
+        predict_fns = glob_nii(predict_dir)
         for k, fn in enumerate(predict_fns):
             _, base, _ = split_filename(fn)
             logger.info(f'Starting synthesis of image: {base}. ({k+1}/{len(predict_fns)})')
@@ -102,7 +105,7 @@ def main(args=None):
                 logger.info(f'Starting batch ({num_batches}/{num_batches})')
                 batch(model, img, out_img, axis, device, lbs, lbi)
             out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
-            out_fn = args.predict_out + str(k) + '.nii.gz'
+            out_fn = output_dir + str(k) + '.nii.gz'
             out_img_nib.to_filename(out_fn)
             logger.info(f'Finished synthesis. Saved as: {out_fn}.')
 

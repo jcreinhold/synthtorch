@@ -109,6 +109,8 @@ def arg_parser():
                             help='type of activation to use in network on output [Default=linear]')
     nn_options.add_argument('-mp', '--fp16', action='store_true', default=False,
                             help='enable mixed precision training')
+    nn_options.add_argument('-prl', '--preload', action='store_true', default=False,
+                            help='preload dataset (memory intensive) vs loading data from disk each epoch')
     nn_options.add_argument('--disable-cuda', action='store_true', default=False,
                             help='Disable CUDA regardless of availability')
     return parser
@@ -160,9 +162,9 @@ def main(args=None):
                                  nd_tfms.AddChannel(),
                                  nd_tfms.ToFastaiImage()])
 
-        tds = NiftiDataset(args.source_dir, args.target_dir, nii_tfms)
+        tds = NiftiDataset(args.source_dir, args.target_dir, nii_tfms, preload=args.preload)
         if args.valid_source_dir is not None and args.valid_target_dir is not None:
-            vds = NiftiDataset(args.valid_source_dir, args.valid_target_dir, nii_tfms)
+            vds = NiftiDataset(args.valid_source_dir, args.valid_target_dir, nii_tfms, preload=args.preload)
         else:
             vds = None
 

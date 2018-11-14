@@ -94,6 +94,8 @@ def arg_parser():
                             help='type of activation to use in network on output [Default=linear]')
     nn_options.add_argument('-mp', '--fp16', action='store_true', default=False,
                             help='enable mixed precision training')
+    nn_options.add_argument('-prl', '--preload', action='store_true', default=False,
+                            help='preload dataset (memory intensive) vs loading data from disk each epoch')
     nn_options.add_argument('--disable-cuda', action='store_true', default=False,
                             help='Disable CUDA regardless of availability')
     return parser
@@ -156,7 +158,7 @@ def main(args=None):
             crop.append(tfms.AddChannel())
 
         # define dataset and split into training/validation set
-        dataset = NiftiDataset(args.source_dir, args.target_dir, Compose(crop))
+        dataset = NiftiDataset(args.source_dir, args.target_dir, Compose(crop), preload=args.preload)
 
         # setup training and validation set
         num_train = len(dataset)
