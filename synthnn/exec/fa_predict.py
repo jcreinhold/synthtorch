@@ -48,7 +48,7 @@ def batch(model, img, out_img, axis, device, bs, i, nsyn):
 
 
 def enable_dropout(m):
-    if type(m) == torch.nn.Dropout2d or type(m) == torch.nn.Dropout3d:
+    if isinstance(m, torch.nn.Dropout2d) or isinstance(m, torch.nn.Dropout3d):
         m.train()
     else:
         m.eval()
@@ -57,7 +57,7 @@ def enable_dropout(m):
 def main(args=None):
     no_config_file = not sys.argv[1].endswith('.json') if args is None else not args[0].endswith('json')
     if no_config_file:
-        raise SynthNNError('Only configuration files are supported with fa-predict!')
+        raise SynthNNError('Only configuration files are supported with fa-predict! Create one with fa-train (-ocf).')
     else:
         import json
         fn = sys.argv[1:][0] if args is None else args[0]
@@ -95,6 +95,7 @@ def main(args=None):
         # define device to put tensors on
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
 
+        # setup and start prediction loop (whole slice by whole slice)
         axis = 0 if args.sample_axis is None else args.sample_axis
         bs = args.batch_size
         predict_dir = args.predict_dir if args.predict_dir is not None else args.valid_source_dir

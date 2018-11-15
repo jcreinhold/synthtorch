@@ -25,7 +25,7 @@ for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
 # this should not be needed with the above, but meh
-autodoc_mock_imports = ['nibabel','numpy','torch','torchvision','matplotlib','niftidataset','fastai']
+autodoc_mock_imports = ['nibabel','numpy','torch','torchvision','matplotlib','niftidataset','fastai','synthqc']
 
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 

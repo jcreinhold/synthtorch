@@ -46,6 +46,7 @@ fi
 
 conda_forge_packages=(
     nibabel
+    scikit-image
 )
 
 # create the environment and switch to that environment
@@ -55,6 +56,7 @@ source activate synthnn
 # add a few other packages
 conda install -c conda-forge ${conda_forge_packages[@]} --yes 
 pip install git+git://github.com/jcreinhold/niftidataset.git
+pip install git+git://github.com/jcreinhold/synthqc.git
 pip install git+git://github.com/NVIDIA/apex.git
 
 # install this package

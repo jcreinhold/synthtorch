@@ -16,6 +16,7 @@ the framework and several models for this type of synthesis. See the `Relevant P
 the README) for a non-exhaustive list of some papers relevant to the work in this package.
 
 We also support a *non*-DNN-based synthesis package called [synthit](https://gitlab.com/jcreinhold/synthit).
+There is also a seperate package to gather quality metrics of the synthesis result called [synthqc](https://gitlab.com/jcreinhold/synthqc).
 
 ** Note that this is an **alpha** release. If you have feedback or problems, please submit an issue (it is very appreciated) **
 

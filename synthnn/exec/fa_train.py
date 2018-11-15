@@ -113,8 +113,9 @@ def arg_parser():
                             help='preload dataset (memory intensive) vs loading data from disk each epoch')
     nn_options.add_argument('--disable-cuda', action='store_true', default=False,
                             help='Disable CUDA regardless of availability')
+    nn_options.add_argument('--disable-metrics', action='store_true', default=False,
+                            help='disable the calculation of ncc, mi, mssim regardless of availability')
     return parser
-
 
 
 def main(args=None):
@@ -183,9 +184,22 @@ def main(args=None):
 
         # setup the learner
         loss = nn.MSELoss()
-        loss.__name__ = 'MSE'
+
+        try:
+            if not args.disable_metrics:
+                from synthnn.util.metrics import ncc, mssim, mi
+                ncc.__name__ = 'NCC'
+                mssim.__name__ = 'MSSIM'
+                mi.__name__ = 'MI'
+                metrics = [ncc, mi, mssim]
+            else:
+                metrics = []
+        except ImportError:
+            logger.debug('synthqc not installed so no additional metrics (other than MSE) will be shown')
+            metrics = []
+
         pth, base, _ = split_filename(args.output)
-        learner = fai.Learner(idb, model, loss_func=loss, metrics=[loss], model_dir=pth)
+        learner = fai.Learner(idb, model, loss_func=loss, metrics=metrics, model_dir=pth)
 
         # enable fp16 (mixed) precision if desired
         if args.fp16:

@@ -103,7 +103,6 @@ def main(args=None):
         psz = model.patch_sz
         predict_dir = args.predict_dir if args.predict_dir is not None else args.source_dir
         output_dir = args.predict_out if args.predict_out is not None else os.getcwd() + '/syn_'
-        print(predict_dir)
         predict_fns = glob_nii(predict_dir)
         for k, fn in enumerate(predict_fns):
             _, base, _ = split_filename(fn)
