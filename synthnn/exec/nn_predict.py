@@ -92,7 +92,7 @@ def main(args=None):
                              activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv)
             else:
                 raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
-            model.load_state_dict(torch.load(args.trained_model))
+            model.load_state_dict(torch.load(args.trained_model)).eval()
         logger.debug(model)
 
         # put the model on the GPU if available and desired

@@ -38,7 +38,7 @@ class TestCLI(unittest.TestCase):
         self.predict_args = f'-s {self.data_dir} -o {self.out_dir}/test'.split()
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
-    def test_fa_train(self):
+    def test_fa(self):
         jsonfn = f'{self.out_dir}/test.json'
         val_train_args = f'-vs {self.data_dir} -vt {self.data_dir}'.split()
         args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 32 -bs 2 --plot-loss '

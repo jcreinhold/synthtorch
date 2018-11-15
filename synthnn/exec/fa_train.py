@@ -205,6 +205,7 @@ def main(args=None):
             arg_dict = vars(args)
             # add these keys so that the output config file can be edited for use in prediction
             arg_dict['trained_model'] = args.output + '.pth'
+            arg_dict['bayesian'] = None
             arg_dict['predict_dir'] = None
             arg_dict['predict_out'] = None
             arg_dict['predict_mask_dir'] = None

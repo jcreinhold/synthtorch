@@ -33,17 +33,25 @@ def fwd(mdl, img):
     return out
 
 
-def batch(model, img, out_img, axis, device, bs, i):
+def batch(model, img, out_img, axis, device, bs, i, nsyn):
     s = np.transpose(img[i:i+bs,:,:],[0,1,2])[:,np.newaxis,...] if axis == 0 else \
         np.transpose(img[:,i:i+bs,:],[1,0,2])[:,np.newaxis,...] if axis == 1 else \
         np.transpose(img[:,:,i:i+bs],[2,0,1])[:,np.newaxis,...]
     img_b = torch.from_numpy(s).to(device)
-    if axis == 0:
-        out_img[i:i+bs,:,:] = np.transpose(fwd(model, img_b), [0,1,2])
-    elif axis == 1:
-        out_img[:,i:i+bs,:] = np.transpose(fwd(model, img_b), [1,0,2])
+    for _ in range(nsyn):
+        if axis == 0:
+            out_img[i:i+bs,:,:] = np.transpose(fwd(model, img_b), [0,1,2]) / nsyn
+        elif axis == 1:
+            out_img[:,i:i+bs,:] = np.transpose(fwd(model, img_b), [1,0,2]) / nsyn
+        else:
+            out_img[:,:,i:i+bs] = np.transpose(fwd(model, img_b), [1,2,0]) / nsyn
+
+
+def enable_dropout(m):
+    if type(m) == torch.nn.Dropout2d or type(m) == torch.nn.Dropout3d:
+        m.train()
     else:
-        out_img[:,:,i:i+bs] = np.transpose(fwd(model, img_b), [1,2,0])
+        m.eval()
 
 
 def main(args=None):
@@ -73,6 +81,13 @@ def main(args=None):
         model.load_state_dict(torch.load(args.trained_model))
         logger.debug(model)
 
+        nsyn = args.bayesian or 1
+        if args.bayesian is None:
+            model.eval()
+        else:
+            logger.info(f'Enabling dropout in testing (and averaging results {nsyn} times)')
+            model.apply(enable_dropout)
+
         # put the model on the GPU if available and desired
         if torch.cuda.is_available() and not args.disable_cuda:
             model.cuda()
@@ -100,10 +115,10 @@ def main(args=None):
                 lbi = None
             for i in range(num_batches if lbi is None else num_batches-1):
                 logger.info(f'Starting batch ({i+1}/{num_batches})')
-                batch(model, img, out_img, axis, device, bs, i*bs)
+                batch(model, img, out_img, axis, device, bs, i*bs, nsyn)
             if lbi is not None:
                 logger.info(f'Starting batch ({num_batches}/{num_batches})')
-                batch(model, img, out_img, axis, device, lbs, lbi)
+                batch(model, img, out_img, axis, device, lbs, lbi, nsyn)
             out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
             out_fn = output_dir + str(k) + '.nii.gz'
             out_img_nib.to_filename(out_fn)
