@@ -39,9 +39,15 @@ def arg_parser():
                           help='path to directory with target images')
 
     options = parser.add_argument_group('Options')
-    options.add_argument('-vs', '--valid-split', type=float, default=0.,
+    options.add_argument('-vs', '--valid-split', type=float, default=0.2,
                           help='split the data in source_dir and target_dir into train/validation '
                                'with this split percentage [Default=0]')
+    options.add_argument('-vsd', '--valid-source-dir', type=str, default=None,
+                          help='path to directory with source images for validation, '
+                               'see -vs for default action if this is not provided [Default=None]')
+    options.add_argument('-vtd', '--valid-target-dir', type=str, default=None,
+                          help='path to directory with target images for validation, '
+                               'see -vs for default action if this is not provided [Default=None]')
     options.add_argument('-o', '--output', type=str, default=None,
                          help='path to output the trained model')
     options.add_argument('-m', '--mask-dir', type=str, default=None,
@@ -165,7 +171,8 @@ def main(args=None):
         # define the fastai data class
         n_jobs = args.n_jobs if args.n_jobs is not None else fai.defaults.cpus
         idb = niidatabunch(args.source_dir, args.target_dir, args.valid_split, tfms=tfms,
-                           bs=args.batch_size, device=device, n_jobs=n_jobs)
+                           bs=args.batch_size, device=device, n_jobs=n_jobs,
+                           val_src_dir=args.valid_source_dir, val_tgt_dir=args.valid_target_dir)
 
         # setup the learner
         loss = nn.MSELoss()
@@ -208,7 +215,7 @@ def main(args=None):
             arg_dict = vars(args)
             # add these keys so that the output config file can be edited for use in prediction
             arg_dict['trained_model'] = args.output + '.pth'
-            arg_dict['bayesian'] = None
+            arg_dict['monte_carlo'] = None
             arg_dict['predict_dir'] = None
             arg_dict['predict_out'] = None
             arg_dict['predict_mask_dir'] = None

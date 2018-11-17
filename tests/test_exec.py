@@ -49,7 +49,7 @@ class TestCLI(unittest.TestCase):
         jsonfn = f'{self.out_dir}/test.json'
         val_train_args = f'-vs 0.5'.split()
         args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 32 -bs 2 --plot-loss '
-                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf ' + jsonfn).split()
+                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf {jsonfn}').split()
         retval = fa_train(args)
         self.assertEqual(retval, 0)
         import json
@@ -62,6 +62,16 @@ class TestCLI(unittest.TestCase):
         retval = fa_predict([jsonfn])
         self.assertEqual(retval, 0)
 
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_fa_valid_dir(self):
+        jsonfn = f'{self.out_dir}/test.json'
+        val_train_args = f'-vsd {self.train_dir} -vtd {self.train_dir} -vs 0'.split()
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 0 -bs 2 '
+                                                   f'-csv {self.out_dir}/history --one-cycle --disable-metrics '
+                                                   f'-ocf {jsonfn}').split()
+        retval = fa_train(args)
+        self.assertEqual(retval, 0)
+
     def test_nn_nconv_nopatch_cli(self):
         args = self.train_args + f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 2 -nl 1 -ps 0 --plot-loss {self.out_dir}/loss.png'.split()
         retval = nn_train(args)
@@ -71,7 +81,7 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(retval, 0)
 
     def test_nn_nconv_patch_cli(self):
-        args = self.train_args + f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 5'.split()
+        args = self.train_args + f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16'.split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         args = self.predict_args + f'-t {self.out_dir}/nconv_patch.mdl'.split()

@@ -40,11 +40,11 @@ def batch(model, img, out_img, axis, device, bs, i, nsyn):
     img_b = torch.from_numpy(s).to(device)
     for _ in range(nsyn):
         if axis == 0:
-            out_img[i:i+bs,:,:] = np.transpose(fwd(model, img_b), [0,1,2]) / nsyn
+            out_img[i:i+bs,:,:] += np.transpose(fwd(model, img_b), [0,1,2]) / nsyn
         elif axis == 1:
-            out_img[:,i:i+bs,:] = np.transpose(fwd(model, img_b), [1,0,2]) / nsyn
+            out_img[:,i:i+bs,:] += np.transpose(fwd(model, img_b), [1,0,2]) / nsyn
         else:
-            out_img[:,:,i:i+bs] = np.transpose(fwd(model, img_b), [1,2,0]) / nsyn
+            out_img[:,:,i:i+bs] += np.transpose(fwd(model, img_b), [1,2,0]) / nsyn
 
 
 def enable_dropout(m):
@@ -83,8 +83,8 @@ def main(args=None):
         model.load_state_dict(torch.load(args.trained_model))
         logger.debug(model)
 
-        nsyn = args.bayesian or 1
-        if args.bayesian is None:
+        nsyn = args.monte_carlo or 1
+        if args.monte_carlo is None:
             model.eval()
         else:
             logger.info(f'Enabling dropout in testing (and averaging results {nsyn} times)')

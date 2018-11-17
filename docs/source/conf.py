@@ -19,7 +19,7 @@ import sys
 
 MOCK_MODULES = ['nibabel','numpy','matplotlib','matplotlib.pyplot','torch','torch.nn','torch.utils',
                 'torch.utils.data','torch.utils.data.sampler','niftidataset','niftidataset.transforms','torchvision',
-                'torchvision.transforms','fastai','fastai.vision']
+                'torchvision.transforms','fastai','fastai.vision','synthqc','niftidataset.fastai']
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()

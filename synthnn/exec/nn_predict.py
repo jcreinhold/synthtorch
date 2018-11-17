@@ -121,15 +121,28 @@ def main(args=None):
                         indices = [idxs.unfold(i, psz, stride) for idxs in indices]
                     x, y, z = [idxs.contiguous().view(-1, psz, psz, psz) for idxs in indices]
                 dec_idxs = np.floor(np.percentile(np.arange(x.shape[0]), np.arange(0, 101, 5)))
-                count = 0
+                pct_complete = 0
+                j = 0
                 for i, (xx, yy, zz) in enumerate(zip(x, y, z)):
                     if i in dec_idxs:
-                        logger.info(f'{count}% Complete')
-                        count += 5
-                    patch = torch.from_numpy(img[xx, yy, zz]).to(device)[None, None, ...]
-                    predicted = np.squeeze(model.forward(patch).data.numpy())
-                    out_img[xx, yy, zz] = out_img[xx, yy, zz] + predicted
+                        logger.info(f'{pct_complete}% Complete')
+                        pct_complete += 5
                     count_mtx[xx, yy, zz] = count_mtx[xx, yy, zz] + 1
+                    if j == 0:
+                        batch = np.zeros((args.batch_size,1,) + img[xx, yy, zz].shape, dtype=np.float32)
+                        batch_idxs = [(xx,yy,zz)]
+                        batch[j,0,...] = img[xx,yy,zz]
+                        j += 1
+                    elif j != args.batch_size:
+                        batch_idxs.append((xx,yy,zz))
+                        batch[j,0,...] = img[xx,yy,zz]
+                        j += 1
+                    else:
+                        batch = torch.from_numpy(batch).to(device)
+                        predicted = model.forward(batch).cpu().data.numpy()
+                        for ii, (bx, by, bz) in enumerate(batch_idxs):
+                            out_img[bx, by, bz] = out_img[bx, by, bz] + predicted[ii, 0, ...]
+                        j = 0
                 count_mtx[count_mtx == 0] = 1  # avoid division by zero
                 out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
             else:
