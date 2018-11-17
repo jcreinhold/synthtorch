@@ -17,6 +17,7 @@ import unittest
 
 from synthnn.exec.nn_train import main as nn_train
 from synthnn.exec.nn_predict import main as nn_predict
+from synthnn.util.io import glob_nii, split_filename
 
 try:
     import fastai
@@ -34,13 +35,19 @@ class TestCLI(unittest.TestCase):
         self.mask_dir = os.path.join(wd, 'test_data', 'masks')
         self.out_dir = tempfile.mkdtemp()
         os.mkdir(os.path.join(self.out_dir, 'models'))
-        self.train_args = f'-s {self.data_dir} -t {self.data_dir}'.split()
-        self.predict_args = f'-s {self.data_dir} -o {self.out_dir}/test'.split()
+        self.train_dir = os.path.join(self.out_dir, 'train')
+        os.mkdir(self.train_dir)
+        img = glob_nii(self.data_dir)[0]
+        path, base, ext = split_filename(img)
+        for i in range(4):
+            shutil.copy(img, os.path.join(self.train_dir, base + str(i) + ext))
+        self.train_args = f'-s {self.train_dir} -t {self.train_dir}'.split()
+        self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_fa(self):
         jsonfn = f'{self.out_dir}/test.json'
-        val_train_args = f'-vs {self.data_dir} -vt {self.data_dir}'.split()
+        val_train_args = f'-vs 0.5'.split()
         args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 32 -bs 2 --plot-loss '
                                                    f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf ' + jsonfn).split()
         retval = fa_train(args)

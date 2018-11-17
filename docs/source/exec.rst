@@ -24,3 +24,11 @@ Fastai Neural Network Trainer
    :module: synthnn.exec.fa_train
    :func: arg_parser
    :prog: fa-train
+
+Fastai Neural Network Predictor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. argparse::
+   :module: synthnn.exec.fa_predict
+   :func: arg_parser
+   :prog: fa-predict

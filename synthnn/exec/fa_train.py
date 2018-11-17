@@ -23,9 +23,7 @@ with warnings.catch_warnings():
     import fastai.vision as faiv
     import torch
     from torch import nn
-    from torchvision.transforms import Compose
-    from niftidataset import NiftiDataset
-    import niftidataset.transforms as nd_tfms
+    from niftidataset.fastai import niidatabunch, get_patch3d, get_slice
     from synthnn import split_filename
     from synthnn.models.unet import Unet
     from synthnn.util.io import AttrDict
@@ -41,10 +39,9 @@ def arg_parser():
                           help='path to directory with target images')
 
     options = parser.add_argument_group('Options')
-    options.add_argument('-vs', '--valid-source-dir', type=str,
-                          help='path to directory with source images for validation')
-    options.add_argument('-vt', '--valid-target-dir', type=str,
-                          help='path to directory with target images for validation')
+    options.add_argument('-vs', '--valid-split', type=float, default=0.,
+                          help='split the data in source_dir and target_dir into train/validation '
+                               'with this split percentage [Default=0]')
     options.add_argument('-o', '--output', type=str, default=None,
                          help='path to output the trained model')
     options.add_argument('-m', '--mask-dir', type=str, default=None,
@@ -59,12 +56,10 @@ def arg_parser():
                          help='output a config file for the options used in this experiment '
                               '(saves them as a json file with the name as input in this argument)')
 
-    synth_options = parser.add_argument_group('Synthesis Options')
-    synth_options.add_argument('-ps', '--patch-size', type=int, default=64,
-                               help='patch size^3 extracted from image (0 for a full slice, '
-                                    'sample-axis must be defined if full slice used) [Default=64]')
-
     nn_options = parser.add_argument_group('Neural Network Options')
+    nn_options.add_argument('-ps', '--patch-size', type=int, default=64,
+                            help='patch size^3 extracted from image (0 for a full slice, '
+                                 'sample-axis must be defined if full slice used) [Default=64]')
     nn_options.add_argument('-n', '--n-jobs', type=int, default=None,
                             help='number of CPU processors to use for data loading [Default=None (all cpus)]')
     nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,
@@ -75,6 +70,8 @@ def arg_parser():
                             help='convolutional kernel size (cubed) [Default=3]')
     nn_options.add_argument('-sa', '--sample-axis', type=int, default=None,
                             help='axis on which to sample for 2d (None for random orientation) [Default=None]')
+    nn_options.add_argument('-sp', '--sample-pct', type=float, default=(0.2,0.8), nargs=2,
+                            help='range along axis (as percentage) from which to randomly sample in 2d [Default=(0.2,0.8)]')
     nn_options.add_argument('-flr', '--flip-lr', action='store_true', default=False,
                             help='use flip lr data augmentation')
     nn_options.add_argument('-rot', '--rotate', action='store_true', default=False,
@@ -90,9 +87,9 @@ def arg_parser():
     nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
                             help='learning rate of the neural network (uses Adam) [Default=1e-3]')
     nn_options.add_argument('-bs', '--batch-size', type=int, default=32,
-                            help='batch size (num of images to process at once) [Default=5]')
+                            help='batch size (num of images to process at once) [Default=32]')
     nn_options.add_argument('-cbp', '--channel-base-power', type=int, default=5,
-                            help='batch size (num of images to process at once) [Default=5]')
+                            help='number of channels in the first layer of unet (2**cbp) [Default=5]')
     nn_options.add_argument('-pl', '--plot-loss', type=str, default=None,
                             help='plot the loss vs epoch and save at the filename provided here [Default=None]')
     nn_options.add_argument('--use-up-conv', action='store_true', default=False,
@@ -115,6 +112,8 @@ def arg_parser():
                             help='Disable CUDA regardless of availability')
     nn_options.add_argument('--disable-metrics', action='store_true', default=False,
                             help='disable the calculation of ncc, mi, mssim regardless of availability')
+    nn_options.add_argument('--net3d', action='store_true', default=False,
+                            help='create a 3d network instead of 2d [Default=False]')
     return parser
 
 
@@ -140,7 +139,7 @@ def main(args=None):
         # get the desired neural network architecture
         model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                      channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
-                     activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv, is_3d=False,
+                     activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv, is_3d=args.net3d,
                      is_3_channel=args.include_neighbors)
 
         logger.debug(model)
@@ -152,35 +151,21 @@ def main(args=None):
         # define device to put tensors on
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
 
-        # setup all transforms
-        if args.patch_size > 0:
-            nii_tfms = Compose([nd_tfms.RandomCrop2D(args.patch_size, args.sample_axis, include_neighbors=args.include_neighbors),
-                                nd_tfms.ToTensor(),
-                                nd_tfms.ToFastaiImage()])
+        if not args.net3d:
+            tfms = [get_slice(pct=args.sample_pct, axis=args.sample_axis)]
+            if args.flip_lr:
+                tfms.append(faiv.flip_lr(p=0.5))
+            if args.rotate:
+                tfms.append(faiv.rotate(degrees=(-45, 45.), p=0.5))
+            if args.zoom:
+                tfms.append(faiv.zoom(scale=(0.95, 1.05), p=0.8))
         else:
-             nii_tfms = Compose([nd_tfms.RandomSlice(args.sample_axis),
-                                 nd_tfms.ToTensor(),
-                                 nd_tfms.AddChannel(),
-                                 nd_tfms.ToFastaiImage()])
-
-        tds = NiftiDataset(args.source_dir, args.target_dir, nii_tfms, preload=args.preload)
-        if args.valid_source_dir is not None and args.valid_target_dir is not None:
-            vds = NiftiDataset(args.valid_source_dir, args.valid_target_dir, nii_tfms, preload=args.preload)
-        else:
-            vds = None
-
-        tfms = []
-        if args.flip_lr:
-            tfms.append(faiv.flip_lr(p=0.5))
-        if args.rotate:
-            tfms.append(faiv.rotate(degrees=(-45, 45.), p=0.5))
-        if args.zoom:
-            tfms.append(faiv.zoom(scale=(0.95, 1.05), p=0.8))
+            tfms = [get_patch3d(ps=args.patch_size)]
 
         # define the fastai data class
         n_jobs = args.n_jobs if args.n_jobs is not None else fai.defaults.cpus
-        idb = faiv.ImageDataBunch.create(tds, vds, bs=args.batch_size, ds_tfms=(tfms, []), num_workers=n_jobs,
-                                         tfm_y=True, device=device)
+        idb = niidatabunch(args.source_dir, args.target_dir, args.valid_split, tfms=tfms,
+                           bs=args.batch_size, device=device, n_jobs=n_jobs)
 
         # setup the learner
         loss = nn.MSELoss()

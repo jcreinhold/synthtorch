@@ -57,11 +57,9 @@ def arg_parser():
                          help='output a config file for the options used in this experiment '
                               '(saves them as a json file with the name as input in this argument)')
 
-    synth_options = parser.add_argument_group('Synthesis Options')
-    synth_options.add_argument('-ps', '--patch-size', type=int, default=64,
-                               help='patch size^3 extracted from image [Default=64]')
-
     nn_options = parser.add_argument_group('Neural Network Options')
+    nn_options.add_argument('-ps', '--patch-size', type=int, default=64,
+                            help='patch size^3 extracted from image [Default=64]')
     nn_options.add_argument('-n', '--n-jobs', type=int, default=0,
                             help='number of CPU processors to use (use 0 if CUDA enabled) [Default=0]')
     nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,

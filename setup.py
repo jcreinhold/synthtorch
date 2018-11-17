@@ -20,7 +20,7 @@ with open('README.md') as f:
 with open('LICENSE') as f:
     license = f.read()
 
-version = '0.1.1'
+version = '0.1.2'
 
 args = dict(
     name='synthnn',

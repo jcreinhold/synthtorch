@@ -72,6 +72,8 @@ def main(args=None):
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=level)
     logger = logging.getLogger(__name__)
     try:
+        if args.net3d:
+            raise SynthNNError('fa-predict currently only supports 2d synthesis (use nn-predict for 3d)')
 
         # load the model
         model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
