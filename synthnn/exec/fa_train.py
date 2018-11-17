@@ -172,10 +172,14 @@ def main(args=None):
 
         try:
             if not args.disable_metrics:
-                from synthnn.util.metrics import ncc, mssim, mi
+                from synthnn.util.metrics import ncc, mi
+                if not args.net3d:
+                    from synthnn.util.metrics import mssim2d as mssim
+                else:
+                    from synthnn.util.metrics import mssim3d as mssim
                 ncc.__name__ = 'NCC'
-                mssim.__name__ = 'MSSIM'
                 mi.__name__ = 'MI'
+                mssim.__name__ = 'MSSIM'
                 metrics = [ncc, mi, mssim]
             else:
                 metrics = []

@@ -30,12 +30,24 @@ def ncc(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     return nccval
 
 
-def mssim(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """ mean structural similarity """
+def mssim2d(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """ mean structural similarity (for 2d) """
     x = np.array(x.squeeze().transpose(0,2))
     y = np.array(y.squeeze().transpose(0,2))
     ms = synthqc.mssim(x, y, multichannel=True)
     ms = torch.Tensor(np.array([ms], dtype=np.float32)).squeeze()
+    return ms
+
+
+def mssim3d(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """ mean structural similarity (for 3d) """
+    x = np.array(x.squeeze())
+    y = np.array(y.squeeze())
+    N = x.shape[0]
+    ms = 0
+    for i in range(N):
+        ms += synthqc.mssim(x[i], y[i])
+    ms = torch.Tensor(np.array([ms/N], dtype=np.float32)).squeeze()
     return ms
 
 
