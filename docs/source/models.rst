@@ -4,7 +4,7 @@ Models
 U-net
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.models.unet
+.. autoclass:: synthnn.models.unet.Unet
    :members:
 
 N-layer CNN

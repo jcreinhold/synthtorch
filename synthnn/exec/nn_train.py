@@ -142,7 +142,7 @@ def main(args=None):
                          activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
-        model.train()
+        model.train(True)
         logger.debug(model)
 
         # put the model on the GPU if available and desired
@@ -183,15 +183,17 @@ def main(args=None):
         for t in range(args.n_epochs):
             # training
             losses = []
+            if args.validation_count > 0:
+                model.train(True)
             for src, tgt in train_loader:
                 src, tgt = src.to(device), tgt.to(device)
 
                 # Forward pass: Compute predicted y by passing x to the model
-                tgt_pred = model(src)  # add (empty) channel axis
+                tgt_pred = model(src)
 
                 # Compute and print loss
                 loss = criterion(tgt_pred, tgt)
-                logger.info(f'Training - Epoch: {t+1}, Loss: {loss.item():.2f}')
+                log = f'Epoch: {t+1} - Training Loss: {loss.item():.2f}'
                 losses.append(loss.item())
 
                 # Zero gradients, perform a backward pass, and update the weights.
@@ -206,17 +208,21 @@ def main(args=None):
 
             # validation
             losses = []
-            for src, tgt in validation_loader:
-                src, tgt = src.to(device), tgt.to(device)
+            if args.validation_count > 0:
+                model.train(False)
+            with torch.set_grad_enabled(False):
+                for src, tgt in validation_loader:
+                    src, tgt = src.to(device), tgt.to(device)
 
-                tgt_pred = model(src)  # add (empty) channel axis
+                    tgt_pred = model(src)  # add (empty) channel axis
 
-                # Compute and print loss
-                loss = criterion(tgt_pred, tgt)
-                logger.info(f'Validation - Epoch: {t+1}, Loss: {loss.item():.2f}')
-                losses.append(loss.item())
+                    # Compute and print loss
+                    loss = criterion(tgt_pred, tgt)
+                    log += f', Validation Loss: {loss.item():.2f}'
+                    losses.append(loss.item())
 
-            validation_losses.append(losses)
+                validation_losses.append(losses)
+            logger.info(log)
 
         # output a config file if desired
         if args.out_config_file is not None:

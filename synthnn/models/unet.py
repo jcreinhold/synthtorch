@@ -3,7 +3,7 @@
 """
 synthnn.models.unet
 
-holds the architecture for a 3d unet [1]
+holds the architecture for a 2d or 3d unet [1]
 
 References:
     [1] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
@@ -119,10 +119,10 @@ class Unet(torch.nn.Module):
         ksz = self.kernel_sz if kernel_sz is None else kernel_sz
         if self.is_3d:
             c = nn.Sequential(nn.ReplicationPad3d(ksz // 2),
-                              nn.Conv3d(in_c, out_c, ksz))
+                              nn.Conv3d(in_c, out_c, ksz, bias=False if self.norm != 'none' else True))
         else:
             c = nn.Sequential(nn.ReplicationPad2d(ksz // 2),
-                              nn.Conv2d(in_c, out_c, ksz))
+                              nn.Conv2d(in_c, out_c, ksz, bias=False if self.norm != 'none' else True))
         return c
 
     def __conv_act(self, in_c: int, out_c: int, kernel_sz: Optional[int]=None,
