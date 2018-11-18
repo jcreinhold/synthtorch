@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthit.exec.nn_train
+synthnn.exec.nn_train
 
 command line interface to train a deep convolutional neural network for
 synthesis of MR (brain) images
@@ -227,6 +227,9 @@ def main(args=None):
             import json
             arg_dict = vars(args)
             # add these keys so that the output config file can be edited for use in prediction
+            arg_dict['monte_carlo'] = None
+            arg_dict['sample_axis'] = None
+            arg_dict['net3d'] = True
             arg_dict['trained_model'] = args.output
             arg_dict['predict_dir'] = None
             arg_dict['predict_out'] = None

@@ -44,6 +44,14 @@ def get_act(name: str, inplace: bool=True, params: Optional[dict]=None) -> activ
         act = nn.ReLU(inplace=inplace)
     elif name.lower() == 'lrelu':
         act = nn.LeakyReLU(inplace=inplace) if params is None else nn.LeakyReLU(inplace=inplace, **params)
+    elif name.lower() == 'prelu':
+        act = nn.PReLU() if params is None else nn.PReLU(**params)
+    elif name.lower() == 'elu':
+        act = nn.ELU(inplace=inplace) if params is None else nn.ELU(inplace=inplace, **params)
+    elif name.lower() == 'celu':
+        act = nn.CELU(inplace=inplace) if params is None else nn.CELU(inplace=inplace, **params)
+    elif name.lower() == 'selu':
+        act = nn.SELU(inplace=inplace)
     elif name.lower() == 'linear':
         act = nn.LeakyReLU(1, inplace=inplace)  # hack to get linear output
     elif name.lower() == 'tanh':

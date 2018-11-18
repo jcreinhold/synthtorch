@@ -11,7 +11,8 @@ Created on: Nov 15, 2018
 """
 
 __all__ = ['ncc',
-           'mssim',
+           'mssim2d',
+           'mssim3d',
            'mi']
 
 import numpy as np

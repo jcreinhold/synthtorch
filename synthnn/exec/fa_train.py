@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthit.exec.fa_train
+synthnn.exec.fa_train
 
 command line interface to train a deep convolutional neural network for
 synthesis of MR (brain) images with fastai
@@ -48,6 +48,8 @@ def arg_parser():
     options.add_argument('-vtd', '--valid-target-dir', type=str, default=None,
                           help='path to directory with target images for validation, '
                                'see -vs for default action if this is not provided [Default=None]')
+    options.add_argument('-na', '--nn-arch', type=str, default='unet', choices=('unet', 'nconv'),
+                         help='specify neural network architecture to use')
     options.add_argument('-o', '--output', type=str, default=None,
                          help='path to output the trained model')
     options.add_argument('-m', '--mask-dir', type=str, default=None,
@@ -76,8 +78,8 @@ def arg_parser():
                             help='convolutional kernel size (cubed) [Default=3]')
     nn_options.add_argument('-sa', '--sample-axis', type=int, default=None,
                             help='axis on which to sample for 2d (None for random orientation) [Default=None]')
-    nn_options.add_argument('-sp', '--sample-pct', type=float, default=(0.2,0.8), nargs=2,
-                            help='range along axis (as percentage) from which to randomly sample in 2d [Default=(0.2,0.8)]')
+    nn_options.add_argument('-sp', '--sample-pct', type=float, default=(0, 1), nargs=2,
+                            help='range along axis (as percentage) from which to randomly sample in 2d [Default=(0,1)]')
     nn_options.add_argument('-flr', '--flip-lr', action='store_true', default=False,
                             help='use flip lr data augmentation')
     nn_options.add_argument('-rot', '--rotate', action='store_true', default=False,
@@ -106,7 +108,8 @@ def arg_parser():
                                  'per Zhao, et al. 2017 [Default=False]')
     nn_options.add_argument('-nm', '--normalization', type=str, default='instance', choices=('instance', 'batch', 'none'),
                             help='type of normalization layer to use in network [Default=instance]')
-    nn_options.add_argument('-ac', '--activation', type=str, default='relu', choices=('relu', 'lrelu'),
+    nn_options.add_argument('-ac', '--activation', type=str, default='relu',
+                            choices=('relu', 'lrelu', 'elu', 'prelu', 'celu', 'selu', 'tanh', 'sigmoid'),
                             help='type of activation to use throughout network except output [Default=relu]')
     nn_options.add_argument('-oac', '--out-activation', type=str, default='linear', choices=('relu', 'lrelu', 'linear'),
                             help='type of activation to use in network on output [Default=linear]')
@@ -120,6 +123,7 @@ def arg_parser():
                             help='disable the calculation of ncc, mi, mssim regardless of availability')
     nn_options.add_argument('--net3d', action='store_true', default=False,
                             help='create a 3d network instead of 2d [Default=False]')
+    nn_options.add_argument('--n-gpus', type=int, default=1, help='use n-gpus [Default=1]')
     return parser
 
 
@@ -158,7 +162,7 @@ def main(args=None):
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
 
         if not args.net3d:
-            tfms = [get_slice(pct=args.sample_pct, axis=args.sample_axis)]
+            tfms = val_tfms = [get_slice(pct=args.sample_pct, axis=args.sample_axis)]
             if args.flip_lr:
                 tfms.append(faiv.flip_lr(p=0.5))
             if args.rotate:
@@ -166,11 +170,11 @@ def main(args=None):
             if args.zoom:
                 tfms.append(faiv.zoom(scale=(0.95, 1.05), p=0.8))
         else:
-            tfms = [get_patch3d(ps=args.patch_size)]
+            tfms = val_tfms = [get_patch3d(ps=args.patch_size, h_pct=args.sample_pct, w_pct=args.sample_pct, d_pct=args.sample_pct)]
 
         # define the fastai data class
         n_jobs = args.n_jobs if args.n_jobs is not None else fai.defaults.cpus
-        idb = niidatabunch(args.source_dir, args.target_dir, args.valid_split, tfms=tfms,
+        idb = niidatabunch(args.source_dir, args.target_dir, args.valid_split, tfms=tfms, val_tfms=val_tfms,
                            bs=args.batch_size, device=device, n_jobs=n_jobs,
                            val_src_dir=args.valid_source_dir, val_tgt_dir=args.valid_target_dir)
 
@@ -196,6 +200,10 @@ def main(args=None):
 
         pth, base, _ = split_filename(args.output)
         learner = fai.Learner(idb, model, loss_func=loss, metrics=metrics, model_dir=pth)
+
+        if args.n_gpus > 1:
+            logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
+            learner.model = torch.nn.DataParallel(learner.model)
 
         # enable fp16 (mixed) precision if desired
         if args.fp16:
