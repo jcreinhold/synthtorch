@@ -100,6 +100,7 @@ def main(args=None):
         # put the model on the GPU if available and desired
         if torch.cuda.is_available() and not args.disable_cuda:
             model.cuda()
+            torch.backends.cudnn.benchmark = True
 
         # setup and start prediction loop (whole slice by whole slice)
         axis = 0 if args.sample_axis is None else args.sample_axis

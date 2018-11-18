@@ -146,6 +146,7 @@ def main(args=None):
         # put the model on the GPU if available and desired
         if torch.cuda.is_available() and not args.disable_cuda:
             model.cuda()
+            torch.backends.cudnn.benchmark = True
 
         # define device to put tensors on
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
