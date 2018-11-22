@@ -41,7 +41,7 @@ def arg_parser():
     options = parser.add_argument_group('Options')
     options.add_argument('-vs', '--valid-split', type=float, default=0.2,
                           help='split the data in source_dir and target_dir into train/validation '
-                               'with this split percentage [Default=0]')
+                               'with this split percentage [Default=0.2]')
     options.add_argument('-vsd', '--valid-source-dir', type=str, default=None,
                           help='path to directory with source images for validation, '
                                'see -vs for default action if this is not provided [Default=None]')
@@ -52,12 +52,8 @@ def arg_parser():
                          help='specify neural network architecture to use')
     options.add_argument('-o', '--output', type=str, default=None,
                          help='path to output the trained model')
-    options.add_argument('-m', '--mask-dir', type=str, default=None,
-                         help='optional directory of brain masks for images')
     options.add_argument('-v', '--verbosity', action="count", default=0,
                          help="increase output verbosity (e.g., -vv is more than -v)")
-    options.add_argument('-vc', '--validation-count', type=int, default=0,
-                         help="number of datasets to use in validation")
     options.add_argument('-csv', '--out-csv', type=str, default='history',
                          help='name of output csv which holds training log')
     options.add_argument('-ocf', '--out-config-file', type=str, default='config.json',
@@ -66,12 +62,14 @@ def arg_parser():
 
     nn_options = parser.add_argument_group('Neural Network Options')
     nn_options.add_argument('-ps', '--patch-size', type=int, default=64,
-                            help='patch size^3 extracted from image (0 for a full slice, '
-                                 'sample-axis must be defined if full slice used) [Default=64]')
+                            help='patch size^3 or ^2 (depending on if net3d enabled) extracted from image '
+                                 '(0 for a full slice, sample-axis must be defined if full slice used) [Default=64]')
     nn_options.add_argument('-n', '--n-jobs', type=int, default=None,
                             help='number of CPU processors to use for data loading [Default=None (all cpus)]')
     nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,
                             help='number of epochs [Default=100]')
+    nn_options.add_argument('-bpe', '--batches-per-epoch', type=int, default=10,
+                            help='number of batches in each epoch [Default=10]')
     nn_options.add_argument('-nl', '--n-layers', type=int, default=3,
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
     nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
@@ -80,6 +78,10 @@ def arg_parser():
                             help='axis on which to sample for 2d (None for random orientation) [Default=None]')
     nn_options.add_argument('-sp', '--sample-pct', type=float, default=(0, 1), nargs=2,
                             help='range along axis (as percentage) from which to randomly sample in 2d [Default=(0,1)]')
+    nn_options.add_argument('-dc', '--deconv', action='store_true', default=False,
+                            help='use transpose conv and strided conv for upsampling & downsampling respectively [Default=False]')
+    nn_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
+                            help='use this type of interpolation for upsampling (when deconv is false) [Default=nearest]')
     nn_options.add_argument('-flr', '--flip-lr', action='store_true', default=False,
                             help='use flip lr data augmentation')
     nn_options.add_argument('-rot', '--rotate', action='store_true', default=False,
@@ -88,8 +90,6 @@ def arg_parser():
                             help='use zoom for data augmentation')
     nn_options.add_argument('-oc', '--one-cycle', action='store_true', default=False,
                             help='train using one-cycle policy (see "A Disciplined Approach...", Leslie Smith, 2018)')
-    nn_options.add_argument('-in', '--include-neighbors', action='store_true', default=False,
-                            help='take the nearest two slices when doing 2d sampling and append as new channels [Default=False]')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
                             help='dropout probability per conv block [Default=0]')
     nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
@@ -100,10 +100,10 @@ def arg_parser():
                             help='number of channels in the first layer of unet (2**cbp) [Default=5]')
     nn_options.add_argument('-pl', '--plot-loss', type=str, default=None,
                             help='plot the loss vs epoch and save at the filename provided here [Default=None]')
-    nn_options.add_argument('--use-up-conv', action='store_true', default=False,
+    nn_options.add_argument('-usc', '--upsampconv', action='store_true', default=False,
                             help='Use resize-convolution in the U-net as per the Distill article: '
                                  '"Deconvolution and Checkerboard Artifacts" [Default=False]')
-    nn_options.add_argument('--add-two-up', action='store_true', default=False,
+    nn_options.add_argument('-atu', '--add-two-up', action='store_true', default=False,
                             help='Add two to the kernel size on the upsampling in the U-Net as '
                                  'per Zhao, et al. 2017 [Default=False]')
     nn_options.add_argument('-nm', '--normalization', type=str, default='instance', choices=('instance', 'batch', 'none'),
@@ -149,8 +149,8 @@ def main(args=None):
         # get the desired neural network architecture
         model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                      channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
-                     activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv, is_3d=args.net3d,
-                     is_3_channel=args.include_neighbors)
+                     activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d, deconv=args.deconv,
+                     interp_mode=args.interp_mode, upsampconv=args.upsampconv)
 
         logger.debug(model)
 
@@ -177,7 +177,8 @@ def main(args=None):
         n_jobs = args.n_jobs if args.n_jobs is not None else fai.defaults.cpus
         idb = niidatabunch(args.source_dir, args.target_dir, args.valid_split, tfms=tfms, val_tfms=val_tfms,
                            bs=args.batch_size, device=device, n_jobs=n_jobs,
-                           val_src_dir=args.valid_source_dir, val_tgt_dir=args.valid_target_dir)
+                           val_src_dir=args.valid_source_dir, val_tgt_dir=args.valid_target_dir,
+                           b_per_epoch=args.batches_per_epoch)
 
         # setup the learner
         loss = nn.MSELoss()
@@ -227,7 +228,6 @@ def main(args=None):
             arg_dict['monte_carlo'] = None
             arg_dict['predict_dir'] = None
             arg_dict['predict_out'] = None
-            arg_dict['predict_mask_dir'] = None
             with open(args.out_config_file, 'w') as f:
                 json.dump(arg_dict, f, sort_keys=True, indent=2)
 

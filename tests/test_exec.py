@@ -65,6 +65,28 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(retval, 0)
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_fa_deconv(self):
+        val_train_args = f'-vs 0.5'.split()
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 32 -bs 2 --plot-loss '
+                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf {self.jsonfn} -dc').split()
+        retval = fa_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_fa_upsampconv(self):
+        val_train_args = f'-vs 0.5'.split()
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 32 -bs 2 --plot-loss '
+                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf {self.jsonfn} -usc').split()
+        retval = fa_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_fa_valid_dir(self):
         jsonfn = f'{self.out_dir}/test.json'
         val_train_args = f'-vsd {self.train_dir} -vtd {self.train_dir} -vs 0'.split()

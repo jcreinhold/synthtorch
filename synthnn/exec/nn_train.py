@@ -45,14 +45,19 @@ def arg_parser():
     options = parser.add_argument_group('Options')
     options.add_argument('-o', '--output', type=str, default=None,
                          help='path to output the trained model')
-    options.add_argument('-m', '--mask-dir', type=str, default=None,
-                         help='optional directory of brain masks for images')
     options.add_argument('-na', '--nn-arch', type=str, default='unet', choices=('unet', 'nconv'),
                          help='specify neural network architecture to use')
+    options.add_argument('-vs', '--valid-split', type=float, default=0.2,
+                          help='split the data in source_dir and target_dir into train/validation '
+                               'with this split percentage [Default=0]')
+    options.add_argument('-vsd', '--valid-source-dir', type=str, default=None,
+                          help='path to directory with source images for validation, '
+                               'see -vs for default action if this is not provided [Default=None]')
+    options.add_argument('-vtd', '--valid-target-dir', type=str, default=None,
+                          help='path to directory with target images for validation, '
+                               'see -vs for default action if this is not provided [Default=None]')
     options.add_argument('-v', '--verbosity', action="count", default=0,
                          help="increase output verbosity (e.g., -vv is more than -v)")
-    options.add_argument('-vc', '--validation-count', type=int, default=0,
-                         help="number of datasets to use in validation")
     options.add_argument('-ocf', '--out-config-file', type=str, default=None,
                          help='output a config file for the options used in this experiment '
                               '(saves them as a json file with the name as input in this argument)')
@@ -68,6 +73,10 @@ def arg_parser():
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
     nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
                             help='convolutional kernel size (cubed) [Default=3]')
+    nn_options.add_argument('-dc', '--deconv', action='store_true', default=False,
+                            help='use transpose conv and strided conv for upsampling & downsampling respectively [Default=False]')
+    nn_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
+                            help='use this type of interpolation for upsampling (when deconv is false) [Default=nearest]')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
                             help='dropout probability per conv block [Default=0]')
     nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
@@ -78,10 +87,10 @@ def arg_parser():
                             help='batch size (num of images to process at once) [Default=5]')
     nn_options.add_argument('-pl', '--plot-loss', type=str, default=None,
                             help='plot the loss vs epoch and save at the filename provided here [Default=None]')
-    nn_options.add_argument('--use-up-conv', action='store_true', default=False,
+    nn_options.add_argument('-usc', '--upsampconv', action='store_true', default=False,
                             help='Use resize-convolution in the U-net as per the Distill article: '
                                  '"Deconvolution and Checkerboard Artifacts" [Default=False]')
-    nn_options.add_argument('--add-two-up', action='store_true', default=False,
+    nn_options.add_argument('-atu', '--add-two-up', action='store_true', default=False,
                             help='Add two to the kernel size on the upsampling in the U-Net as '
                                  'per Zhao, et al. 2017 [Default=False]')
     nn_options.add_argument('-nm', '--normalization', type=str, default='instance', choices=('instance', 'batch', 'none'),
@@ -137,7 +146,8 @@ def main(args=None):
             from synthnn.models.unet import Unet
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
-                         activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv)
+                         activation=args.activation, output_activation=args.out_activation, deconv=args.deconv, interp_mode=args.interp_mode,
+                         upsampconv=args.upsampconv)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         model.train(True)
@@ -160,19 +170,24 @@ def main(args=None):
         # define dataset and split into training/validation set
         dataset = NiftiDataset(args.source_dir, args.target_dir, Compose(crop), preload=args.preload)
 
-        # setup training and validation set
-        num_train = len(dataset)
-        indices = list(range(num_train))
-        split = args.validation_count
-        validation_idx = np.random.choice(indices, size=split, replace=False)
-        train_idx = list(set(indices) - set(validation_idx))
+        if args.valid_source_dir is not None and args.valid_target_dir is not None:
+            valid_dataset = NiftiDataset(args.valid_source_dir, args.valid_target_dir, Compose(crop), preload=args.preload)
+            train_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
+            validation_loader = DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
+        else:
+            # setup training and validation set
+            num_train = len(dataset)
+            indices = list(range(num_train))
+            split = int(args.valid_split * num_train)
+            validation_idx = np.random.choice(indices, size=split, replace=False)
+            train_idx = list(set(indices) - set(validation_idx))
 
-        train_sampler = SubsetRandomSampler(train_idx)
-        validation_sampler = SubsetRandomSampler(validation_idx)
+            train_sampler = SubsetRandomSampler(train_idx)
+            validation_sampler = SubsetRandomSampler(validation_idx)
 
-        # set up data loader for nifti images
-        train_loader = DataLoader(dataset, sampler=train_sampler, batch_size=args.batch_size, num_workers=args.n_jobs)
-        validation_loader = DataLoader(dataset, sampler=validation_sampler, batch_size=args.batch_size, num_workers=args.n_jobs)
+            # set up data loader for nifti images
+            train_loader = DataLoader(dataset, sampler=train_sampler, batch_size=args.batch_size, num_workers=args.n_jobs)
+            validation_loader = DataLoader(dataset, sampler=validation_sampler, batch_size=args.batch_size, num_workers=args.n_jobs)
 
         # train the model
         criterion = nn.MSELoss()
@@ -182,7 +197,7 @@ def main(args=None):
         for t in range(args.n_epochs):
             # training
             losses = []
-            if args.validation_count > 0:
+            if args.valid_split > 0 or (args.valid_source_dir is not None and args.valid_target_dir is not None):
                 model.train(True)
             for src, tgt in train_loader:
                 src, tgt = src.to(device), tgt.to(device)
@@ -207,7 +222,7 @@ def main(args=None):
 
             # validation
             losses = []
-            if args.validation_count > 0:
+            if args.valid_split > 0 or (args.valid_source_dir is not None and args.valid_target_dir is not None):
                 model.train(False)
             with torch.set_grad_enabled(False):
                 for src, tgt in validation_loader:
@@ -234,7 +249,6 @@ def main(args=None):
             arg_dict['trained_model'] = args.output
             arg_dict['predict_dir'] = None
             arg_dict['predict_out'] = None
-            arg_dict['predict_mask_dir'] = None
             with open(args.out_config_file, 'w') as f:
                 json.dump(arg_dict, f, sort_keys=True, indent=2)
 

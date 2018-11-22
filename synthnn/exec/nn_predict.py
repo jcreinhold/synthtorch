@@ -39,15 +39,16 @@ def batch2d_proc(model, img, out_img, axis, device, bs, i, nsyn):
     img_b = torch.from_numpy(s).to(device)
     for _ in range(nsyn):
         if axis == 0:
-            out_img[i:i+bs,:,:] += np.transpose(fwd(model, img_b), [0,1,2]) / nsyn
+            out_img[i:i+bs,:,:] = out_img[i:i+bs,:,:] + np.transpose(fwd(model, img_b), [0,1,2]) / nsyn
         elif axis == 1:
-            out_img[:,i:i+bs,:] += np.transpose(fwd(model, img_b), [1,0,2]) / nsyn
+            out_img[:,i:i+bs,:] = out_img[:,i:i+bs,:] + np.transpose(fwd(model, img_b), [1,0,2]) / nsyn
         else:
-            out_img[:,:,i:i+bs] += np.transpose(fwd(model, img_b), [1,2,0]) / nsyn
+            out_img[:,:,i:i+bs] = out_img[:,:,i:i+bs] + np.transpose(fwd(model, img_b), [1,2,0]) / nsyn
 
 
-def enable_dropout(m):
+def enable_dropout(m, logger):
     if isinstance(m, torch.nn.Dropout2d) or isinstance(m, torch.nn.Dropout3d):
+        logger.debug(f'Enabling training on dropout layer: {m}')
         m.train()
     else:
         m.eval()
@@ -81,9 +82,9 @@ def main(args=None):
         elif args.nn_arch.lower() == 'unet':
             from synthnn.models.unet import Unet
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
-                 channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
-                 activation=args.activation, output_activation=args.out_activation, use_up_conv=args.use_up_conv, is_3d=args.net3d,
-                 is_3_channel=args.include_neighbors)
+                         channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
+                         activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d, deconv=args.deconv,
+                         interp_mode=args.interp_mode, upsampconv=args.upsampconv)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         model.load_state_dict(torch.load(args.trained_model, map_location=device))
@@ -95,7 +96,8 @@ def main(args=None):
             model.eval()
         else:
             logger.info(f'Enabling dropout in testing (and averaging results {nsyn} times)')
-            model.apply(enable_dropout)
+            def endo(x): enable_dropout(x, logger)
+            model.apply(endo)
 
         # put the model on the GPU if available and desired
         if torch.cuda.is_available() and not args.disable_cuda:
