@@ -97,8 +97,6 @@ class Unet(torch.nn.Module):
                                            for n in range(1, n_layers+1)])
             self.upconv = nn.ModuleList([self.__conv_act(lc(n), lc(n), 2, act=a, norm=nm, mode='up')
                                          for n in reversed(range(2, n_layers+2))])
-            print(len(self.downconv))
-            print(len(self.upconv))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.start(x)

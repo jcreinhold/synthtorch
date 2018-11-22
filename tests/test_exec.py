@@ -56,8 +56,9 @@ class TestCLI(unittest.TestCase):
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_fa(self):
         val_train_args = f'-vs 0.5'.split()
-        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 32 -bs 2 --plot-loss '
-                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf {self.jsonfn}').split()
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 2 -bs 4 --plot-loss '
+                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history '
+                                                   f'-ocf {self.jsonfn}').split()
         retval = fa_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)
@@ -66,9 +67,10 @@ class TestCLI(unittest.TestCase):
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_fa_deconv(self):
-        val_train_args = f'-vs 0.5'.split()
-        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 32 -bs 2 --plot-loss '
-                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf {self.jsonfn} -dc').split()
+        val_train_args = f'-vsd {self.train_dir} -vtd {self.train_dir} -vs 0'.split()
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 1 -cbp 1 -nl 2 -bs 4 --plot-loss '
+                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf {self.jsonfn} '
+                                                   f'-dc -bpe 1').split()
         retval = fa_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)
@@ -77,9 +79,10 @@ class TestCLI(unittest.TestCase):
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_fa_upsampconv(self):
-        val_train_args = f'-vs 0.5'.split()
-        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 32 -bs 2 --plot-loss '
-                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history -ocf {self.jsonfn} -usc').split()
+        val_train_args = f'-vsd {self.train_dir} -vtd {self.train_dir} -vs 0'.split()
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 1 -cbp 1 -nl 2 -bs 4 --plot-loss '
+                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history '
+                                                   f'-ocf {self.jsonfn} -usc -bpe 1').split()
         retval = fa_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)
@@ -90,15 +93,16 @@ class TestCLI(unittest.TestCase):
     def test_fa_valid_dir(self):
         jsonfn = f'{self.out_dir}/test.json'
         val_train_args = f'-vsd {self.train_dir} -vtd {self.train_dir} -vs 0'.split()
-        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 1 -ps 0 -bs 2 '
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 1 -cbp 1 -nl 2 -ps 0 -bs 4 '
                                                    f'-csv {self.out_dir}/history --one-cycle --disable-metrics '
-                                                   f'-ocf {jsonfn}').split()
+                                                   f'-ocf {jsonfn} -bpe 1').split()
         retval = fa_train(args)
         self.assertEqual(retval, 0)
 
     def test_nn_nconv_nopatch_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 2 -nl 1 -ps 0 '
-                                  f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn}').split()
+        args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -ps 0 -bs 2 '
+                                  f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} '
+                                  f'-vsd {self.train_dir} -vtd {self.train_dir}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)
@@ -106,7 +110,8 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(retval, 0)
 
     def test_nn_nconv_patch_cli(self):
-        args = self.train_args + f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 -ocf {self.jsonfn}'.split()
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 ' 
+                                  f'-ocf {self.jsonfn} -bs 2').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)
@@ -114,7 +119,7 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(retval, 0)
 
     def test_nn_train_unet_cli(self):
-        args = self.train_args + f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16'.split()
+        args = self.train_args + f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 -bs 2'.split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
 

@@ -60,6 +60,6 @@ pip install git+git://github.com/jcreinhold/synthqc.git
 pip install git+git://github.com/NVIDIA/apex.git
 
 # install this package
-python setup.py install
+python setup.py develop
 
 echo "synthnn conda env script finished (verify yourself if everything installed correctly)"
