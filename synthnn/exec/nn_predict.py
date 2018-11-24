@@ -154,7 +154,7 @@ def main(args=None):
                                 out_img[bx, by, bz] = out_img[bx, by, bz] + predicted[ii, 0, ...]
                             j = 0
                     count_mtx[count_mtx == 0] = 1  # avoid division by zero
-                    out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
+                    out_img_nib = nib.Nifti1Image(out_img/count_mtx, img_nib.affine, img_nib.header)
                 else:
                     test_img_t = torch.from_numpy(img).to(device)[None, None, ...]
                     out_img = np.squeeze(model.forward(test_img_t).cpu().data.numpy())
