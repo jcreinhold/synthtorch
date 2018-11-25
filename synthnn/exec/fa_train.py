@@ -92,6 +92,10 @@ def arg_parser():
                             help='train using one-cycle policy (see "A Disciplined Approach...", Leslie Smith, 2018)')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
                             help='dropout probability per conv block [Default=0]')
+    nn_options.add_argument('-wd', '--weight-decay', type=float, default=None,
+                            help='control weight decay in the network [Default=None (which means use fastai default wd)]')
+    nn_options.add_argument('-nwd', '--norm-weight-decay', action='store_true', default=False,
+                            help='use weight decay in the normalization layers in the network [Default=False]')
     nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
                             help='learning rate of the neural network (uses Adam) [Default=1e-3]')
     nn_options.add_argument('-bs', '--batch-size', type=int, default=32,
@@ -201,7 +205,7 @@ def main(args=None):
             metrics = []
 
         pth, base, _ = split_filename(args.output)
-        learner = fai.Learner(idb, model, loss_func=loss, metrics=metrics, model_dir=pth)
+        learner = fai.Learner(idb, model, loss_func=loss, metrics=metrics, model_dir=pth, bn_wd=args.norm_weight_decay)
 
         if args.n_gpus > 1:
             logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
@@ -214,9 +218,9 @@ def main(args=None):
         # train the learner
         cb = fai.callbacks.CSVLogger(learner, args.out_csv)
         if not args.one_cycle:
-            learner.fit(args.n_epochs, args.learning_rate, callbacks=cb)
+            learner.fit(args.n_epochs, args.learning_rate, wd=args.weight_decay, callbacks=cb)
         else:
-            learner.fit_one_cycle(args.n_epochs, args.learning_rate, callbacks=[cb])
+            learner.fit_one_cycle(args.n_epochs, args.learning_rate, wd=args.weight_decay, callbacks=[cb])
 
         # output a config file if desired
         if args.out_config_file is not None:
