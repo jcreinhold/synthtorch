@@ -68,9 +68,8 @@ class TestCLI(unittest.TestCase):
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_fa_whole_3d_vol(self):
         val_train_args = f'-vs 0.5'.split()
-        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa --net3d -ps 0 -ne 1 -cbp 1 -nl 2 -bs 2 --plot-loss '
-                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history '
-                                                   f'-ocf {self.jsonfn}').split()
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa --net3d -ps 0 -ne 1 -cbp 1 -nl 2 -bs 2 '
+                                                   f'-csv {self.out_dir}/history -ocf {self.jsonfn}').split()
         retval = fa_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)

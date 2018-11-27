@@ -62,9 +62,8 @@ def arg_parser():
 
     nn_options = parser.add_argument_group('Neural Network Options')
     nn_options.add_argument('-ps', '--patch-size', type=int, default=64,
-                            help='patch size^3 or ^2 (depending on if net3d enabled) extracted from image '
-                                 '(0 for a full slice or full image if 3d, sample-axis must be defined if '
-                                 'full slice used) [Default=64]')
+                            help='patch size^3 if net3d enabled extracted from image '
+                                 '(0 for a full image if 3d otherwise full 2d slice) [Default=64]')
     nn_options.add_argument('-n', '--n-jobs', type=int, default=None,
                             help='number of CPU processors to use for data loading [Default=None (all cpus)]')
     nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,
@@ -128,6 +127,8 @@ def arg_parser():
                             help='disable the calculation of ncc, mi, mssim regardless of availability')
     nn_options.add_argument('--net3d', action='store_true', default=False,
                             help='create a 3d network instead of 2d [Default=False]')
+    nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
+                            help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
     nn_options.add_argument('--n-gpus', type=int, default=1, help='use n-gpus [Default=1]')
     return parser
 
@@ -155,7 +156,7 @@ def main(args=None):
         model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                      channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                      activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d, deconv=args.deconv,
-                     interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=True)
+                     interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias)
 
         logger.debug(model)
 

@@ -105,6 +105,8 @@ def arg_parser():
                             help='preload dataset (memory intensive) vs loading data from disk each epoch')
     nn_options.add_argument('--disable-cuda', action='store_true', default=False,
                             help='Disable CUDA regardless of availability')
+    nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
+                            help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
     return parser
 
 
@@ -147,7 +149,7 @@ def main(args=None):
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, deconv=args.deconv, interp_mode=args.interp_mode,
-                         upsampconv=args.upsampconv, enable_dropout=True)
+                         upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         model.train(True)
