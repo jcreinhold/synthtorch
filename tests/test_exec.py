@@ -66,6 +66,18 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(retval, 0)
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_fa_whole_3d_vol(self):
+        val_train_args = f'-vs 0.5'.split()
+        args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa --net3d -ps 0 -ne 1 -cbp 1 -nl 2 -bs 2 --plot-loss '
+                                                   f'{self.out_dir}/loss.png -csv {self.out_dir}/history '
+                                                   f'-ocf {self.jsonfn}').split()
+        retval = fa_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_fa_deconv(self):
         val_train_args = f'-vsd {self.train_dir} -vtd {self.train_dir} -vs 0'.split()
         args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 1 -cbp 1 -nl 2 -bs 4 --plot-loss '

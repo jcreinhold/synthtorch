@@ -23,7 +23,7 @@ with warnings.catch_warnings():
     import fastai.vision as faiv
     import torch
     from torch import nn
-    from niftidataset.fastai import niidatabunch, get_patch3d, get_slice
+    from niftidataset.fastai import niidatabunch, get_patch3d, get_slice, add_channel
     from synthnn import split_filename
     from synthnn.models.unet import Unet
     from synthnn.util.io import AttrDict
@@ -63,7 +63,8 @@ def arg_parser():
     nn_options = parser.add_argument_group('Neural Network Options')
     nn_options.add_argument('-ps', '--patch-size', type=int, default=64,
                             help='patch size^3 or ^2 (depending on if net3d enabled) extracted from image '
-                                 '(0 for a full slice, sample-axis must be defined if full slice used) [Default=64]')
+                                 '(0 for a full slice or full image if 3d, sample-axis must be defined if '
+                                 'full slice used) [Default=64]')
     nn_options.add_argument('-n', '--n-jobs', type=int, default=None,
                             help='number of CPU processors to use for data loading [Default=None (all cpus)]')
     nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,
@@ -168,14 +169,16 @@ def main(args=None):
 
         if not args.net3d:
             tfms = val_tfms = [get_slice(pct=args.sample_pct, axis=args.sample_axis)]
-            if args.flip_lr:
-                tfms.append(faiv.flip_lr(p=0.5))
-            if args.rotate:
-                tfms.append(faiv.rotate(degrees=(-45, 45.), p=0.5))
-            if args.zoom:
-                tfms.append(faiv.zoom(scale=(0.95, 1.05), p=0.8))
-        else:
+        elif args.patch_size > 0:
             tfms = val_tfms = [get_patch3d(ps=args.patch_size, h_pct=args.sample_pct, w_pct=args.sample_pct, d_pct=args.sample_pct)]
+        else:
+            tfms = val_tfms = [add_channel()]
+        if args.flip_lr:
+            tfms.append(faiv.flip_lr(p=0.5))
+        if args.rotate:
+            tfms.append(faiv.rotate(degrees=(-45, 45.), p=0.5))
+        if args.zoom:
+            tfms.append(faiv.zoom(scale=(0.95, 1.05), p=0.8))
 
         # define the fastai data class
         n_jobs = args.n_jobs if args.n_jobs is not None else fai.defaults.cpus
