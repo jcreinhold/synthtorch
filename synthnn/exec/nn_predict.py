@@ -46,14 +46,6 @@ def batch2d_proc(model, img, out_img, axis, device, bs, i, nsyn):
             out_img[:,:,i:i+bs] = out_img[:,:,i:i+bs] + np.transpose(fwd(model, img_b), [1,2,0]) / nsyn
 
 
-def enable_dropout(m, logger):
-    if isinstance(m, torch.nn.Dropout2d) or isinstance(m, torch.nn.Dropout3d):
-        logger.debug(f'Enabling training on dropout layer: {m}')
-        m.train()
-    else:
-        m.eval()
-
-
 def main(args=None):
     no_config_file = not sys.argv[1].endswith('.json') if args is None else not args[0].endswith('json')
     if no_config_file:
@@ -75,6 +67,9 @@ def main(args=None):
         # define device to put tensors on
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
 
+        # determine if we enable dropout in prediction
+        nsyn = args.monte_carlo or 1
+
         # load the trained model
         if args.nn_arch.lower() == 'nconv':
             from synthnn.models.nconvnet import Conv3dNLayerNet
@@ -84,20 +79,13 @@ def main(args=None):
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d, deconv=args.deconv,
-                         interp_mode=args.interp_mode, upsampconv=args.upsampconv)
+                         interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=nsyn > 1)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         model.load_state_dict(torch.load(args.trained_model, map_location=device))
+        model.eval()
 
         logger.debug(model)
-
-        nsyn = args.monte_carlo or 1
-        if args.monte_carlo is None:
-            model.eval()
-        else:
-            logger.info(f'Enabling dropout in testing (and averaging results {nsyn} times)')
-            def endo(x): enable_dropout(x, logger)
-            model.apply(endo)
 
         # put the model on the GPU if available and desired
         if torch.cuda.is_available() and not args.disable_cuda:

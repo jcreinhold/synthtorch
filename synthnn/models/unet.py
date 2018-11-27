@@ -46,12 +46,15 @@ class Unet(torch.nn.Module):
         normalization_layer (str): type of normalization layer to use (batch or [instance])
         activation (str): type of activation to use throughout network except final ([relu], lrelu, linear, sigmoid, tanh)
         output_activation (str): final activation in network (relu, lrelu, [linear], sigmoid, tanh)
-        use_up_conv (bool): Use resize-convolution in the U-net as per the Distill article:
-                            "Deconvolution and Checkerboard Artifacts" [Default=False]
         is_3d (bool): if false define a 2d unet, otherwise the network is 3d
         deconv (bool): use transpose conv for upsampling and strided conv for down (instead of upsamp with interp)
         interp_mode (str): when using interpolation for upsampling (i.e., deconv==False), use one of
             {'nearest', 'bilinear', 'trilinear'} depending on if the unet is 3d or 2d
+        upsampconv (bool): Use resize-convolution in the U-net as per the Distill article:
+                            "Deconvolution and Checkerboard Artifacts" [Default=False]
+        enable_dropout (bool): enable the use of dropout (if dropout_p is set to zero then there will be no dropout,
+            however if this is false and dropout_p > 0, then no dropout will be used)
+
 
     References:
         [1] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
@@ -63,7 +66,7 @@ class Unet(torch.nn.Module):
     """
     def __init__(self, n_layers: int, kernel_size: int=3, dropout_p: float=0, patch_size: int=64, channel_base_power: int=5,
                  add_two_up: bool=False, normalization: str='instance', activation: str='relu', output_activation: str='linear',
-                 is_3d=True, deconv: bool=True, interp_mode: str='nearest', upsampconv: bool=False):
+                 is_3d=True, deconv: bool=True, interp_mode: str='nearest', upsampconv: bool=False, enable_dropout=True):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -79,6 +82,7 @@ class Unet(torch.nn.Module):
         self.deconv = deconv
         self.interp_mode = interp_mode
         self.upsampconv = upsampconv
+        self.enable_dropout = enable_dropout
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer count
         # define the model layers here to make them visible for autograd
         self.start = self.__dbl_conv_act(1, lc(0), lc(1), act=(a, a), norm=(nm, nm))
@@ -104,10 +108,10 @@ class Unet(torch.nn.Module):
         x = self.__down(dout[-1], 0)
         for i, dl in enumerate(self.down_layers, 1):
             dout.append(dl(x))
-            x = self.__down(dout[-1], i)
-        x = self.__up(self.bridge(x), dout[-1].shape[2:], 0)
+            x = self.__dropout(self.__down(dout[-1], i))
+        x = self.__up(self.__dropout(self.bridge(x)), dout[-1].shape[2:], 0)
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
-            x = ul(torch.cat((x, d), dim=1))
+            x = self.__dropout(ul(torch.cat((x, d), dim=1)))
             x = self.__up(x, dout[-i-1].shape[2:], i)
             if self.upsampconv:
                 x = self.upsampconvs[i](x)
@@ -122,9 +126,10 @@ class Unet(torch.nn.Module):
         y = (F.max_pool3d(x, (2,2,2)) if self.is_3d else F.max_pool2d(x, (2,2))) if not self.deconv else self.downconv[i](x)
         return y
 
-    def __dropout(self):
-        d = nn.Dropout3d(self.dropout_p, inplace=False) if self.is_3d else nn.Dropout2d(self.dropout_p, inplace=False)
-        return d
+    def __dropout(self, x):
+        x = F.dropout3d(x, self.dropout_p, training=self.enable_dropout) if self.is_3d else \
+            F.dropout2d(x, self.dropout_p, training=self.enable_dropout)
+        return x
 
     def __conv(self, in_c: int, out_c: int, kernel_sz: Optional[int]=None, mode: str=None) -> nn.Sequential:
         ksz = self.kernel_sz if kernel_sz is None else kernel_sz
@@ -158,13 +163,11 @@ class Unet(torch.nn.Module):
             ca = nn.Sequential(
                      self.__conv(in_c, out_c, ksz, mode),
                      normalization,
-                     activation,
-                     self.__dropout())
+                     activation)
         else:
             ca = nn.Sequential(
                      self.__conv(in_c, out_c, ksz, mode),
-                     activation,
-                     self.__dropout())
+                     activation)
         return ca
 
     def __dbl_conv_act(self, in_c: int, mid_c: int, out_c: int,

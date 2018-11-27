@@ -154,7 +154,7 @@ def main(args=None):
         model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                      channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                      activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d, deconv=args.deconv,
-                     interp_mode=args.interp_mode, upsampconv=args.upsampconv)
+                     interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=True)
 
         logger.debug(model)
 

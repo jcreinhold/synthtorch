@@ -147,7 +147,7 @@ def main(args=None):
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, deconv=args.deconv, interp_mode=args.interp_mode,
-                         upsampconv=args.upsampconv)
+                         upsampconv=args.upsampconv, enable_dropout=True)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         model.train(True)
