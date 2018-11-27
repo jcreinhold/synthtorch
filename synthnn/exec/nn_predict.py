@@ -28,7 +28,7 @@ with warnings.catch_warnings():
 
 
 def fwd(mdl, img):
-    out = mdl.forward(img).cpu().data.numpy()[:,0,:,:]
+    out = mdl.forward(img).cpu().detach().numpy()[:,0,:,:]
     return out
 
 
@@ -149,7 +149,7 @@ def main(args=None):
                             batch = torch.from_numpy(batch).to(device)
                             predicted = np.zeros(batch.shape)
                             for _ in range(nsyn):
-                                predicted += model.forward(batch).cpu().data.numpy()
+                                predicted += model.forward(batch).cpu().detach().numpy()
                             for ii, (bx, by, bz) in enumerate(batch_idxs):
                                 out_img[bx, by, bz] = out_img[bx, by, bz] + predicted[ii, 0, ...]
                             j = 0
@@ -157,7 +157,7 @@ def main(args=None):
                     out_img_nib = nib.Nifti1Image(out_img/count_mtx, img_nib.affine, img_nib.header)
                 else:
                     test_img_t = torch.from_numpy(img).to(device)[None, None, ...]
-                    out_img = np.squeeze(model.forward(test_img_t).cpu().data.numpy())
+                    out_img = np.squeeze(model.forward(test_img_t).cpu().detach().numpy())
                     out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
                 out_fn = output_dir + str(k) + '.nii.gz'
                 out_img_nib.to_filename(out_fn)
