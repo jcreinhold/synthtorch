@@ -176,9 +176,9 @@ def main(args=None):
             tfms = val_tfms = [add_channel()]
         if args.flip_lr:
             tfms.append(faiv.flip_lr(p=0.5))
-        if args.rotate:
+        if args.rotate and not args.net3d: # rotate only works on 2d
             tfms.append(faiv.rotate(degrees=(-45, 45.), p=0.5))
-        if args.zoom:
+        if args.zoom and not args.net3d:  # zoom only works on 2d
             tfms.append(faiv.zoom(scale=(0.95, 1.05), p=0.8))
 
         # define the fastai data class
