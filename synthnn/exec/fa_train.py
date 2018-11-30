@@ -159,6 +159,8 @@ def main(args=None):
                      interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias)
 
         logger.debug(model)
+        num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logger.debug(f'Number of trainable model parameters: {num_params}')
 
         # put the model on the GPU if available and desired
         if torch.cuda.is_available() and not args.disable_cuda:
