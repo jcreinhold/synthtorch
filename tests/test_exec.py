@@ -31,16 +31,22 @@ class TestCLI(unittest.TestCase):
 
     def setUp(self):
         wd = os.path.dirname(os.path.abspath(__file__))
-        self.data_dir = os.path.join(wd, 'test_data', 'images')
+        self.nii_dir = os.path.join(wd, 'test_data', 'nii')
         self.mask_dir = os.path.join(wd, 'test_data', 'masks')
+        self.tif_dir = os.path.join(wd, 'test_data', 'tif')
         self.out_dir = tempfile.mkdtemp()
         os.mkdir(os.path.join(self.out_dir, 'models'))
         self.train_dir = os.path.join(self.out_dir, 'train')
         os.mkdir(self.train_dir)
-        img = glob_nii(self.data_dir)[0]
-        path, base, ext = split_filename(img)
+        os.mkdir(os.path.join(self.train_dir, '1'))
+        os.mkdir(os.path.join(self.train_dir, '2'))
+        nii = glob_nii(self.nii_dir)[0]
+        tif = os.path.join(self.tif_dir, 'test.tif')
+        path, base, ext = split_filename(nii)
         for i in range(4):
-            shutil.copy(img, os.path.join(self.train_dir, base + str(i) + ext))
+            shutil.copy(nii, os.path.join(self.train_dir, base + str(i) + ext))
+            shutil.copy(tif, os.path.join(self.train_dir, '1', base + str(i) + '.tif'))
+            shutil.copy(tif, os.path.join(self.train_dir, '2', base + str(i) + '.tif'))
         self.train_args = f'-s {self.train_dir} -t {self.train_dir}'.split()
         self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
         self.jsonfn = f'{self.out_dir}/test.json'
@@ -49,7 +55,7 @@ class TestCLI(unittest.TestCase):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
         with open(jsonfn, 'w') as f:
-            arg_dict['predict_dir'] = f'{self.data_dir}'
+            arg_dict['predict_dir'] = f'{self.nii_dir}'
             arg_dict['predict_out'] = f'{self.out_dir}/test'
             json.dump(arg_dict, f, sort_keys=True, indent=2)
 
@@ -59,6 +65,19 @@ class TestCLI(unittest.TestCase):
         args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 2 -bs 4 --plot-loss '
                                                    f'{self.out_dir}/loss.png -csv {self.out_dir}/history '
                                                    f'-ocf {self.jsonfn}').split()
+        retval = fa_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_fa_tiff(self):
+        val_train_args = f'-vs 0.5'.split()
+        train_args = f'-s {self.train_dir}/1/ -t {self.train_dir}/2/'.split()
+        args = train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 2 -bs 4 --plot-loss '
+                                              f'{self.out_dir}/loss.png -csv {self.out_dir}/history '
+                                              f'-ocf {self.jsonfn} --tiff').split()
         retval = fa_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)

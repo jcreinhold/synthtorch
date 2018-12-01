@@ -20,7 +20,7 @@ class TestUtilities(unittest.TestCase):
 
     def setUp(self):
         wd = os.path.dirname(os.path.abspath(__file__))
-        self.data_dir = os.path.join(wd, 'test_data', 'images')
+        self.data_dir = os.path.join(wd, 'test_data', 'nii')
         self.mask_dir = os.path.join(wd, 'test_data', 'masks')
         self.img_fn = os.path.join(self.data_dir, 'test.nii.gz')
         self.mask_fn = os.path.join(self.mask_dir, 'mask.nii.gz')

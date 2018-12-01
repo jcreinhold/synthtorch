@@ -23,7 +23,7 @@ with warnings.catch_warnings():
     import fastai.vision as faiv
     import torch
     from torch import nn
-    from niftidataset.fastai import niidatabunch, get_patch3d, get_slice, add_channel
+    from niftidataset.fastai import niidatabunch, tiffdatabunch, get_patch3d, get_slice, add_channel
     from synthnn import split_filename
     from synthnn.models.unet import Unet
     from synthnn.util.io import AttrDict
@@ -130,6 +130,7 @@ def arg_parser():
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
                             help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
     nn_options.add_argument('--n-gpus', type=int, default=1, help='use n-gpus [Default=1]')
+    nn_options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
     return parser
 
 
@@ -170,12 +171,14 @@ def main(args=None):
         # define device to put tensors on
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
 
-        if not args.net3d:
+        if not args.net3d and not args.tiff:
             tfms = val_tfms = [get_slice(pct=args.sample_pct, axis=args.sample_axis)]
-        elif args.patch_size > 0:
+        elif args.patch_size > 0 and not args.tiff:
             tfms = val_tfms = [get_patch3d(ps=args.patch_size, h_pct=args.sample_pct, w_pct=args.sample_pct, d_pct=args.sample_pct)]
-        else:
+        elif not args.tiff:
             tfms = val_tfms = [add_channel()]
+        else:
+            tfms = val_tfms = []
         if args.flip_lr:
             tfms.append(faiv.flip_lr(p=0.5))
         if args.rotate and not args.net3d: # rotate only works on 2d
@@ -185,10 +188,11 @@ def main(args=None):
 
         # define the fastai data class
         n_jobs = args.n_jobs if args.n_jobs is not None else fai.defaults.cpus
-        idb = niidatabunch(args.source_dir, args.target_dir, args.valid_split, tfms=tfms, val_tfms=val_tfms,
-                           bs=args.batch_size, device=device, n_jobs=n_jobs,
-                           val_src_dir=args.valid_source_dir, val_tgt_dir=args.valid_target_dir,
-                           b_per_epoch=args.batches_per_epoch)
+        databunch = niidatabunch if not args.tiff else tiffdatabunch
+        idb = databunch(args.source_dir, args.target_dir, args.valid_split, tfms=tfms, val_tfms=val_tfms,
+                        bs=args.batch_size, device=device, n_jobs=n_jobs,
+                        val_src_dir=args.valid_source_dir, val_tgt_dir=args.valid_target_dir,
+                        b_per_epoch=args.batches_per_epoch)
 
         # setup the learner
         loss = nn.MSELoss()
