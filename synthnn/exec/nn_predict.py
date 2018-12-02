@@ -82,7 +82,11 @@ def main(args=None):
                          interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=nsyn > 1, enable_bias=args.enable_bias)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
-        model.load_state_dict(torch.load(args.trained_model, map_location=device))
+        state_dict = torch.load(args.trained_model, map_location=device)
+        try:
+            model.load_state_dict(state_dict)
+        except RuntimeError:
+            model.load_state_dict(state_dict['model'])
         model.eval()
 
         logger.debug(model)

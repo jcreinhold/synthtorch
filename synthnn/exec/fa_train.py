@@ -248,6 +248,17 @@ def main(args=None):
         # save the trained model
         learner.save(args.output)
 
+        # strip multi-gpu specific attributes from saved model
+        if args.n_gpus > 1:
+            from collections import OrderedDict
+            state_dict = torch.load(args.output, map_location='cpu')['model']
+            # create new OrderedDict that does not contain `module.`
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = k[7:]  # remove `module.`
+                new_state_dict[name] = v
+            torch.save(new_state_dict, args.output)
+
         # plot the loss vs epoch (if desired)
         if args.plot_loss is not None:
             import matplotlib.pyplot as plt
