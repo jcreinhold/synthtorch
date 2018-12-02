@@ -107,6 +107,7 @@ def arg_parser():
                             help='Disable CUDA regardless of availability')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
                             help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
+    nn_options.add_argument('--n-gpus', type=int, default=1, help='use n-gpus [Default=1]')
     return parser
 
 
@@ -159,6 +160,10 @@ def main(args=None):
         if torch.cuda.is_available() and not args.disable_cuda:
             model.cuda()
             torch.backends.cudnn.benchmark = True
+
+        if args.n_gpus > 1:
+            logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
+            model = torch.nn.DataParallel(model)
 
         # define device to put tensors on
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
