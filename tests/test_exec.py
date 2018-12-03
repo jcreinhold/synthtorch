@@ -51,12 +51,14 @@ class TestCLI(unittest.TestCase):
         self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
         self.jsonfn = f'{self.out_dir}/test.json'
 
-    def __modify_ocf(self, jsonfn):
+    def __modify_ocf(self, jsonfn, varmap=False):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
         with open(jsonfn, 'w') as f:
             arg_dict['predict_dir'] = f'{self.nii_dir}'
             arg_dict['predict_out'] = f'{self.out_dir}/test'
+            arg_dict['monte_carlo'] = 2 if varmap else None
+            arg_dict['varmap'] = varmap
             json.dump(arg_dict, f, sort_keys=True, indent=2)
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
@@ -81,6 +83,19 @@ class TestCLI(unittest.TestCase):
         retval = fa_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_fa_varmap(self):
+        val_train_args = f'-vs 0.5'.split()
+        train_args = f'-s {self.train_dir}/1/ -t {self.train_dir}/2/'.split()
+        args = train_args + val_train_args + (f'-o {self.out_dir}/fa -ne 2 -cbp 1 -nl 2 -bs 4 '
+                                              f'-csv {self.out_dir}/history '
+                                              f'-ocf {self.jsonfn} --tiff').split()
+        retval = fa_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn, True)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 

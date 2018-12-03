@@ -32,6 +32,20 @@ def fwd(mdl, img):
     return out
 
 
+def batch2d_varmap_proc(model, img, out_img, axis, device, bs, i, nsyn):
+    s = np.transpose(img[i:i+bs,:,:],[0,1,2])[:,np.newaxis,...] if axis == 0 else \
+        np.transpose(img[:,i:i+bs,:],[1,0,2])[:,np.newaxis,...] if axis == 1 else \
+        np.transpose(img[:,:,i:i+bs],[2,0,1])[:,np.newaxis,...]
+    img_b = torch.from_numpy(s).to(device)
+    for j in range(nsyn):
+        if axis == 0:
+            out_img[j,i:i+bs,:,:] = np.transpose(fwd(model, img_b), [0,1,2])
+        elif axis == 1:
+            out_img[j,:,i:i+bs,:] = np.transpose(fwd(model, img_b), [1,0,2])
+        else:
+            out_img[j,:,:,i:i+bs] = np.transpose(fwd(model, img_b), [1,2,0])
+
+
 def batch2d_proc(model, img, out_img, axis, device, bs, i, nsyn):
     s = np.transpose(img[i:i+bs,:,:],[0,1,2])[:,np.newaxis,...] if axis == 0 else \
         np.transpose(img[:,i:i+bs,:],[1,0,2])[:,np.newaxis,...] if axis == 1 else \
@@ -69,6 +83,11 @@ def main(args=None):
 
         # determine if we enable dropout in prediction
         nsyn = args.monte_carlo or 1
+
+        # create a variance image via monte carlo sampling (if desired)
+        varmap = args.varmap and nsyn > 1 and not args.net3d
+        if varmap:
+            logger.info('Creating a variance map instead of a synthesized image')
 
         # load the trained model
         if args.nn_arch.lower() == 'nconv':
@@ -156,12 +175,13 @@ def main(args=None):
                 logger.info(f'Finished synthesis. Saved as: {out_fn}.')
 
         else:  # 2D Synthesis Loop
+            batchproc = batch2d_proc if not varmap else batch2d_varmap_proc
             for k, fn in enumerate(predict_fns):
                 _, base, _ = split_filename(fn)
                 logger.info(f'Starting synthesis of image: {base}. ({k+1}/{len(predict_fns)})')
                 img_nib = nib.load(fn)
                 img = img_nib.get_data().view(np.float32)  # set to float32 to save memory
-                out_img = np.zeros(img.shape)
+                out_img = np.zeros(img.shape) if not varmap else np.zeros((nsyn,)+img.shape)
                 num_batches = floor(img.shape[axis] / bs)
                 if img.shape[axis] / bs != num_batches:
                     lbi = int(num_batches * bs) # last batch index
@@ -171,10 +191,12 @@ def main(args=None):
                     lbi = None
                 for i in range(num_batches if lbi is None else num_batches-1):
                     logger.info(f'Starting batch ({i+1}/{num_batches})')
-                    batch2d_proc(model, img, out_img, axis, device, bs, i*bs, nsyn)
+                    batchproc(model, img, out_img, axis, device, bs, i*bs, nsyn)
                 if lbi is not None:
                     logger.info(f'Starting batch ({num_batches}/{num_batches})')
-                    batch2d_proc(model, img, out_img, axis, device, lbs, lbi, nsyn)
+                    batchproc(model, img, out_img, axis, device, lbs, lbi, nsyn)
+                if varmap:
+                    out_img = np.var(out_img, axis=0)
                 out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
                 out_fn = output_dir + str(k) + '.nii.gz'
                 out_img_nib.to_filename(out_fn)

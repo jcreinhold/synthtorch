@@ -256,6 +256,7 @@ def main(args=None):
             arg_dict['trained_model'] = args.output
             arg_dict['predict_dir'] = None
             arg_dict['predict_out'] = None
+            arg_dict['varmap'] = False
             with open(args.out_config_file, 'w') as f:
                 json.dump(arg_dict, f, sort_keys=True, indent=2)
 
