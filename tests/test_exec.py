@@ -86,6 +86,12 @@ class TestCLI(unittest.TestCase):
         retval = nn_train(args)
         self.assertEqual(retval, 0)
 
+    def test_nn_train_unet_multimodal_cli(self):
+        train_args = f'-s {self.train_dir}/1/ {self.train_dir}/1/ -t {self.train_dir}/2/ {self.train_dir}/2/'.split()
+        args = train_args + f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 -bs 2 --tiff'.split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+
     def test_nn_nconv_multimodal_cli(self):
         train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir} {self.train_dir}'.split()
         args = train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 ' 

@@ -99,7 +99,7 @@ class Unet(torch.nn.Module):
                                                        (kernel_size+self.a2u, kernel_size),
                                                        act=(a, a), norm=(nm, nm))
                                         for n in reversed(range(3, n_layers+2))])
-        self.finish = self._final_conv(lc(2) + 1, n_output, oa, bias=enable_bias)
+        self.finish = self._final_conv(lc(2) + n_input, n_output, oa, bias=enable_bias)
         if upsampconv:
             self.upsampconvs = nn.ModuleList([self._conv(lc(n), lc(n), 3, bias=enable_bias)
                                               for n in reversed(range(2, n_layers+1))])
