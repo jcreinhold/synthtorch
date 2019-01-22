@@ -3,6 +3,11 @@
 # Created on: Nov 8, 2018
 # Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
+FASTAI=false
+if [[ "$1" == "--fastai" ]]; then
+  ANTSPY=true
+fi
+
 if [[ "$OSTYPE" == "linux-gnu" || "$OSTYPE" == "darwin"* ]]; then
     :
 else
@@ -25,16 +30,38 @@ fastai_packages=(
     fastai==1.0.41
 )
 
+# assume that linux is GPU enabled (except for in CI) but OS X is not
+ONTRAVIS=${TRAVIS:-false}
+
+if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" == false ]]; then
+    pytorch_packages=(
+        pytorch
+        torchvision
+        cuda92
+    )
+else
+    pytorch_packages=(
+        pytorch-cpu
+        torchvision-cpu
+    )
+fi
+
 conda_forge_packages=(
     nibabel
     scikit-image
 )
 
 # create the environment and switch to that environment
-echo "conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes"
-conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes
-source activate synthnn
 
+if $FASTAI; then
+    echo "conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes"
+    conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes
+else
+    echo "conda create --name synthnn --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes"
+    conda create --name synthnn --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes
+fi
+
+source activate synthnn
 # add a few other packages
 conda install -c conda-forge ${conda_forge_packages[@]} --yes 
 pip install git+git://github.com/jcreinhold/niftidataset.git
