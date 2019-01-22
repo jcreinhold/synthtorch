@@ -19,7 +19,6 @@ import warnings
 with warnings.catch_warnings():
     warnings.filterwarnings('ignore', category=FutureWarning)
     warnings.filterwarnings('ignore', category=UserWarning)
-    import fastai as fai
     import fastai.vision as faiv
     import torch
     from torch import nn
@@ -129,7 +128,7 @@ def arg_parser():
                             help='create a 3d network instead of 2d [Default=False]')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
                             help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
-    nn_options.add_argument('--n-gpus', type=int, default=1, help='use n-gpus [Default=1]')
+    nn_options.add_argument('--all-gpus', action='store_true', default=False, help='use all available gpus [Default=False]')
     nn_options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
     return parser
 
@@ -187,7 +186,7 @@ def main(args=None):
             tfms.append(faiv.zoom(scale=(0.95, 1.05), p=0.8))
 
         # define the fastai data class
-        n_jobs = args.n_jobs if args.n_jobs is not None else fai.defaults.cpus
+        n_jobs = args.n_jobs if args.n_jobs is not None else faiv.defaults.cpus
         databunch = niidatabunch if not args.tiff else tiffdatabunch
         idb = databunch(args.source_dir, args.target_dir, args.valid_split, tfms=tfms, val_tfms=val_tfms,
                         bs=args.batch_size, device=device, n_jobs=n_jobs,
@@ -215,9 +214,9 @@ def main(args=None):
             metrics = []
 
         pth, base, _ = split_filename(args.output)
-        learner = fai.Learner(idb, model, loss_func=loss, metrics=metrics, model_dir=pth, bn_wd=args.norm_weight_decay)
+        learner = faiv.Learner(idb, model, loss_func=loss, metrics=metrics, model_dir=pth, bn_wd=args.norm_weight_decay)
 
-        if args.n_gpus > 1:
+        if args.all_gpus:
             logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
             learner.model = torch.nn.DataParallel(learner.model)
 
@@ -226,7 +225,7 @@ def main(args=None):
             learner.to_fp16()
 
         # train the learner
-        cb = fai.callbacks.CSVLogger(learner, args.out_csv)
+        cb = faiv.callbacks.CSVLogger(learner, args.out_csv)
         if not args.one_cycle:
             learner.fit(args.n_epochs, args.learning_rate, wd=args.weight_decay, callbacks=cb)
         else:
@@ -240,6 +239,8 @@ def main(args=None):
             # add these keys so that the output config file can be edited for use in prediction
             arg_dict['trained_model'] = args.output + '.pth'
             arg_dict['monte_carlo'] = None
+            arg_dict['n_input'] = 1  # currently no support for multiple modalities with fastai api
+            arg_dict['n_output'] = 1
             arg_dict['predict_dir'] = None
             arg_dict['predict_out'] = None
             arg_dict['varmap'] = False
@@ -250,7 +251,7 @@ def main(args=None):
         learner.save(args.output)
 
         # strip multi-gpu specific attributes from saved model
-        if args.n_gpus > 1:
+        if args.all_gpus:
             from collections import OrderedDict
             state_dict = torch.load(args.output + '.pth', map_location='cpu')['model']
             # create new OrderedDict that does not contain `module.`

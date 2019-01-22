@@ -17,8 +17,17 @@ conda update -n base conda --yes
 
 # define all the packages needed
 packages=(
-    numpy 
-    matplotlib 
+    numpy
+    matplotlib
+)
+
+fastai_packages=(
+    fastai
+)
+
+conda_forge_packages=(
+    nibabel
+    scikit-image
 )
 
 # assume that linux is GPU enabled (except for in CI) but OS X is not
@@ -26,28 +35,16 @@ ONTRAVIS=${TRAVIS:-false}
 
 if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" != true ]]; then
     pytorch_packages=(
-        pytorch-nightly
+        pytorch
+        torchvision
         cuda92
-    )
-    fastai_packages=(
-        torchvision-nightly
-        fastai
     )
 else
     pytorch_packages=(
-        pytorch-nightly-cpu
-    )
-    fastai_packages=(
-        torchvision-nightly-cpu
-        fastai
+        pytorch-cpu
+        torchvision-cpu
     )
 fi
-
-
-conda_forge_packages=(
-    nibabel
-    scikit-image
-)
 
 # create the environment and switch to that environment
 conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} ${pytorch_packages[@]} --yes 

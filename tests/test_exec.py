@@ -51,11 +51,11 @@ class TestCLI(unittest.TestCase):
         self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
         self.jsonfn = f'{self.out_dir}/test.json'
 
-    def __modify_ocf(self, jsonfn, varmap=False):
+    def __modify_ocf(self, jsonfn, varmap=False, multi=1):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
         with open(jsonfn, 'w') as f:
-            arg_dict['predict_dir'] = f'{self.nii_dir}'
+            arg_dict['predict_dir'] = f'{self.nii_dir}' * multi
             arg_dict['predict_out'] = f'{self.out_dir}/test'
             arg_dict['monte_carlo'] = 2 if varmap else None
             arg_dict['varmap'] = varmap
@@ -99,7 +99,7 @@ class TestCLI(unittest.TestCase):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
-    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    @unittest.skip#If(fastai is None, "fastai is not installed on this system")
     def test_fa_whole_3d_vol(self):
         val_train_args = f'-vs 0.5'.split()
         args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa --net3d -ps 0 -ne 1 -cbp 1 -nl 2 -bs 2 '
@@ -164,8 +164,28 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(retval, 0)
 
     def test_nn_train_unet_cli(self):
-        args = self.train_args + f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 -bs 2'.split()
+        args = self.train_args + f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 -bs 2 --net3d'.split()
         retval = nn_train(args)
+        self.assertEqual(retval, 0)
+
+    def test_nn_nconv_multimodal_cli(self):
+        train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir} {self.train_dir}'.split()
+        args = train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 ' 
+                             f'-ocf {self.jsonfn} -bs 2').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nn_nconv_multimodal_tiff_cli(self):
+        train_args = f'-s {self.train_dir}/1/ {self.train_dir}/1/ -t {self.train_dir}/2/ {self.train_dir}/2/'.split()
+        args = train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 '
+                             f'-ocf {self.jsonfn} -bs 2 --tiff').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
     def tearDown(self):

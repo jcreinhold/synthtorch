@@ -27,7 +27,7 @@ with warnings.catch_warnings():
     from torch.utils.data import DataLoader
     from torchvision.transforms import Compose
     from torch.utils.data.sampler import SubsetRandomSampler
-    from niftidataset import NiftiDataset
+    from niftidataset import NiftiDataset, MultimodalNiftiDataset, MultimodalTiffDataset
     import niftidataset.transforms as tfms
     from synthnn import SynthNNError
     from synthnn.util.io import AttrDict
@@ -37,10 +37,10 @@ def arg_parser():
     parser = argparse.ArgumentParser(description='train a CNN for MR image synthesis')
 
     required = parser.add_argument_group('Required')
-    required.add_argument('-s', '--source-dir', type=str, required=True,
-                          help='path to directory with source images')
-    required.add_argument('-t', '--target-dir', type=str, required=True,
-                          help='path to directory with target images')
+    required.add_argument('-s', '--source-dir', type=str, required=True, nargs='+',
+                          help='path to directory with source images (multiple paths can be provided for multi-modal synthesis)')
+    required.add_argument('-t', '--target-dir', type=str, required=True, nargs='+',
+                          help='path to directory with target images (multiple paths can be provided for multi-modal synthesis)')
 
     options = parser.add_argument_group('Options')
     options.add_argument('-o', '--output', type=str, default=None,
@@ -50,10 +50,10 @@ def arg_parser():
     options.add_argument('-vs', '--valid-split', type=float, default=0.2,
                           help='split the data in source_dir and target_dir into train/validation '
                                'with this split percentage [Default=0]')
-    options.add_argument('-vsd', '--valid-source-dir', type=str, default=None,
+    options.add_argument('-vsd', '--valid-source-dir', type=str, default=None, nargs='+',
                           help='path to directory with source images for validation, '
                                'see -vs for default action if this is not provided [Default=None]')
-    options.add_argument('-vtd', '--valid-target-dir', type=str, default=None,
+    options.add_argument('-vtd', '--valid-target-dir', type=str, default=None, nargs='+',
                           help='path to directory with target images for validation, '
                                'see -vs for default action if this is not provided [Default=None]')
     options.add_argument('-v', '--verbosity', action="count", default=0,
@@ -102,12 +102,16 @@ def arg_parser():
     nn_options.add_argument('-mp', '--fp16', action='store_true', default=False,
                             help='enable mixed precision training')
     nn_options.add_argument('-prl', '--preload', action='store_true', default=False,
-                            help='preload dataset (memory intensive) vs loading data from disk each epoch')
+                            help='preload dataset (memory intensive) vs loading data from disk each epoch (not used if multimodal)')
     nn_options.add_argument('--disable-cuda', action='store_true', default=False,
                             help='Disable CUDA regardless of availability')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
                             help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
-    nn_options.add_argument('--n-gpus', type=int, default=1, help='use n-gpus [Default=1]')
+    nn_options.add_argument('-sa', '--sample-axis', type=int, default=2,
+                            help='axis on which to sample for 2d (None for random orientation) [Default=2]')
+    nn_options.add_argument('--net3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
+    nn_options.add_argument('--all-gpus', action='store_true', default=False, help='use all available gpus [Default=False]')
+    nn_options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
     return parser
 
 
@@ -142,15 +146,17 @@ def main(args=None):
 
         # get the desired neural network architecture
         if args.nn_arch == 'nconv':
-            from synthnn.models.nconvnet import Conv3dNLayerNet
+            from synthnn.models.nconvnet import SimpleConvNet
             logger.warning('The nconv network is for basic testing.')
-            model = Conv3dNLayerNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size)
+            model = SimpleConvNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
+                                  n_input=len(args.source_dir), n_output=len(args.target_dir), is_3d=args.net3d and not args.tiff)
         elif args.nn_arch == 'unet':
             from synthnn.models.unet import Unet
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, deconv=args.deconv, interp_mode=args.interp_mode,
-                         upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias)
+                         upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias, is_3d=args.net3d and not args.tiff,
+                         n_input=len(args.source_dir), n_output=len(args.target_dir))
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         model.train(True)
@@ -161,7 +167,7 @@ def main(args=None):
             model.cuda()
             torch.backends.cudnn.benchmark = True
 
-        if args.n_gpus > 1:
+        if args.all_gpus:
             logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
             model = torch.nn.DataParallel(model)
 
@@ -169,16 +175,24 @@ def main(args=None):
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
 
         # control random cropping patch size (or if used at all)
-        crop = [tfms.RandomCrop3D(args.patch_size)] if args.patch_size > 0 else []
-        crop.append(tfms.ToTensor())
-        if args.patch_size == 0:
-            crop.append(tfms.AddChannel())
+        if not args.tiff:
+            cropper = tfms.RandomCrop3D(args.patch_size) if args.net3d else tfms.RandomCrop2D(args.patch_size, args.sample_axis)
+            tfm = [cropper] if args.patch_size > 0 else [] if args.net3d else [tfms.RandomSlice(args.sample_axis)]
+        else:
+            tfm = []
+        tfm.append(tfms.ToTensor())
 
         # define dataset and split into training/validation set
-        dataset = NiftiDataset(args.source_dir, args.target_dir, Compose(crop), preload=args.preload)
+        onedir = len(args.source_dir) == 1 and len(args.target_dir) == 1
+        dataset = NiftiDataset(args.source_dir[0], args.target_dir[0], Compose(tfm), preload=args.preload) if onedir else \
+                  MultimodalNiftiDataset(args.source_dir, args.target_dir, Compose(tfm)) if not args.tiff else \
+                  MultimodalTiffDataset(args.source_dir, args.target_dir, Compose(tfm))
 
         if args.valid_source_dir is not None and args.valid_target_dir is not None:
-            valid_dataset = NiftiDataset(args.valid_source_dir, args.valid_target_dir, Compose(crop), preload=args.preload)
+            onedir = len(args.valid_source_dir) == 1 and len(args.valid_target_dir) == 1
+            valid_dataset = NiftiDataset(args.valid_source_dir[0], args.valid_target_dir[0], Compose(tfm), preload=args.preload) if onedir else \
+                            MultimodalNiftiDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm)) if not args.tiff else \
+                            MultimodalTiffDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm))
             train_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
             validation_loader = DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
         else:
@@ -251,8 +265,10 @@ def main(args=None):
             arg_dict = vars(args)
             # add these keys so that the output config file can be edited for use in prediction
             arg_dict['monte_carlo'] = None
+            arg_dict['n_input'] = len(args.source_dir)
+            arg_dict['n_output'] = len(args.target_dir)
+            arg_dict['net3d'] = args.net3d and not args.tiff
             arg_dict['sample_axis'] = None
-            arg_dict['net3d'] = True
             arg_dict['trained_model'] = args.output
             arg_dict['predict_dir'] = None
             arg_dict['predict_out'] = None

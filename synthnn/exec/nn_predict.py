@@ -91,14 +91,16 @@ def main(args=None):
 
         # load the trained model
         if args.nn_arch.lower() == 'nconv':
-            from synthnn.models.nconvnet import Conv3dNLayerNet
-            model = Conv3dNLayerNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size)
+            from synthnn.models.nconvnet import SimpleConvNet
+            model = SimpleConvNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
+                                  n_input=args.n_input, n_output=args.n_output, is_3d=args.net3d)
         elif args.nn_arch.lower() == 'unet':
             from synthnn.models.unet import Unet
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d, deconv=args.deconv,
-                         interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=nsyn > 1, enable_bias=args.enable_bias)
+                         interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=nsyn > 1, enable_bias=args.enable_bias,
+                         n_input=args.n_input, n_output=args.n_output)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         state_dict = torch.load(args.trained_model, map_location=device)
@@ -115,9 +117,13 @@ def main(args=None):
             model.cuda()
             torch.backends.cudnn.benchmark = True
 
+        if args.all_gpus:
+            logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
+            model = torch.nn.DataParallel(model)
+
         # setup and start prediction loop (whole slice by whole slice)
         axis = 0 if args.sample_axis is None else args.sample_axis
-        bs = args.batch_size // args.n_gpus  # prediction is 1 gpu, so divide batch size by n gpus so no CUDA memory overflow
+        bs = args.batch_size
         psz = model.patch_sz
         predict_dir = args.predict_dir if args.predict_dir is not None else args.valid_source_dir
         output_dir = args.predict_out if args.predict_out is not None else os.getcwd() + '/syn_'
