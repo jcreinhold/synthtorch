@@ -92,10 +92,10 @@ class Unet(torch.nn.Module):
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer count
         # define the model layers here to make them visible for autograd
         self.start = self._unet_blk(n_input, lc(0), lc(1), act=(a, a), norm=(nm, nm))
-        self.down_layers = nn.ModuleList([self._unet_blk(lc(n), lc(n), lc(n + 1), act=(a, a), norm=(nm, nm))
+        self.down_layers = nn.ModuleList([self._unet_blk(lc(n), lc(n), lc(n+1), act=(a, a), norm=(nm, nm))
                                           for n in range(1, n_layers)])
-        self.bridge = self._unet_blk(lc(n_layers), lc(n_layers), lc(n_layers + 1), act=(a, a), norm=(nm, nm))
-        self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n - 1), lc(n - 1), lc(n - 1),
+        self.bridge = self._unet_blk(lc(n_layers), lc(n_layers), lc(n_layers+1), act=(a, a), norm=(nm, nm))
+        self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n-1), lc(n-1), lc(n-1),
                                                        (kernel_size+self.a2u, kernel_size),
                                                        act=(a, a), norm=(nm, nm))
                                         for n in reversed(range(3, n_layers+2))])
@@ -119,9 +119,8 @@ class Unet(torch.nn.Module):
         x = self._dropout(self._up(self.bridge(x), dout[-1].shape[2:], 0))
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
             x = ul(torch.cat((x, d), dim=1))
-            x = self._dropout(self._up(x, dout[-i - 1].shape[2:], i))
-            if self.upsampconv:
-                x = self.upsampconvs[i-1](x)
+            x = self._dropout(self._up(x, dout[-i-1].shape[2:], i))
+            if self.upsampconv: x = self.upsampconvs[i-1](x)
         x = self.finish(torch.cat((x, dout[0]), dim=1))
         return x
 
