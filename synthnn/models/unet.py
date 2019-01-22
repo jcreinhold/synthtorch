@@ -156,8 +156,8 @@ class Unet(torch.nn.Module):
                   act:Optional[str]=None, norm:Optional[str]=None, mode:str=None) -> nn.Sequential:
         ksz = self.kernel_sz if kernel_sz is None else kernel_sz
         activation = get_act(act) if act is not None else get_act('relu')
-        normalization = get_norm3d(norm, out_c) if norm is not None else get_norm3d('instance', out_c) if self.is_3d else \
-                        get_norm2d(norm, out_c) if norm is not None else get_norm2d('instance', out_c)
+        normalization = get_norm3d(norm, out_c) if norm is not None and self.is_3d else get_norm3d('instance', out_c) if self.is_3d else \
+                        get_norm2d(norm, out_c) if norm is not None and not self.is_3d else get_norm2d('instance', out_c)
         layers = [self._conv(in_c, out_c, ksz, mode)]
         if normalization is not None: layers.append(normalization)
         layers.append(activation)
