@@ -117,7 +117,8 @@ def main(args=None):
 
         # setup and start prediction loop (whole slice by whole slice)
         axis = 0 if args.sample_axis is None else args.sample_axis
-        bs = args.batch_size // args.n_gpus  # prediction is 1 gpu, so divide batch size by n gpus so no CUDA memory overflow
+        # prediction is 1 gpu, so divide batch size by n gpus so no CUDA memory overflow
+        bs = args.batch_size // (torch.cuda.device_count() if args.all_gpus else 1)
         psz = model.patch_sz
         predict_dir = args.predict_dir if args.predict_dir is not None else args.valid_source_dir
         output_dir = args.predict_out if args.predict_out is not None else os.getcwd() + '/syn_'

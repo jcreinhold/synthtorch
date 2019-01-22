@@ -37,10 +37,10 @@ def arg_parser():
     parser = argparse.ArgumentParser(description='train a CNN for MR image synthesis')
 
     required = parser.add_argument_group('Required')
-    required.add_argument('-s', '--source-dir', type=str, required=True,
-                          help='path to directory with source images')
-    required.add_argument('-t', '--target-dir', type=str, required=True,
-                          help='path to directory with target images')
+    required.add_argument('-s', '--source-dir', type=str, required=True, nargs='+',
+                          help='path to directory with source images (multiple paths can be provided for multi-modal synthesis)')
+    required.add_argument('-t', '--target-dir', type=str, required=True, nargs='+',
+                          help='path to directory with target images (multiple paths can be provided for multi-modal synthesis)')
 
     options = parser.add_argument_group('Options')
     options.add_argument('-o', '--output', type=str, default=None,
@@ -107,7 +107,7 @@ def arg_parser():
                             help='Disable CUDA regardless of availability')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
                             help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
-    nn_options.add_argument('--n-gpus', type=int, default=1, help='use n-gpus [Default=1]')
+    nn_options.add_argument('--all-gpus', action='store_true', default=False, help='use all available gpus [Default=False]')
     return parser
 
 
@@ -161,7 +161,7 @@ def main(args=None):
             model.cuda()
             torch.backends.cudnn.benchmark = True
 
-        if args.n_gpus > 1:
+        if args.all_gpus:
             logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
             model = torch.nn.DataParallel(model)
 

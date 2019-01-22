@@ -129,7 +129,7 @@ def arg_parser():
                             help='create a 3d network instead of 2d [Default=False]')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
                             help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
-    nn_options.add_argument('--n-gpus', type=int, default=1, help='use n-gpus [Default=1]')
+    nn_options.add_argument('--all-gpus', action='store_true', default=False, help='use all available gpus [Default=False]')
     nn_options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
     return parser
 
@@ -217,7 +217,7 @@ def main(args=None):
         pth, base, _ = split_filename(args.output)
         learner = fai.Learner(idb, model, loss_func=loss, metrics=metrics, model_dir=pth, bn_wd=args.norm_weight_decay)
 
-        if args.n_gpus > 1:
+        if args.all_gpus:
             logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
             learner.model = torch.nn.DataParallel(learner.model)
 
