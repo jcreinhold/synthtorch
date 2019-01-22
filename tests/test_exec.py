@@ -13,6 +13,7 @@ Created on: Sep 07, 2018
 import json
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 
@@ -99,7 +100,9 @@ class TestCLI(unittest.TestCase):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
-    @unittest.skip#If(fastai is None, "fastai is not installed on this system")
+    @unittest.skipIf(sys.platform == 'darwin', "Skipping this test on OS X")
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    @unittest.skipIf("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true", "Skipping this test on Travis CI.")
     def test_fa_whole_3d_vol(self):
         val_train_args = f'-vs 0.5'.split()
         args = self.train_args + val_train_args + (f'-o {self.out_dir}/fa --net3d -ps 0 -ne 1 -cbp 1 -nl 2 -bs 2 '

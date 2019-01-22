@@ -22,7 +22,7 @@ packages=(
 )
 
 fastai_packages=(
-    fastai
+    fastai==1.0.41
 )
 
 conda_forge_packages=(
@@ -33,7 +33,7 @@ conda_forge_packages=(
 # assume that linux is GPU enabled (except for in CI) but OS X is not
 ONTRAVIS=${TRAVIS:-false}
 
-if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" != true ]]; then
+if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" == false ]]; then
     pytorch_packages=(
         pytorch
         torchvision
@@ -47,7 +47,8 @@ else
 fi
 
 # create the environment and switch to that environment
-conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} ${pytorch_packages[@]} --yes 
+echo "conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} ${pytorch_packages[@]} --yes"
+conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} ${pytorch_packages[@]} --yes
 source activate synthnn
 
 # add a few other packages
