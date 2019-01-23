@@ -183,11 +183,11 @@ def main(args=None):
                 img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn]) # set to float32 to save memory
                 if img.ndim == 3: img = img[np.newaxis, ...]
                 out_img = np.zeros((args.n_output,) + img.shape[1:])
-                num_batches = floor(img.shape[axis] / bs)
-                if img.shape[axis] / bs != num_batches:
+                num_batches = floor(img.shape[axis+1] / bs)  # add one to axis to ignore channel dim
+                if img.shape[axis+1] / bs != num_batches:
                     lbi = int(num_batches * bs) # last batch index
                     num_batches += 1
-                    lbs = img.shape[axis] - lbi # last batch size
+                    lbs = img.shape[axis+1] - lbi # last batch size
                 else:
                     lbi = None
                 for i in range(num_batches if lbi is None else num_batches-1):

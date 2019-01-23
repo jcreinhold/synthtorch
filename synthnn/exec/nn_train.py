@@ -186,10 +186,12 @@ def main(args=None):
         # define dataset and split into training/validation set
         dataset = MultimodalNiftiDataset(args.source_dir, args.target_dir, Compose(tfm)) if not args.tiff else \
                   MultimodalTiffDataset(args.source_dir, args.target_dir, Compose(tfm))
+        logger.debug(f'Number of training images: {len(dataset)}')
 
         if args.valid_source_dir is not None and args.valid_target_dir is not None:
             valid_dataset = MultimodalNiftiDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm)) if not args.tiff else \
                             MultimodalTiffDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm))
+            logger.debug(f'Number of validation images: {len(valid_dataset)}')
             train_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
             validation_loader = DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
         else:
