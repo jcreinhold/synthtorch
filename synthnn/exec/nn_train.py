@@ -277,6 +277,17 @@ def main(args=None):
             logger.warning('Saving the entire model. Preferred to create a config file and only save model weights')
             torch.save(model, args.output)
 
+        # strip multi-gpu specific attributes from saved model
+        if args.all_gpus and (not no_config_file or args.out_config_file is not None):
+            from collections import OrderedDict
+            state_dict = torch.load(args.output, map_location='cpu')
+            # create new OrderedDict that does not contain `module.`
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = k[7:]  # remove `module.`
+                new_state_dict[name] = v
+            torch.save(new_state_dict, args.output)
+
         # plot the loss vs epoch (if desired)
         if args.plot_loss is not None:
             plot_error = True if args.n_epochs <= 50 else False
