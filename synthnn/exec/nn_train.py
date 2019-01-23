@@ -84,7 +84,9 @@ def arg_parser():
     nn_options.add_argument('-bs', '--batch-size', type=int, default=5,
                             help='batch size (num of images to process at once) [Default=5]')
     nn_options.add_argument('-cbp', '--channel-base-power', type=int, default=5,
-                            help='batch size (num of images to process at once) [Default=5]')
+                            help='2 ** channel_base_power is the number of channels in the first layer '
+                                 'and increases in each proceeding layer such that in the n-th layer there are '
+                                 '2 ** (channel_base_power + n) channels [Default=5]')
     nn_options.add_argument('-pl', '--plot-loss', type=str, default=None,
                             help='plot the loss vs epoch and save at the filename provided here [Default=None]')
     nn_options.add_argument('-usc', '--upsampconv', action='store_true', default=False,
@@ -165,8 +167,9 @@ def main(args=None):
             model.cuda()
             torch.backends.cudnn.benchmark = True
 
-        if args.all_gpus:
-            logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
+        n_gpus = torch.cuda.device_count()
+        if args.all_gpus and n_gpus > 1:
+            logger.debug(f'Enabling use of {n_gpus} gpus')
             model = torch.nn.DataParallel(model)
 
         # define device to put tensors on
@@ -240,13 +243,9 @@ def main(args=None):
             with torch.set_grad_enabled(False):
                 for src, tgt in validation_loader:
                     src, tgt = src.to(device), tgt.to(device)
-
-                    tgt_pred = model(src)  # add (empty) channel axis
-
-                    # Compute and print loss
+                    tgt_pred = model(src)
                     loss = criterion(tgt_pred, tgt)
                     v_losses.append(loss.item())
-
                 validation_losses.append(v_losses)
 
             log = f'Epoch: {t+1} - Training Loss: {np.mean(t_losses):.2f}'
@@ -259,6 +258,7 @@ def main(args=None):
             arg_dict = vars(args)
             # add these keys so that the output config file can be edited for use in prediction
             arg_dict['monte_carlo'] = None
+            arg_dict['n_gpus'] = n_gpus  # records the number of gpus
             arg_dict['n_input'] = len(args.source_dir)
             arg_dict['n_output'] = len(args.target_dir)
             arg_dict['net3d'] = args.net3d and not args.tiff
@@ -278,7 +278,7 @@ def main(args=None):
             torch.save(model, args.output)
 
         # strip multi-gpu specific attributes from saved model
-        if args.all_gpus and (not no_config_file or args.out_config_file is not None):
+        if n_gpus > 1 and (not no_config_file or args.out_config_file is not None):
             from collections import OrderedDict
             state_dict = torch.load(args.output, map_location='cpu')
             # create new OrderedDict that does not contain `module.`

@@ -27,9 +27,9 @@ with warnings.catch_warnings():
     from synthnn import glob_nii, split_filename, SynthNNError
 
 
-def fwd(mdl, img):
-    out = mdl.forward(img).cpu().detach().numpy()
-    return out
+######## Helper functions ########
+
+def fwd(mdl, img): return mdl.forward(img).cpu().detach().numpy()
 
 
 def batch2d(model, img, out_img, axis, device, bs, i, nsyn):
@@ -53,10 +53,23 @@ def save_imgs(out_img_nib, output_dir, k, logger):
         logger.info(f'Finished synthesis. Saved as: {out_fn}.')
 
 
+def get_overlapping_3d_idxs(psz, img):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        stride = psz // 2
+        indices = [torch.from_numpy(idxs) for idxs in np.indices(img.shape[1:])]
+        for i in range(3):  # create blocks from imgs (and indices)
+            indices = [idxs.unfold(i, psz, stride) for idxs in indices]
+        x, y, z = [idxs.contiguous().view(-1, psz, psz, psz) for idxs in indices]
+    return x, y, z
+
+
+######### Main routine ###########
+
 def main(args=None):
     no_config_file = not sys.argv[1].endswith('.json') if args is None else not args[0].endswith('json')
     if no_config_file:
-        raise SynthNNError('Only configuration files are supported with nn-predict! Create one with fa-train or nn-train (-ocf).')
+        raise SynthNNError('Only configuration files are supported with nn-predict! Create one with nn-train (see -ocf option).')
     else:
         import json
         fn = sys.argv[1:][0] if args is None else args[0]
@@ -102,15 +115,11 @@ def main(args=None):
             model.cuda()
             torch.backends.cudnn.benchmark = True
 
-        if args.all_gpus:
-            logger.debug(f'Enabling use of {torch.cuda.device_count()} gpus')
-            model = torch.nn.DataParallel(model)
-
         # setup and start prediction loop (whole slice by whole slice)
         axis = args.sample_axis or 0
         if axis < 0 or axis > 2 and not isinstance(axis,int):
             raise ValueError('sample_axis must be an integer between 0 and 2 inclusive')
-        bs = args.batch_size
+        bs = args.batch_size // args.n_gpus if args.n_gpus > 1 else args.batch_size
         psz = model.patch_sz
         predict_dir = args.predict_dir or args.valid_source_dir
         output_dir = args.predict_out or os.getcwd() + '/syn_'
@@ -130,17 +139,13 @@ def main(args=None):
                 if psz > 0:
                     out_img = np.zeros((args.n_output,) + img.shape[1:])
                     count_mtx = np.zeros(img.shape[1:])
-                    with warnings.catch_warnings():  #TODO: Break this piece off and make it unittest-able!
-                        warnings.simplefilter("ignore")
-                        stride = psz // 2
-                        indices = [torch.from_numpy(idxs) for idxs in np.indices(img.shape[1:])]
-                        for i in range(3):  # create blocks from imgs (and indices)
-                            indices = [idxs.unfold(i, psz, stride) for idxs in indices]
-                        x, y, z = [idxs.contiguous().view(-1, psz, psz, psz) for idxs in indices]
+                    x, y, z = get_overlapping_3d_idxs(psz, img)
                     dec_idxs = np.floor(np.percentile(np.arange(x.shape[0]), np.arange(0, 101, 5)))
                     pct_complete = 0
                     j = 0
-                    for i, (xx, yy, zz) in enumerate(zip(x, y, z)):  #TODO: document this section better
+                    # The below block of code handles collecting overlapping patches and putting
+                    # them into a batch format that pytorch models expect (i.e., [N,C,H,W,D])
+                    for i, (xx, yy, zz) in enumerate(zip(x, y, z)):
                         if i in dec_idxs:
                             logger.info(f'{pct_complete}% Complete')
                             pct_complete += 5
@@ -158,19 +163,19 @@ def main(args=None):
                             batch = torch.from_numpy(batch).to(device)
                             predicted = np.zeros(batch.shape)
                             for _ in range(nsyn):
-                                predicted += model.forward(batch).cpu().detach().numpy()
+                                predicted += fwd(model, batch)
                             for ii, (bx, by, bz) in enumerate(batch_idxs):
                                 out_img[:, bx, by, bz] = out_img[:, bx, by, bz] + predicted[ii, ...]
                             j = 0
                     count_mtx[count_mtx == 0] = 1  # avoid division by zero
                     out_img_nib = [nib.Nifti1Image(out_img[i]/count_mtx, img_nib.affine, img_nib.header) for i in range(args.n_output)]
                 else:
-                    test_img_t = torch.from_numpy(img).to(device)[None, ...]
-                    out_img = np.squeeze(model.forward(test_img_t).cpu().detach().numpy())
+                    test_img = torch.from_numpy(img).to(device)[None, ...]  # add empty batch dimension
+                    out_img = np.squeeze(fwd(model, test_img))
                     out_img_nib = [nib.Nifti1Image(out_img[i], img_nib.affine, img_nib.header) for i in range(args.n_output)]
                 save_imgs(out_img_nib, output_dir, k, logger)
 
-        else:  # 2D Synthesis Loop
+        else:  # 2D Synthesis Loop -- goes by slice, does not use patches
             for k, fn in enumerate(predict_fns):
                 _, base, _ = split_filename(fn[0])
                 logger.info(f'Starting synthesis of image: {base}. ({k+1}/{num_imgs})')
