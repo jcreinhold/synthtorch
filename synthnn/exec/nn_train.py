@@ -214,12 +214,12 @@ def main(args=None):
         criterion = nn.MSELoss()
         logger.info(f'LR: {args.learning_rate:.5f}')
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        use_valid = args.valid_split > 0 or (args.valid_source_dir is not None and args.valid_target_dir is not None)
         train_losses, validation_losses = [], []
         for t in range(args.n_epochs):
             # training
-            losses = []
-            if args.valid_split > 0 or (args.valid_source_dir is not None and args.valid_target_dir is not None):
-                model.train(True)
+            t_losses = []
+            if use_valid: model.train(True)
             for src, tgt in train_loader:
                 src, tgt = src.to(device), tgt.to(device)
 
@@ -228,8 +228,7 @@ def main(args=None):
 
                 # Compute and print loss
                 loss = criterion(tgt_pred, tgt)
-                log = f'Epoch: {t+1} - Training Loss: {loss.item():.2f}'
-                losses.append(loss.item())
+                t_losses.append(loss.item())
 
                 # Zero gradients, perform a backward pass, and update the weights.
                 optimizer.zero_grad()
@@ -239,12 +238,11 @@ def main(args=None):
                 else:
                     loss.backward()
                 optimizer.step()
-            train_losses.append(losses)
+            train_losses.append(t_losses)
 
             # validation
-            losses = []
-            if args.valid_split > 0 or (args.valid_source_dir is not None and args.valid_target_dir is not None):
-                model.train(False)
+            v_losses = []
+            if use_valid: model.train(False)
             with torch.set_grad_enabled(False):
                 for src, tgt in validation_loader:
                     src, tgt = src.to(device), tgt.to(device)
@@ -253,10 +251,12 @@ def main(args=None):
 
                     # Compute and print loss
                     loss = criterion(tgt_pred, tgt)
-                    log += f', Validation Loss: {loss.item():.2f}'
-                    losses.append(loss.item())
+                    v_losses.append(loss.item())
 
-                validation_losses.append(losses)
+                validation_losses.append(v_losses)
+
+            log = f'Epoch: {t+1} - Training Loss: {np.mean(t_losses):.2f}'
+            if use_valid: log += f', Validation Loss: {np.mean(v_losses):.2f}'
             logger.info(log)
 
         # output a config file if desired
