@@ -27,7 +27,7 @@ with warnings.catch_warnings():
     from torch.utils.data import DataLoader
     from torchvision.transforms import Compose
     from torch.utils.data.sampler import SubsetRandomSampler
-    from niftidataset import NiftiDataset, MultimodalNiftiDataset, MultimodalTiffDataset
+    from niftidataset import MultimodalNiftiDataset, MultimodalTiffDataset
     import niftidataset.transforms as tfms
     from synthnn import SynthNNError
     from synthnn.util.io import AttrDict

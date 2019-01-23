@@ -52,14 +52,13 @@ class TestCLI(unittest.TestCase):
         self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
         self.jsonfn = f'{self.out_dir}/test.json'
 
-    def __modify_ocf(self, jsonfn, varmap=False, multi=1):
+    def __modify_ocf(self, jsonfn, multi=1):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
         with open(jsonfn, 'w') as f:
-            arg_dict['predict_dir'] = f'{self.nii_dir}' * multi
+            arg_dict['predict_dir'] = [f'{self.nii_dir}'] * multi
             arg_dict['predict_out'] = f'{self.out_dir}/test'
-            arg_dict['monte_carlo'] = 2 if varmap else None
-            arg_dict['varmap'] = varmap
+            arg_dict['monte_carlo'] = None
             json.dump(arg_dict, f, sort_keys=True, indent=2)
 
     def test_nn_nconv_nopatch_cli(self):
@@ -86,7 +85,7 @@ class TestCLI(unittest.TestCase):
                                   f'-ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn, multi=2)
+        self.__modify_ocf(self.jsonfn)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 

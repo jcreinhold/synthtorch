@@ -114,12 +114,16 @@ def main(args=None):
         psz = model.patch_sz
         predict_dir = args.predict_dir or args.valid_source_dir
         output_dir = args.predict_out or os.getcwd() + '/syn_'
+        num_imgs = len(glob_nii(predict_dir[0]))
+        if any([len(glob_nii(pd)) != num_imgs for pd in predict_dir]) or num_imgs == 0:
+            raise SynthNNError('Number of images in prediction directories must be positive and have an equal number '
+                               'of images in each directory (e.g., so that img_t1_1 aligns with img_t2_1 etc. for multimodal synth)')
         predict_fns = zip(*[glob_nii(pd) for pd in predict_dir])
 
         if args.net3d: # 3D Synthesis Loop
             for k, fn in enumerate(predict_fns):
                 _, base, _ = split_filename(fn[0])
-                logger.info(f'Starting synthesis of image: {base}. ({k+1}/{len(predict_fns)})')
+                logger.info(f'Starting synthesis of image: {base}. ({k+1}/{num_imgs})')
                 img_nib = nib.load(fn[0])
                 img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn]) # set to float32 to save memory
                 if img.ndim == 3: img = img[np.newaxis, ...]
@@ -169,7 +173,7 @@ def main(args=None):
         else:  # 2D Synthesis Loop
             for k, fn in enumerate(predict_fns):
                 _, base, _ = split_filename(fn[0])
-                logger.info(f'Starting synthesis of image: {base}. ({k+1}/{len(predict_fns)})')
+                logger.info(f'Starting synthesis of image: {base}. ({k+1}/{num_imgs})')
                 img_nib = nib.load(fn[0])
                 img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn]) # set to float32 to save memory
                 if img.ndim == 3: img = img[np.newaxis, ...]
