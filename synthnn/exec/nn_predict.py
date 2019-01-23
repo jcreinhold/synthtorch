@@ -28,36 +28,29 @@ with warnings.catch_warnings():
 
 
 def fwd(mdl, img):
-    out = mdl.forward(img).cpu().detach().numpy()[:,0,:,:]
+    out = mdl.forward(img).cpu().detach().numpy()
     return out
 
 
-def batch2d_varmap_proc(model, img, out_img, axis, device, bs, i, nsyn):
-    s = np.transpose(img[i:i+bs,:,:],[0,1,2])[:,np.newaxis,...] if axis == 0 else \
-        np.transpose(img[:,i:i+bs,:],[1,0,2])[:,np.newaxis,...] if axis == 1 else \
-        np.transpose(img[:,:,i:i+bs],[2,0,1])[:,np.newaxis,...]
-    img_b = torch.from_numpy(s).to(device)
-    for j in range(nsyn):
-        if axis == 0:
-            out_img[j,i:i+bs,:,:] = np.transpose(fwd(model, img_b), [0,1,2])
-        elif axis == 1:
-            out_img[j,:,i:i+bs,:] = np.transpose(fwd(model, img_b), [1,0,2])
-        else:
-            out_img[j,:,:,i:i+bs] = np.transpose(fwd(model, img_b), [1,2,0])
-
-
-def batch2d_proc(model, img, out_img, axis, device, bs, i, nsyn):
-    s = np.transpose(img[i:i+bs,:,:],[0,1,2])[:,np.newaxis,...] if axis == 0 else \
-        np.transpose(img[:,i:i+bs,:],[1,0,2])[:,np.newaxis,...] if axis == 1 else \
-        np.transpose(img[:,:,i:i+bs],[2,0,1])[:,np.newaxis,...]
+def batch2d(model, img, out_img, axis, device, bs, i, nsyn):
+    s = np.transpose(img[:,i:i+bs,:,:],[1,0,2,3]) if axis == 0 else \
+        np.transpose(img[:,:,i:i+bs,:],[2,0,1,3]) if axis == 1 else \
+        np.transpose(img[:,:,:,i:i+bs],[3,0,1,2])
     img_b = torch.from_numpy(s).to(device)
     for _ in range(nsyn):
         if axis == 0:
-            out_img[i:i+bs,:,:] = out_img[i:i+bs,:,:] + np.transpose(fwd(model, img_b), [0,1,2]) / nsyn
+            out_img[:,i:i+bs,:,:] = out_img[:,i:i+bs,:,:] + np.transpose(fwd(model, img_b), [1,0,2,3]) / nsyn
         elif axis == 1:
-            out_img[:,i:i+bs,:] = out_img[:,i:i+bs,:] + np.transpose(fwd(model, img_b), [1,0,2]) / nsyn
+            out_img[:,:,i:i+bs,:] = out_img[:,:,i:i+bs,:] + np.transpose(fwd(model, img_b), [1,2,0,3]) / nsyn
         else:
-            out_img[:,:,i:i+bs] = out_img[:,:,i:i+bs] + np.transpose(fwd(model, img_b), [1,2,0]) / nsyn
+            out_img[:,:,:,i:i+bs] = out_img[:,:,:,i:i+bs] + np.transpose(fwd(model, img_b), [1,2,3,0]) / nsyn
+
+
+def save_imgs(out_img_nib, output_dir, k, logger):
+    for i, oin in enumerate(out_img_nib):
+        out_fn = output_dir + f'{k}_{i}.nii.gz'
+        oin.to_filename(out_fn)
+        logger.info(f'Finished synthesis. Saved as: {out_fn}.')
 
 
 def main(args=None):
@@ -84,11 +77,6 @@ def main(args=None):
         # determine if we enable dropout in prediction
         nsyn = args.monte_carlo or 1
 
-        # create a variance image via monte carlo sampling (if desired)
-        varmap = args.varmap and nsyn > 1 and not args.net3d
-        if varmap:
-            logger.info('Creating a variance map instead of a synthesized image')
-
         # load the trained model
         if args.nn_arch.lower() == 'nconv':
             from synthnn.models.nconvnet import SimpleConvNet
@@ -98,16 +86,13 @@ def main(args=None):
             from synthnn.models.unet import Unet
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
-                         activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d, deconv=args.deconv,
-                         interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=nsyn > 1, enable_bias=args.enable_bias,
-                         n_input=args.n_input, n_output=args.n_output)
+                         activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d,
+                         deconv=args.deconv, interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=nsyn > 1,
+                         enable_bias=args.enable_bias, n_input=args.n_input, n_output=args.n_output)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         state_dict = torch.load(args.trained_model, map_location=device)
-        try:
-            model.load_state_dict(state_dict)
-        except RuntimeError:
-            model.load_state_dict(state_dict['model'])
+        model.load_state_dict(state_dict)
         model.eval()
 
         logger.debug(model)
@@ -122,45 +107,48 @@ def main(args=None):
             model = torch.nn.DataParallel(model)
 
         # setup and start prediction loop (whole slice by whole slice)
-        axis = 0 if args.sample_axis is None else args.sample_axis
+        axis = args.sample_axis or 0
+        if axis < 0 or axis > 2 and not isinstance(axis,int):
+            raise ValueError('sample_axis must be an integer between 0 and 2 inclusive')
         bs = args.batch_size
         psz = model.patch_sz
-        predict_dir = args.predict_dir if args.predict_dir is not None else args.valid_source_dir
-        output_dir = args.predict_out if args.predict_out is not None else os.getcwd() + '/syn_'
-        predict_fns = glob_nii(predict_dir)
+        predict_dir = args.predict_dir or args.valid_source_dir
+        output_dir = args.predict_out or os.getcwd() + '/syn_'
+        predict_fns = zip(*[glob_nii(pd) for pd in predict_dir])
 
         if args.net3d: # 3D Synthesis Loop
             for k, fn in enumerate(predict_fns):
-                _, base, _ = split_filename(fn)
+                _, base, _ = split_filename(fn[0])
                 logger.info(f'Starting synthesis of image: {base}. ({k+1}/{len(predict_fns)})')
-                img_nib = nib.load(fn)
-                img = img_nib.get_data().view(np.float32)  # set to float32 to save memory
+                img_nib = nib.load(fn[0])
+                img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn]) # set to float32 to save memory
+                if img.ndim == 3: img = img[np.newaxis, ...]
                 if psz > 0:
-                    out_img = np.zeros(img.shape)
-                    count_mtx = np.zeros(img.shape)
-                    with warnings.catch_warnings():
+                    out_img = np.zeros((args.n_output,) + img.shape[1:])
+                    count_mtx = np.zeros(img.shape[1:])
+                    with warnings.catch_warnings():  #TODO: Break this piece off and make it unittest-able!
                         warnings.simplefilter("ignore")
                         stride = psz // 2
-                        indices = [torch.from_numpy(idxs) for idxs in np.indices(img.shape)]
+                        indices = [torch.from_numpy(idxs) for idxs in np.indices(img.shape[1:])]
                         for i in range(3):  # create blocks from imgs (and indices)
                             indices = [idxs.unfold(i, psz, stride) for idxs in indices]
                         x, y, z = [idxs.contiguous().view(-1, psz, psz, psz) for idxs in indices]
                     dec_idxs = np.floor(np.percentile(np.arange(x.shape[0]), np.arange(0, 101, 5)))
                     pct_complete = 0
                     j = 0
-                    for i, (xx, yy, zz) in enumerate(zip(x, y, z)):
+                    for i, (xx, yy, zz) in enumerate(zip(x, y, z)):  #TODO: document this section better
                         if i in dec_idxs:
                             logger.info(f'{pct_complete}% Complete')
                             pct_complete += 5
                         count_mtx[xx, yy, zz] = count_mtx[xx, yy, zz] + 1
                         if j == 0:
-                            batch = np.zeros((args.batch_size, 1,) + img[xx, yy, zz].shape, dtype=np.float32)
+                            batch = np.zeros((args.batch_size,) + img[:, xx, yy, zz].shape, dtype=np.float32)
                             batch_idxs = [(xx, yy, zz)]
-                            batch[j, 0, ...] = img[xx, yy, zz]
+                            batch[j, ...] = img[:, xx, yy, zz]
                             j += 1
                         elif j != args.batch_size:
                             batch_idxs.append((xx, yy, zz))
-                            batch[j, 0, ...] = img[xx, yy, zz]
+                            batch[j, ...] = img[:, xx, yy, zz]
                             j += 1
                         else:
                             batch = torch.from_numpy(batch).to(device)
@@ -168,26 +156,24 @@ def main(args=None):
                             for _ in range(nsyn):
                                 predicted += model.forward(batch).cpu().detach().numpy()
                             for ii, (bx, by, bz) in enumerate(batch_idxs):
-                                out_img[bx, by, bz] = out_img[bx, by, bz] + predicted[ii, 0, ...]
+                                out_img[:, bx, by, bz] = out_img[:, bx, by, bz] + predicted[ii, ...]
                             j = 0
                     count_mtx[count_mtx == 0] = 1  # avoid division by zero
-                    out_img_nib = nib.Nifti1Image(out_img/count_mtx, img_nib.affine, img_nib.header)
+                    out_img_nib = [nib.Nifti1Image(out_img[i]/count_mtx, img_nib.affine, img_nib.header) for i in range(args.n_output)]
                 else:
-                    test_img_t = torch.from_numpy(img).to(device)[None, None, ...]
+                    test_img_t = torch.from_numpy(img).to(device)[None, ...]
                     out_img = np.squeeze(model.forward(test_img_t).cpu().detach().numpy())
-                    out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
-                out_fn = output_dir + str(k) + '.nii.gz'
-                out_img_nib.to_filename(out_fn)
-                logger.info(f'Finished synthesis. Saved as: {out_fn}.')
+                    out_img_nib = [nib.Nifti1Image(out_img[i], img_nib.affine, img_nib.header) for i in range(args.n_output)]
+                save_imgs(out_img_nib, output_dir, k, logger)
 
         else:  # 2D Synthesis Loop
-            batchproc = batch2d_proc if not varmap else batch2d_varmap_proc
             for k, fn in enumerate(predict_fns):
-                _, base, _ = split_filename(fn)
+                _, base, _ = split_filename(fn[0])
                 logger.info(f'Starting synthesis of image: {base}. ({k+1}/{len(predict_fns)})')
-                img_nib = nib.load(fn)
-                img = img_nib.get_data().view(np.float32)  # set to float32 to save memory
-                out_img = np.zeros(img.shape) if not varmap else np.zeros((nsyn,)+img.shape)
+                img_nib = nib.load(fn[0])
+                img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn]) # set to float32 to save memory
+                if img.ndim == 3: img = img[np.newaxis, ...]
+                out_img = np.zeros((args.n_output,) + img.shape[1:])
                 num_batches = floor(img.shape[axis] / bs)
                 if img.shape[axis] / bs != num_batches:
                     lbi = int(num_batches * bs) # last batch index
@@ -197,16 +183,12 @@ def main(args=None):
                     lbi = None
                 for i in range(num_batches if lbi is None else num_batches-1):
                     logger.info(f'Starting batch ({i+1}/{num_batches})')
-                    batchproc(model, img, out_img, axis, device, bs, i*bs, nsyn)
+                    batch2d(model, img, out_img, axis, device, bs, i*bs, nsyn)
                 if lbi is not None:
                     logger.info(f'Starting batch ({num_batches}/{num_batches})')
-                    batchproc(model, img, out_img, axis, device, lbs, lbi, nsyn)
-                if varmap:
-                    out_img = np.var(out_img, axis=0)
-                out_img_nib = nib.Nifti1Image(out_img, img_nib.affine, img_nib.header)
-                out_fn = output_dir + str(k) + '.nii.gz'
-                out_img_nib.to_filename(out_fn)
-                logger.info(f'Finished synthesis. Saved as: {out_fn}.')
+                    batch2d(model, img, out_img, axis, device, lbs, lbi, nsyn)
+                out_img_nib = [nib.Nifti1Image(out_img[i], img_nib.affine, img_nib.header) for i in range(args.n_output)]
+                save_imgs(out_img_nib, output_dir, k, logger)
 
         return 0
     except Exception as e:

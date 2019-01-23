@@ -44,7 +44,7 @@ class TestCLI(unittest.TestCase):
         nii = glob_nii(self.nii_dir)[0]
         tif = os.path.join(self.tif_dir, 'test.tif')
         path, base, ext = split_filename(nii)
-        for i in range(4):
+        for i in range(8):
             shutil.copy(nii, os.path.join(self.train_dir, base + str(i) + ext))
             shutil.copy(tif, os.path.join(self.train_dir, '1', base + str(i) + '.tif'))
             shutil.copy(tif, os.path.join(self.train_dir, '2', base + str(i) + '.tif'))

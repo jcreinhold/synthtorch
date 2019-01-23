@@ -101,8 +101,6 @@ def arg_parser():
                             help='type of activation to use in network on output [Default=linear]')
     nn_options.add_argument('-mp', '--fp16', action='store_true', default=False,
                             help='enable mixed precision training')
-    nn_options.add_argument('-prl', '--preload', action='store_true', default=False,
-                            help='preload dataset (memory intensive) vs loading data from disk each epoch (not used if multimodal)')
     nn_options.add_argument('--disable-cuda', action='store_true', default=False,
                             help='Disable CUDA regardless of availability')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
@@ -183,15 +181,11 @@ def main(args=None):
         tfm.append(tfms.ToTensor())
 
         # define dataset and split into training/validation set
-        onedir = len(args.source_dir) == 1 and len(args.target_dir) == 1
-        dataset = NiftiDataset(args.source_dir[0], args.target_dir[0], Compose(tfm), preload=args.preload) if onedir else \
-                  MultimodalNiftiDataset(args.source_dir, args.target_dir, Compose(tfm)) if not args.tiff else \
+        dataset = MultimodalNiftiDataset(args.source_dir, args.target_dir, Compose(tfm)) if not args.tiff else \
                   MultimodalTiffDataset(args.source_dir, args.target_dir, Compose(tfm))
 
         if args.valid_source_dir is not None and args.valid_target_dir is not None:
-            onedir = len(args.valid_source_dir) == 1 and len(args.valid_target_dir) == 1
-            valid_dataset = NiftiDataset(args.valid_source_dir[0], args.valid_target_dir[0], Compose(tfm), preload=args.preload) if onedir else \
-                            MultimodalNiftiDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm)) if not args.tiff else \
+            valid_dataset = MultimodalNiftiDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm)) if not args.tiff else \
                             MultimodalTiffDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm))
             train_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
             validation_loader = DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
@@ -272,7 +266,6 @@ def main(args=None):
             arg_dict['predict_out'] = None
             arg_dict['sample_axis'] = None
             arg_dict['trained_model'] = args.output
-            arg_dict['varmap'] = False
             with open(args.out_config_file, 'w') as f:
                 json.dump(arg_dict, f, sort_keys=True, indent=2)
 
