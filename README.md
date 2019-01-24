@@ -43,7 +43,7 @@ Installation
 Tutorial
 --------
 
-[5 minute Overview](https://github.com/jcreinhold/synthnn/blob/master/tutorials/5min-tutorial.ipynb)
+[5 minute Overview](https://github.com/jcreinhold/synthnn/blob/master/tutorials/5min_tutorial.md)
 
 In addition to the above small tutorial, there is consolidated documentation [here](https://synthnn.readthedocs.io/en/latest/).
 
