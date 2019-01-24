@@ -225,7 +225,7 @@ def main(args=None):
                 # Forward pass: Compute predicted y by passing x to the model
                 tgt_pred = model(src)
 
-                # Compute and print loss
+                # Compute and store loss
                 loss = criterion(tgt_pred, tgt)
                 t_losses.append(loss.item())
 
@@ -279,7 +279,7 @@ def main(args=None):
             logger.warning('Saving the entire model. Preferred to create a config file and only save model weights')
             torch.save(model, args.output)
 
-        # strip multi-gpu specific attributes from saved model
+        # strip multi-gpu specific attributes from saved model (so that it can be loaded easily)
         if n_gpus > 1 and (not no_config_file or args.out_config_file is not None):
             from collections import OrderedDict
             state_dict = torch.load(args.output, map_location='cpu')

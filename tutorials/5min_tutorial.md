@@ -55,7 +55,8 @@ nn-train config.json
 ```
 
 You can edit the config.json file directly to edit experiment parameters, and this is the preferred interface for using
-the neural network synthesis routines.
+the neural network synthesis routines. [Here](https://gist.github.com/jcreinhold/793d26387f6a8b9f6966b59c6705f249) is
+an example configuration file.
 
 Interact with `nn-predict` by generating a configuration file as shown above. Then edit
 the prediction directory parameters (i.e., the `predict_out` and `predict_dir` fields) in the file, 

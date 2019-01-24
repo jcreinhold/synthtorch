@@ -4,7 +4,7 @@
 synthnn.exec.nn_predict
 
 command line interface to synthesize an MR (brain) image
-with a trained pytorch NN (see fa_train or nn_train)
+with a trained pytorch NN (see nn_train)
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
@@ -136,15 +136,16 @@ def main(args=None):
                 img_nib = nib.load(fn[0])
                 img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn]) # set to float32 to save memory
                 if img.ndim == 3: img = img[np.newaxis, ...]
-                if psz > 0:
+                if psz > 0:  # patch-based 3D synthesis
                     out_img = np.zeros((args.n_output,) + img.shape[1:])
                     count_mtx = np.zeros(img.shape[1:])
                     x, y, z = get_overlapping_3d_idxs(psz, img)
                     dec_idxs = np.floor(np.percentile(np.arange(x.shape[0]), np.arange(0, 101, 5)))
                     pct_complete = 0
                     j = 0
-                    # The below block of code handles collecting overlapping patches and putting
+                    # The below for-loop handles collecting overlapping patches and putting
                     # them into a batch format that pytorch models expect (i.e., [N,C,H,W,D])
+                    # and running the batch through the network (storing the results in out_img).
                     for i, (xx, yy, zz) in enumerate(zip(x, y, z)):
                         if i in dec_idxs:
                             logger.info(f'{pct_complete}% Complete')
@@ -169,7 +170,7 @@ def main(args=None):
                             j = 0
                     count_mtx[count_mtx == 0] = 1  # avoid division by zero
                     out_img_nib = [nib.Nifti1Image(out_img[i]/count_mtx, img_nib.affine, img_nib.header) for i in range(args.n_output)]
-                else:
+                else:  # whole-image-based 3D synthesis
                     test_img = torch.from_numpy(img).to(device)[None, ...]  # add empty batch dimension
                     out_img = np.squeeze(fwd(model, test_img))
                     out_img_nib = [nib.Nifti1Image(out_img[i], img_nib.affine, img_nib.header) for i in range(args.n_output)]
