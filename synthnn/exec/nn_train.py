@@ -13,6 +13,7 @@ Created on: Aug 28, 2018
 
 import argparse
 import logging
+import os
 import sys
 import warnings
 
@@ -172,6 +173,13 @@ def main(args=None):
         # define device to put tensors on
         device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
 
+        # check number of jobs requested and CPUs available
+        num_cpus = os.cpu_count()
+        if num_cpus > args.n_jobs:
+            logger.warning(f'Requested more workers than available (n_jobs={args.n_jobs}, # cpus={num_cpus}). '
+                           f'Setting n_jobs={num_cpus}.')
+            args.n_jobs = num_cpus
+
         # control random cropping patch size (or if used at all)
         if not args.tiff:
             cropper = tfms.RandomCrop3D(args.patch_size) if args.net3d else tfms.RandomCrop2D(args.patch_size, args.sample_axis)
@@ -189,7 +197,7 @@ def main(args=None):
             valid_dataset = MultimodalNiftiDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm)) if not args.tiff else \
                             MultimodalTiffDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm))
             logger.debug(f'Number of validation images: {len(valid_dataset)}')
-            train_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
+            train_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.n_jobs, shuffle=True)
             validation_loader = DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
         else:
             # setup training and validation set
