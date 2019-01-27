@@ -141,9 +141,6 @@ def main(args=None):
            except ImportError:
                logger.info('Mixed precision training (i.e., the package `apex`) not available.')
 
-        # set number of threads if using CPU
-        torch.set_num_threads(args.n_jobs)
-
         # get the desired neural network architecture
         if args.nn_arch == 'nconv':
             from synthnn.models.nconvnet import SimpleConvNet
@@ -280,7 +277,7 @@ def main(args=None):
             torch.save(model, args.output)
 
         # strip multi-gpu specific attributes from saved model (so that it can be loaded easily)
-        if n_gpus > 1 and (not no_config_file or args.out_config_file is not None):
+        if args.all_gpus and n_gpus > 1 and (not no_config_file or args.out_config_file is not None):
             from collections import OrderedDict
             state_dict = torch.load(args.output, map_location='cpu')
             # create new OrderedDict that does not contain `module.`
