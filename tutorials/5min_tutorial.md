@@ -25,7 +25,7 @@ If you prefer Docker or Singularity, use one of the following commands:
 
 or 
 
-    singularity pull docker://jcreinhold/synthnn
+    singularity pull shub://jcreinhold/synthnn:latest
 
 
 ## Deep Neural Network-based Synthesis

@@ -52,7 +52,7 @@ Singularity
 
 You can build a singularity image from the docker image hosted on dockerhub via the following command:
 
-    singularity pull --name synthnn.simg docker://jcreinhold/synthnn
+    singularity pull shub://jcreinhold/synthnn:latest
 
 Test Package
 ------------

@@ -5,7 +5,7 @@
 
 FASTAI=false
 if [[ "$1" == "--fastai" ]]; then
-  ANTSPY=true
+  FASTAI=true
 fi
 
 if [[ "$OSTYPE" == "linux-gnu" || "$OSTYPE" == "darwin"* ]]; then
@@ -58,7 +58,7 @@ if $FASTAI; then
     conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes
 else
     echo "conda create --name synthnn --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes"
-    conda create --name synthnn --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes
+    conda create --name synthnn --override-channels -c pytorch -c defaults python=3.7 ${packages[@]} ${pytorch_packages[@]} --yes
 fi
 
 source activate synthnn

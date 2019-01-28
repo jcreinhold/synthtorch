@@ -159,14 +159,13 @@ def main(args=None):
         device, use_cuda, n_gpus = get_device(args, logger)
 
         # put the model on the GPU if available and desired
+        if use_cuda: model.cuda(device=device)
         use_multi = args.multi_gpu and n_gpus > 1 and use_cuda
         if args.multi_gpu and n_gpus <= 1: logger.warning('Multi-GPU functionality is not available on your system.')
         if use_multi:
             n_gpus = len(args.gpu_selector) if args.gpu_selector is not None else n_gpus
             logger.debug(f'Enabling use of {n_gpus} gpus')
             model = torch.nn.DataParallel(model, device_ids=args.gpu_selector)
-        elif use_cuda:
-            model.cuda(device=device)
 
         # check number of jobs requested and CPUs available
         num_cpus = os.cpu_count()
