@@ -31,7 +31,7 @@ with warnings.catch_warnings():
     from niftidataset import MultimodalNiftiDataset, MultimodalTiffDataset
     import niftidataset.transforms as tfms
     from synthnn import SynthNNError
-    from synthnn.util.io import AttrDict
+    from synthnn.util.exec import get_args, get_device, setup_log, write_out_config
 
 
 def arg_parser():
@@ -44,7 +44,7 @@ def arg_parser():
                           help='path to directory with target images (multiple paths can be provided for multi-modal synthesis)')
 
     options = parser.add_argument_group('Options')
-    options.add_argument('-o', '--output', type=str, default=None,
+    options.add_argument('-o', '--trained-model', type=str, default=None,
                          help='path to output the trained model')
     options.add_argument('-na', '--nn-arch', type=str, default='unet', choices=('unet', 'nconv'),
                          help='specify neural network architecture to use')
@@ -111,7 +111,7 @@ def arg_parser():
     nn_options.add_argument('-sa', '--sample-axis', type=int, default=2,
                             help='axis on which to sample for 2d (None for random orientation when NIfTI images given) [Default=2]')
     nn_options.add_argument('--net3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
-    nn_options.add_argument('--multi-gpus', action='store_true', default=False, help='use multiple gpus [Default=False]')
+    nn_options.add_argument('--multi-gpu', action='store_true', default=False, help='use multiple gpus [Default=False]')
     nn_options.add_argument('--gpu-selector', type=int, nargs='+', default=None, help='use gpu(s) selected here, None '
                                                                                       'uses all available gpus if --multi-gpus enabled '
                                                                                       'else None uses first available GPU [Default=None]')
@@ -120,76 +120,57 @@ def arg_parser():
 
 
 def main(args=None):
-    no_config_file = args is not None or (args is None and len(sys.argv[1:]) > 1)
-    if no_config_file:
-        args = arg_parser().parse_args(args)
-    else:
-        import json
-        with open(sys.argv[1:][0], 'r') as f:
-            args = AttrDict(json.load(f))
-    if args.verbosity == 1:
-        level = logging.getLevelName('INFO')
-    elif args.verbosity >= 2:
-        level = logging.getLevelName('DEBUG')
-    else:
-        level = logging.getLevelName('WARNING')
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=level)
+    args, no_config_file = get_args(args, arg_parser)
+    setup_log(args.verbosity)
     logger = logging.getLogger(__name__)
     try:
         # import and initialize mixed precision training package
         amp_handle = None
         if args.fp16:
-           try:
-               from apex import amp
-               amp_handle = amp.init()
-           except ImportError:
-               logger.info('Mixed precision training (i.e., the package `apex`) not available.')
+            try:
+                from apex import amp
+                amp_handle = amp.init()
+            except ImportError:
+                logger.info('Mixed precision training (i.e., the package `apex`) not available.')
+
+        use_3d = args.net3d and not args.tiff
+        if args.net3d and args.tiff: logger.warning('Cannot train a 3D network with TIFF images, creating a 2D network.')
+        n_input, n_output = len(args.source_dir), len(args.target_dir)
 
         # get the desired neural network architecture
         if args.nn_arch == 'nconv':
             from synthnn.models.nconvnet import SimpleConvNet
             logger.warning('The nconv network is for basic testing.')
             model = SimpleConvNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
-                                  n_input=len(args.source_dir), n_output=len(args.target_dir), is_3d=args.net3d and not args.tiff)
+                                  n_input=n_input, n_output=n_output, is_3d=use_3d)
         elif args.nn_arch == 'unet':
             from synthnn.models.unet import Unet
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, deconv=args.deconv, interp_mode=args.interp_mode,
-                         upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias, is_3d=args.net3d and not args.tiff,
-                         n_input=len(args.source_dir), n_output=len(args.target_dir))
+                         upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias, is_3d=use_3d,
+                         n_input=n_input, n_output=n_output)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         model.train(True)
         logger.debug(model)
 
         # define device to put tensors on
-        cuda_avail = torch.cuda.is_available()
-        use_cuda = cuda_avail and not args.disable_cuda
-        if use_cuda: torch.backends.cudnn.benchmark = True
-        if not cuda_avail and not args.disable_cuda: logger.warning('CUDA does not appear to be available on your system.')
-        n_gpus = torch.cuda.device_count()
-        if args.gpu_selector is not None:
-            if len(args.gpu_selector) > n_gpus or any([gpu_id >= n_gpus for gpu_id in args.gpu_selector]):
-                raise SynthNNError('Invalid number of gpus or invalid GPU ID input in --gpu-selector')
-            cuda = f"cuda:{args.gpu_selector[0]}"  # arbitrarily choose first GPU given
-        else:
-            cuda = "cuda"
-        device = torch.device(cuda if use_cuda else "cpu")
+        device, use_cuda, n_gpus = get_device(args, logger)
 
         # put the model on the GPU if available and desired
-        use_multi = args.multi_gpus and n_gpus > 1 and use_cuda
-        if args.multi_gpus and n_gpus <= 1: logger.warning('Multi-GPU functionality is not available on your system.')
+        use_multi = args.multi_gpu and n_gpus > 1 and use_cuda
+        if args.multi_gpu and n_gpus <= 1: logger.warning('Multi-GPU functionality is not available on your system.')
         if use_multi:
-            n_gpus = len(args.gpu_selectors) if args.gpu_selectors is not None else n_gpus
+            n_gpus = len(args.gpu_selector) if args.gpu_selector is not None else n_gpus
             logger.debug(f'Enabling use of {n_gpus} gpus')
-            model = torch.nn.DataParallel(model, device_ids=args.gpu_selectors)
+            model = torch.nn.DataParallel(model, device_ids=args.gpu_selector)
         elif use_cuda:
             model.cuda(device=device)
 
         # check number of jobs requested and CPUs available
         num_cpus = os.cpu_count()
-        if num_cpus > args.n_jobs:
+        if num_cpus < args.n_jobs:
             logger.warning(f'Requested more workers than available (n_jobs={args.n_jobs}, # cpus={num_cpus}). '
                            f'Setting n_jobs={num_cpus}.')
             args.n_jobs = num_cpus
@@ -275,40 +256,27 @@ def main(args=None):
 
         # output a config file if desired
         if args.out_config_file is not None:
-            import json
-            arg_dict = vars(args)
-            # add these keys so that the output config file can be edited for use in prediction
-            arg_dict['monte_carlo'] = None
-            arg_dict['n_gpus'] = n_gpus  # records the number of gpus
-            arg_dict['n_input'] = len(args.source_dir)
-            arg_dict['n_output'] = len(args.target_dir)
-            arg_dict['net3d'] = args.net3d and not args.tiff
-            arg_dict['predict_dir'] = None
-            arg_dict['predict_out'] = None
-            arg_dict['sample_axis'] = None
-            arg_dict['trained_model'] = args.output
-            with open(args.out_config_file, 'w') as f:
-                json.dump(arg_dict, f, sort_keys=True, indent=2)
+            write_out_config(args, n_gpus, n_input, n_output, use_3d)
 
         # save the trained model
         use_config_file = not no_config_file or args.out_config_file is not None
         if use_config_file:
-            torch.save(model.state_dict(), args.output)
+            torch.save(model.state_dict(), args.trained_model)
         else:
             # save the whole model (if changes occur to pytorch, then this model will probably not be loadable)
             logger.warning('Saving the entire model. Preferred to create a config file and only save model weights')
-            torch.save(model, args.output)
+            torch.save(model, args.trained_model)
 
         # strip multi-gpu specific attributes from saved model (so that it can be loaded easily)
         if use_multi and use_config_file:
             from collections import OrderedDict
-            state_dict = torch.load(args.output, map_location='cpu')
+            state_dict = torch.load(args.trained_model, map_location='cpu')
             # create new OrderedDict that does not contain `module.`
             new_state_dict = OrderedDict()
             for k, v in state_dict.items():
                 name = k[7:]  # remove `module.`
                 new_state_dict[name] = v
-            torch.save(new_state_dict, args.output)
+            torch.save(new_state_dict, args.trained_model)
 
         # plot the loss vs epoch (if desired)
         if args.plot_loss is not None:

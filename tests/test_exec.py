@@ -56,9 +56,8 @@ class TestCLI(unittest.TestCase):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
         with open(jsonfn, 'w') as f:
-            arg_dict['predict_dir'] = [f'{self.nii_dir}'] * multi
-            arg_dict['predict_out'] = f'{self.out_dir}/test'
-            arg_dict['monte_carlo'] = None
+            arg_dict['Required']['predict_dir'] = [f'{self.nii_dir}'] * multi
+            arg_dict['Required']['predict_out'] = f'{self.out_dir}/test'
             json.dump(arg_dict, f, sort_keys=True, indent=2)
 
     def test_nn_nconv_nopatch_cli(self):

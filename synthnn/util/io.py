@@ -34,13 +34,3 @@ def glob_nii(path: str) -> List[str]:
     """ grab all nifti files in a directory and sort them for consistency """
     fns = sorted(glob(os.path.join(path, '*.nii*')))
     return fns
-
-
-class AttrDict(dict):
-    """
-    make dictionary keys accessible via attributes
-    used in nn_train and nn_predict to enable json config files
-    """
-    def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
-        self.__dict__ = self

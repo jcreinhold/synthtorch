@@ -23,7 +23,7 @@ with warnings.catch_warnings():
     import nibabel as nib
     import numpy as np
     import torch
-    from synthnn.util.io import AttrDict
+    from synthnn.util.exec import get_args, get_device, setup_log
     from synthnn import glob_nii, split_filename, SynthNNError
 
 
@@ -67,36 +67,12 @@ def get_overlapping_3d_idxs(psz, img):
 ######### Main routine ###########
 
 def main(args=None):
-    no_config_file = not sys.argv[1].endswith('.json') if args is None else not args[0].endswith('json')
-    if no_config_file:
-        raise SynthNNError('Only configuration files are supported with nn-predict! Create one with nn-train (see -ocf option).')
-    else:
-        import json
-        fn = sys.argv[1:][0] if args is None else args[0]
-        with open(fn, 'r') as f:
-            args = AttrDict(json.load(f))
-    if args.verbosity == 1:
-        level = logging.getLevelName('INFO')
-    elif args.verbosity >= 2:
-        level = logging.getLevelName('DEBUG')
-    else:
-        level = logging.getLevelName('WARNING')
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=level)
+    args, no_config_file = get_args(args)
+    setup_log(args.verbosity)
     logger = logging.getLogger(__name__)
     try:
         # define device to put tensors on
-        cuda_avail = torch.cuda.is_available()
-        use_cuda = cuda_avail and not args.disable_cuda
-        if use_cuda: torch.backends.cudnn.benchmark = True
-        if not cuda_avail and not args.disable_cuda: logger.warning('CUDA does not appear to be available on your system.')
-        n_gpus = torch.cuda.device_count()
-        if args.gpu_selector is not None:
-            if len(args.gpu_selector) > n_gpus or any([gpu_id >= n_gpus for gpu_id in args.gpu_selector]):
-                raise SynthNNError('Invalid number of gpus or invalid GPU ID input in --gpu-selector')
-            cuda = f"cuda:{args.gpu_selector[0]}"  # arbitrarily choose first GPU given
-        else:
-            cuda = "cuda"
-        device = torch.device(cuda if use_cuda else "cpu")
+        device, use_cuda, n_gpus = get_device(args, logger)
 
         # determine if we enable dropout in prediction
         nsyn = args.monte_carlo or 1
@@ -137,12 +113,12 @@ def main(args=None):
                                'of images in each directory (e.g., so that img_t1_1 aligns with img_t2_1 etc. for multimodal synth)')
         predict_fns = zip(*[glob_nii(pd) for pd in predict_dir])
 
-        if args.net3d: # 3D Synthesis Loop
+        if args.net3d:  # 3D Synthesis Loop
             for k, fn in enumerate(predict_fns):
                 _, base, _ = split_filename(fn[0])
                 logger.info(f'Starting synthesis of image: {base}. ({k+1}/{num_imgs})')
                 img_nib = nib.load(fn[0])
-                img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn]) # set to float32 to save memory
+                img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn])  # set to float32 to save memory
                 if img.ndim == 3: img = img[np.newaxis, ...]
                 if psz > 0:  # patch-based 3D synthesis
                     out_img = np.zeros((args.n_output,) + img.shape[1:])
@@ -189,14 +165,14 @@ def main(args=None):
                 _, base, _ = split_filename(fn[0])
                 logger.info(f'Starting synthesis of image: {base}. ({k+1}/{num_imgs})')
                 img_nib = nib.load(fn[0])
-                img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn]) # set to float32 to save memory
+                img = np.stack([nib.load(f).get_data().view(np.float32) for f in fn])  # set to float32 to save memory
                 if img.ndim == 3: img = img[np.newaxis, ...]
                 out_img = np.zeros((args.n_output,) + img.shape[1:])
                 num_batches = floor(img.shape[axis+1] / bs)  # add one to axis to ignore channel dim
                 if img.shape[axis+1] / bs != num_batches:
-                    lbi = int(num_batches * bs) # last batch index
+                    lbi = int(num_batches * bs)  # last batch index
                     num_batches += 1
-                    lbs = img.shape[axis+1] - lbi # last batch size
+                    lbs = img.shape[axis+1] - lbi  # last batch size
                 else:
                     lbi = None
                 for i in range(num_batches if lbi is None else num_batches-1):
