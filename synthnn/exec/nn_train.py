@@ -109,9 +109,12 @@ def arg_parser():
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
                             help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
     nn_options.add_argument('-sa', '--sample-axis', type=int, default=2,
-                            help='axis on which to sample for 2d (None for random orientation) [Default=2]')
+                            help='axis on which to sample for 2d (None for random orientation when NIfTI images given) [Default=2]')
     nn_options.add_argument('--net3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
-    nn_options.add_argument('--all-gpus', action='store_true', default=False, help='use all available gpus [Default=False]')
+    nn_options.add_argument('--multi-gpus', action='store_true', default=False, help='use multiple gpus [Default=False]')
+    nn_options.add_argument('--gpu-selector', type=int, nargs='+', default=None, help='use gpu(s) selected here, None '
+                                                                                      'uses all available gpus if --multi-gpus enabled '
+                                                                                      'else None uses first available GPU [Default=None]')
     nn_options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
     return parser
 
@@ -160,18 +163,29 @@ def main(args=None):
         model.train(True)
         logger.debug(model)
 
-        # put the model on the GPU if available and desired
-        if torch.cuda.is_available() and not args.disable_cuda:
-            model.cuda()
-            torch.backends.cudnn.benchmark = True
-
-        n_gpus = torch.cuda.device_count()
-        if args.all_gpus and n_gpus > 1:
-            logger.debug(f'Enabling use of {n_gpus} gpus')
-            model = torch.nn.DataParallel(model)
-
         # define device to put tensors on
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
+        cuda_avail = torch.cuda.is_available()
+        use_cuda = cuda_avail and not args.disable_cuda
+        if use_cuda: torch.backends.cudnn.benchmark = True
+        if not cuda_avail and not args.disable_cuda: logger.warning('CUDA does not appear to be available on your system.')
+        n_gpus = torch.cuda.device_count()
+        if args.gpu_selector is not None:
+            if len(args.gpu_selector) > n_gpus or any([gpu_id >= n_gpus for gpu_id in args.gpu_selector]):
+                raise SynthNNError('Invalid number of gpus or invalid GPU ID input in --gpu-selector')
+            cuda = f"cuda:{args.gpu_selector[0]}"  # arbitrarily choose first GPU given
+        else:
+            cuda = "cuda"
+        device = torch.device(cuda if use_cuda else "cpu")
+
+        # put the model on the GPU if available and desired
+        use_multi = args.multi_gpus and n_gpus > 1 and use_cuda
+        if args.multi_gpus and n_gpus <= 1: logger.warning('Multi-GPU functionality is not available on your system.')
+        if use_multi:
+            n_gpus = len(args.gpu_selectors) if args.gpu_selectors is not None else n_gpus
+            logger.debug(f'Enabling use of {n_gpus} gpus')
+            model = torch.nn.DataParallel(model, device_ids=args.gpu_selectors)
+        elif use_cuda:
+            model.cuda(device=device)
 
         # check number of jobs requested and CPUs available
         num_cpus = os.cpu_count()
@@ -277,7 +291,8 @@ def main(args=None):
                 json.dump(arg_dict, f, sort_keys=True, indent=2)
 
         # save the trained model
-        if not no_config_file or args.out_config_file is not None:
+        use_config_file = not no_config_file or args.out_config_file is not None
+        if use_config_file:
             torch.save(model.state_dict(), args.output)
         else:
             # save the whole model (if changes occur to pytorch, then this model will probably not be loadable)
@@ -285,7 +300,7 @@ def main(args=None):
             torch.save(model, args.output)
 
         # strip multi-gpu specific attributes from saved model (so that it can be loaded easily)
-        if args.all_gpus and n_gpus > 1 and (not no_config_file or args.out_config_file is not None):
+        if use_multi and use_config_file:
             from collections import OrderedDict
             state_dict = torch.load(args.output, map_location='cpu')
             # create new OrderedDict that does not contain `module.`

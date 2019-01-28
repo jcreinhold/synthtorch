@@ -85,7 +85,18 @@ def main(args=None):
     logger = logging.getLogger(__name__)
     try:
         # define device to put tensors on
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.disable_cuda else "cpu")
+        cuda_avail = torch.cuda.is_available()
+        use_cuda = cuda_avail and not args.disable_cuda
+        if use_cuda: torch.backends.cudnn.benchmark = True
+        if not cuda_avail and not args.disable_cuda: logger.warning('CUDA does not appear to be available on your system.')
+        n_gpus = torch.cuda.device_count()
+        if args.gpu_selector is not None:
+            if len(args.gpu_selector) > n_gpus or any([gpu_id >= n_gpus for gpu_id in args.gpu_selector]):
+                raise SynthNNError('Invalid number of gpus or invalid GPU ID input in --gpu-selector')
+            cuda = f"cuda:{args.gpu_selector[0]}"  # arbitrarily choose first GPU given
+        else:
+            cuda = "cuda"
+        device = torch.device(cuda if use_cuda else "cpu")
 
         # determine if we enable dropout in prediction
         nsyn = args.monte_carlo or 1
@@ -107,20 +118,17 @@ def main(args=None):
         state_dict = torch.load(args.trained_model, map_location=device)
         model.load_state_dict(state_dict)
         model.eval()
-
         logger.debug(model)
 
         # put the model on the GPU if available and desired
-        if torch.cuda.is_available() and not args.disable_cuda:
-            model.cuda()
-            torch.backends.cudnn.benchmark = True
+        if use_cuda: model.cuda(device=device)
 
         # setup and start prediction loop (whole slice by whole slice)
         axis = args.sample_axis or 0
         if axis < 0 or axis > 2 and not isinstance(axis,int):
             raise ValueError('sample_axis must be an integer between 0 and 2 inclusive')
-        bs = args.batch_size // args.n_gpus if args.n_gpus > 1 else args.batch_size
-        psz = model.patch_sz
+        bs = args.batch_size // args.n_gpus if args.n_gpus > 1 and use_cuda else args.batch_size
+        psz = args.patch_size
         predict_dir = args.predict_dir or args.valid_source_dir
         output_dir = args.predict_out or os.getcwd() + '/syn_'
         num_imgs = len(glob_nii(predict_dir[0]))
