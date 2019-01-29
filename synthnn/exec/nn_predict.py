@@ -88,7 +88,7 @@ def main(args=None):
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d,
                          deconv=args.deconv, interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=nsyn > 1,
-                         enable_bias=args.enable_bias, n_input=args.n_input, n_output=args.n_output)
+                         enable_bias=args.enable_bias, n_input=args.n_input, n_output=args.n_output, no_skip=args.no_skip)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         state_dict = torch.load(args.trained_model, map_location=device)

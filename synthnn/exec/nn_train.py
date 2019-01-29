@@ -116,6 +116,7 @@ def arg_parser():
                                                                                       'uses all available gpus if --multi-gpus enabled '
                                                                                       'else None uses first available GPU [Default=None]')
     nn_options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
+    nn_options.add_argument('--no-skip', action='store_true', default=False, help='do not use skip connections in unet [Default=False]')
     return parser
 
 
@@ -149,7 +150,7 @@ def main(args=None):
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, deconv=args.deconv, interp_mode=args.interp_mode,
                          upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias, is_3d=use_3d,
-                         n_input=n_input, n_output=n_output)
+                         n_input=n_input, n_output=n_output, no_skip=args.no_skip)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         model.train(True)

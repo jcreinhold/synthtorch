@@ -30,16 +30,14 @@ From: continuumio/miniconda3
     mkdir /scratch /data /work-zfs
     touch /usr/bin/nvidia-smi
 
-    # install package
-    git clone https://github.com/jcreinhold/synthnn
-    cd synthnn
-    /opt/conda/bin/conda install --override-channels -c pytorch -c defaults python=3.7 numpy matplotlib pytorch torchvision cuda92 --yes
-    /opt/conda/bin/conda install --override-channels -c conda-forge nibabel scikit-image --yes
+    # install environment and package
+    /opt/conda/bin/conda update -n base conda --yes
+    /opt/conda/bin/conda install --override-channels -c pytorch -c defaults numpy==1.15.4 matplotlib pytorch torchvision cuda92 --yes
+    /opt/conda/bin/conda install --override-channels -c conda-forge -c defaults numpy==1.15.4 nibabel scikit-image --yes
     /opt/conda/bin/pip install git+git://github.com/jcreinhold/niftidataset.git
     /opt/conda/bin/pip install git+git://github.com/jcreinhold/synthqc.git
     /opt/conda/bin/pip install git+git://github.com/NVIDIA/apex.git
-    /opt/conda/bin/pip install --upgrade setuptools
-    /opt/conda/bin/pip install -e .
+    /opt/conda/bin/pip install git+git://github.com/jcreinhold/synthnn.git
 
 %runscript
     exec python $@

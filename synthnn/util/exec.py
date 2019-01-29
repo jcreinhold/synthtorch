@@ -97,6 +97,7 @@ def write_out_config(args, n_gpus, n_input, n_output, use_3d):
             "n_layers": args.n_layers,
             "net3d": use_3d,
             "nn_arch": args.nn_arch,
+            "no_skip": args.no_skip,
             "normalization": args.normalization,
             "out_activation": args.out_activation,
             "patch_size": args.patch_size,

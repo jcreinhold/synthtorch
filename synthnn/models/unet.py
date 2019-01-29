@@ -57,6 +57,7 @@ class Unet(torch.nn.Module):
         enable_bias (bool): enable bias calculation in final and upsampconv layers [Default=False]
         n_input (int): number of input channels to network [Default=1]
         n_output (int): number of output channels for network [Default=1]
+        no_skip (bool): use no skip connections [Default=False]
 
     References:
         [1] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
@@ -69,7 +70,7 @@ class Unet(torch.nn.Module):
     def __init__(self, n_layers:int, kernel_size:int=3, dropout_p:float=0, patch_size:int=64, channel_base_power:int=5,
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu', output_activation:str='linear',
                  is_3d:bool=True, deconv:bool=True, interp_mode:str='nearest', upsampconv:bool=False, enable_dropout:bool=True,
-                 enable_bias:bool=False, n_input:int=1, n_output:int=1):
+                 enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip=False):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -89,17 +90,18 @@ class Unet(torch.nn.Module):
         self.enable_bias = enable_bias
         self.n_input = n_input
         self.n_output = n_output
+        self.no_skip = no_skip
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer count
         # define the model layers here to make them visible for autograd
         self.start = self._unet_blk(n_input, lc(0), lc(1), act=(a, a), norm=(nm, nm))
         self.down_layers = nn.ModuleList([self._unet_blk(lc(n), lc(n), lc(n+1), act=(a, a), norm=(nm, nm))
                                           for n in range(1, n_layers)])
         self.bridge = self._unet_blk(lc(n_layers), lc(n_layers), lc(n_layers+1), act=(a, a), norm=(nm, nm))
-        self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n-1), lc(n-1), lc(n-1),
+        self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n-1) if not no_skip else lc(n), lc(n-1), lc(n-1),
                                                        (kernel_size+self.a2u, kernel_size),
                                                        act=(a, a), norm=(nm, nm))
                                         for n in reversed(range(3, n_layers+2))])
-        self.finish = self._final_conv(lc(2) + n_input, n_output, oa, bias=enable_bias)
+        self.finish = self._final_conv(lc(2) + n_input if not no_skip else lc(2), n_output, oa, bias=enable_bias)
         if upsampconv:
             self.upsampconvs = nn.ModuleList([self._conv(lc(n), lc(n), 3, bias=enable_bias)
                                               for n in reversed(range(2, n_layers+1))])
@@ -110,6 +112,10 @@ class Unet(torch.nn.Module):
                                          for n in reversed(range(2, n_layers+2))])
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
+        x = self._fwd_skip(x) if not self.no_skip else self._fwd_no_skip(x)
+        return x
+
+    def _fwd_skip(self, x:torch.Tensor) -> torch.Tensor:
         dout = [x]
         dout.append(self.start(x))
         x = self._down(dout[-1], 0)
@@ -122,6 +128,22 @@ class Unet(torch.nn.Module):
             x = self._dropout(self._up(x, dout[-i-1].shape[2:], i))
             if self.upsampconv: x = self.upsampconvs[i-1](x)
         x = self.finish(torch.cat((x, dout[0]), dim=1))
+        return x
+
+    def _fwd_no_skip(self, x:torch.Tensor) -> torch.Tensor:
+        sz = [x.shape]
+        x = self.start(x)
+        x = self._down(x, 0)
+        for i, dl in enumerate(self.down_layers, 1):
+            x = dl(x)
+            sz.append(x.shape)
+            x = self._dropout(self._down(x, i))
+        x = self._dropout(self._up(self.bridge(x), sz[-1][2:], 0))
+        for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
+            x = ul(x)
+            x = self._dropout(self._up(x, sz[-i-1][2:], i))
+            if self.upsampconv: x = self.upsampconvs[i-1](x)
+        x = self.finish(x)
         return x
 
     def _down(self, x:torch.Tensor, i:int) -> torch.Tensor:
