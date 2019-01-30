@@ -82,6 +82,9 @@ def write_out_config(args, n_gpus, n_input, n_output, use_3d):
             "gpu_selector": args.gpu_selector,
             "multi_gpu": args.multi_gpu,
             "out_config_file": args.out_config_file,
+            "patch_size": args.patch_size,
+            "pin_memory": args.pin_memory,
+            "sample_axis": args.sample_axis,
             "tiff": args.tiff,
             "verbosity": args.verbosity
         },
@@ -100,8 +103,6 @@ def write_out_config(args, n_gpus, n_input, n_output, use_3d):
             "no_skip": args.no_skip,
             "normalization": args.normalization,
             "out_activation": args.out_activation,
-            "patch_size": args.patch_size,
-            "sample_axis": args.sample_axis,
             "upsampconv": args.upsampconv
         },
         "Training Options": {
@@ -116,6 +117,10 @@ def write_out_config(args, n_gpus, n_input, n_output, use_3d):
         },
         "Prediction Options": {
             "monte_carlo": None,
+        },
+        "VAE Options": {
+            "img_dim": args.img_dim,
+            "latent_size": args.latent_size if args.nn_arch == 'vae' else None
         },
         "Internal": {
             "n_gpus": n_gpus,

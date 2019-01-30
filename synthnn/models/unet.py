@@ -37,7 +37,6 @@ class Unet(torch.nn.Module):
         n_layers (int): number of layers (to go down and up)
         kernel_size (int): size of kernel (symmetric)
         dropout_p (int): dropout probability for each layer
-        patch_size (int): dimension of one side of a cube (i.e., extracted "patch" is a patch_sz^3 size 3d-array)
         channel_base_power (int): 2 ** channel_base_power is the number of channels in the first layer
             and increases in each proceeding layer such that in the n-th layer there are
             2 ** channel_base_power + n channels (this follows the convention in [1])
@@ -67,7 +66,7 @@ class Unet(torch.nn.Module):
             from CT Using Synthetic MR Images,” MLMI, vol. 10541, pp. 291–298, 2017.
 
     """
-    def __init__(self, n_layers:int, kernel_size:int=3, dropout_p:float=0, patch_size:int=64, channel_base_power:int=5,
+    def __init__(self, n_layers:int, kernel_size:int=3, dropout_p:float=0, channel_base_power:int=5,
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu', output_activation:str='linear',
                  is_3d:bool=True, deconv:bool=True, interp_mode:str='nearest', upsampconv:bool=False, enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip=False):
@@ -76,7 +75,6 @@ class Unet(torch.nn.Module):
         self.n_layers = n_layers
         self.kernel_sz = kernel_size
         self.dropout_p = dropout_p
-        self.patch_sz = patch_size
         self.channel_base_power = channel_base_power
         self.a2u = 2 if add_two_up else 0
         self.norm = nm = normalization
@@ -91,7 +89,8 @@ class Unet(torch.nn.Module):
         self.n_input = n_input
         self.n_output = n_output
         self.no_skip = no_skip
-        def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer count
+        self.criterion = nn.MSELoss()
+        def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
         self.start = self._unet_blk(n_input, lc(0), lc(1), act=(a, a), norm=(nm, nm))
         self.down_layers = nn.ModuleList([self._unet_blk(lc(n), lc(n), lc(n+1), act=(a, a), norm=(nm, nm))
@@ -150,7 +149,7 @@ class Unet(torch.nn.Module):
         y = (F.max_pool3d(x, (2,2,2)) if self.is_3d else F.max_pool2d(x, (2,2))) if not self.deconv else self.downconv[i](x)
         return y
 
-    def _up(self, x:torch.Tensor, sz:Union[Tuple[int, int, int], Tuple[int, int]], i:int) -> torch.Tensor:
+    def _up(self, x:torch.Tensor, sz:Union[Tuple[int,int,int], Tuple[int,int]], i:int) -> torch.Tensor:
         y = F.interpolate(x, size=sz, mode=self.interp_mode) if not self.deconv else self.upconv[i](x)
         return y
 
@@ -198,3 +197,14 @@ class Unet(torch.nn.Module):
         c = self._conv(in_c, out_c, 1, bias=bias)
         fc = nn.Sequential(c, get_act(out_act)) if out_act != 'linear' else nn.Sequential(c)
         return fc
+
+    def _fwd_train(self, src, tgt):
+        """ internal method for nn-train """
+        tgt_pred = self.__call__(src)
+        loss = self.criterion(tgt_pred, tgt)
+        return loss
+
+    def _fwd_pred(self, src):
+        """ internal method for nn-predict """
+        tgt_pred = self.__call__(src)
+        return tgt_pred

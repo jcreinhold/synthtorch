@@ -46,7 +46,7 @@ def arg_parser():
     options = parser.add_argument_group('Options')
     options.add_argument('-o', '--trained-model', type=str, default=None,
                          help='path to output the trained model')
-    options.add_argument('-na', '--nn-arch', type=str, default='unet', choices=('unet', 'nconv'),
+    options.add_argument('-na', '--nn-arch', type=str, default='unet', choices=('unet', 'nconv', 'vae'),
                          help='specify neural network architecture to use')
     options.add_argument('-vs', '--valid-split', type=float, default=0.2,
                           help='split the data in source_dir and target_dir into train/validation '
@@ -117,6 +117,10 @@ def arg_parser():
                                                                                       'else None uses first available GPU [Default=None]')
     nn_options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
     nn_options.add_argument('--no-skip', action='store_true', default=False, help='do not use skip connections in unet [Default=False]')
+    nn_options.add_argument('--pin-memory', action='store_true', default=False, help='pin memory in dataloader [Default=False]')
+    nn_options.add_argument('--img-dim', type=int, nargs='+', default=None, help='if using VAE, then input image dimension must '
+                                                                                  'be specified [Default=None]')
+    nn_options.add_argument('--latent-size', type=int, default=2048, help='if using VAE, this controls latent dimension size [Default=2048]')
     return parser
 
 
@@ -142,17 +146,22 @@ def main(args=None):
         if args.nn_arch == 'nconv':
             from synthnn.models.nconvnet import SimpleConvNet
             logger.warning('The nconv network is for basic testing.')
-            model = SimpleConvNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
+            model = SimpleConvNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob,
                                   n_input=n_input, n_output=n_output, is_3d=use_3d)
         elif args.nn_arch == 'unet':
             from synthnn.models.unet import Unet
-            model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
+            model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, deconv=args.deconv, interp_mode=args.interp_mode,
                          upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias, is_3d=use_3d,
                          n_input=n_input, n_output=n_output, no_skip=args.no_skip)
+        elif args.nn_arch == 'vae':
+            from synthnn.models.vae import VAE
+            model = VAE(args.n_layers, args.img_dim, channel_base_power=args.channel_base_power,
+                         activation=args.activation, is_3d=use_3d,
+                         n_input=n_input, n_output=n_output, latent_size=args.latent_size)
         else:
-            raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
+            raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet, vae}} are the only supported options.')
         model.train(True)
         logger.debug(model)
 
@@ -192,8 +201,8 @@ def main(args=None):
             valid_dataset = MultimodalNiftiDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm)) if not args.tiff else \
                             MultimodalTiffDataset(args.valid_source_dir, args.valid_target_dir, Compose(tfm))
             logger.debug(f'Number of validation images: {len(valid_dataset)}')
-            train_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.n_jobs, shuffle=True)
-            validation_loader = DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.n_jobs)
+            train_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.n_jobs, shuffle=True, pin_memory=args.pin_memory)
+            validation_loader = DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.n_jobs, pin_memory=args.pin_memory)
         else:
             # setup training and validation set
             num_train = len(dataset)
@@ -206,11 +215,10 @@ def main(args=None):
             validation_sampler = SubsetRandomSampler(validation_idx)
 
             # set up data loader for nifti images
-            train_loader = DataLoader(dataset, sampler=train_sampler, batch_size=args.batch_size, num_workers=args.n_jobs)
-            validation_loader = DataLoader(dataset, sampler=validation_sampler, batch_size=args.batch_size, num_workers=args.n_jobs)
+            train_loader = DataLoader(dataset, sampler=train_sampler, batch_size=args.batch_size, num_workers=args.n_jobs, pin_memory=args.pin_memory)
+            validation_loader = DataLoader(dataset, sampler=validation_sampler, batch_size=args.batch_size, num_workers=args.n_jobs, pin_memory=args.pin_memory)
 
         # train the model
-        criterion = nn.MSELoss()
         logger.info(f'LR: {args.learning_rate:.5f}')
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
         use_valid = args.valid_split > 0 or (args.valid_source_dir is not None and args.valid_target_dir is not None)
@@ -222,11 +230,7 @@ def main(args=None):
             for src, tgt in train_loader:
                 src, tgt = src.to(device), tgt.to(device)
 
-                # Forward pass: Compute predicted y by passing x to the model
-                tgt_pred = model(src)
-
-                # Compute and store loss
-                loss = criterion(tgt_pred, tgt)
+                loss = model._fwd_train(src, tgt)
                 t_losses.append(loss.item())
 
                 # Zero gradients, perform a backward pass, and update the weights.
@@ -245,8 +249,7 @@ def main(args=None):
             with torch.set_grad_enabled(False):
                 for src, tgt in validation_loader:
                     src, tgt = src.to(device), tgt.to(device)
-                    tgt_pred = model(src)
-                    loss = criterion(tgt_pred, tgt)
+                    loss = model._fwd_train(src, tgt)
                     v_losses.append(loss.item())
                 validation_losses.append(v_losses)
 

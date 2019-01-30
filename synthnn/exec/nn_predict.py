@@ -29,7 +29,7 @@ with warnings.catch_warnings():
 
 ######## Helper functions ########
 
-def fwd(mdl, img): return mdl.forward(img).cpu().detach().numpy()
+def fwd(mdl, img): return mdl._fwd_pred(img).cpu().detach().numpy()
 
 
 def batch2d(model, img, out_img, axis, device, bs, i, nsyn):
@@ -80,15 +80,20 @@ def main(args=None):
         # load the trained model
         if args.nn_arch.lower() == 'nconv':
             from synthnn.models.nconvnet import SimpleConvNet
-            model = SimpleConvNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
+            model = SimpleConvNet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob,
                                   n_input=args.n_input, n_output=args.n_output, is_3d=args.net3d)
         elif args.nn_arch.lower() == 'unet':
             from synthnn.models.unet import Unet
-            model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob, patch_size=args.patch_size,
+            model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, is_3d=args.net3d,
                          deconv=args.deconv, interp_mode=args.interp_mode, upsampconv=args.upsampconv, enable_dropout=nsyn > 1,
                          enable_bias=args.enable_bias, n_input=args.n_input, n_output=args.n_output, no_skip=args.no_skip)
+        elif args.nn_arch == 'vae':
+            from synthnn.models.vae import VAE
+            model = VAE(args.n_layers, args.img_dim, channel_base_power=args.channel_base_power,
+                         activation=args.activation, is_3d=args.net3d,
+                         n_input=args.n_input, n_output=args.n_output, latent_size=args.latent_size)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet}} are the only supported options.')
         state_dict = torch.load(args.trained_model, map_location=device)

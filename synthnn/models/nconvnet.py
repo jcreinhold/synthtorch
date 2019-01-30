@@ -24,16 +24,15 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleConvNet(torch.nn.Module):
-    def __init__(self, n_layers:int, n_input:int=1, n_output:int=1, kernel_size:int=3,
-                 dropout_p:float=0, patch_size:int=64, is_3d:bool=True):
+    def __init__(self, n_layers:int, n_input:int=1, n_output:int=1, kernel_size:int=3, dropout_p:float=0, is_3d:bool=True):
         super(SimpleConvNet, self).__init__()
         self.n_layers = n_layers
         self.n_input = n_input
         self.n_output = n_output
         self.kernel_sz = kernel_size
         self.dropout_p = dropout_p
-        self.patch_sz = patch_size
         self.is_3d = is_3d
+        self.criterion = nn.MSELoss()
         if isinstance(kernel_size, int):
             self.kernel_sz = [kernel_size for _ in range(n_layers)]
         else:
@@ -50,5 +49,13 @@ class SimpleConvNet(torch.nn.Module):
             x = l(x)
         return x
 
+    def _fwd_train(self, src, tgt):
+        """ internal method for nn-train """
+        tgt_pred = self.__call__(src)
+        loss = self.criterion(tgt_pred, tgt)
+        return loss
 
-
+    def _fwd_pred(self, src):
+        """ internal method for nn-predict """
+        tgt_pred = self.__call__(src)
+        return tgt_pred
