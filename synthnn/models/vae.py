@@ -103,12 +103,6 @@ class VAE(Unet):
         z = self.reparameterize(mu, logvar)
         return self.decode(z), mu, logvar
 
-    def _fwd_train(self, src, tgt):
-        """ internal method for nn-train """
-        tgt_pred, mu, logvar = self.__call__(src)
-        loss = self.criterion(tgt_pred, tgt, mu, logvar)
-        return loss
-
     def _fwd_pred(self, x):
         """ internal method for nn-predict """
         mu, logvar = self.encode(x)
@@ -121,7 +115,7 @@ class VAELoss(nn.Module):
         super(VAELoss, self).__init__()
         self.mse_loss = nn.MSELoss(reduction="sum")
 
-    def forward(self, recon_x, x, mu, logvar):
+    def forward(self, x, recon_x, mu, logvar):
         MSE = self.mse_loss(recon_x, x)
         KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2)-logvar.exp())
         return MSE + KLD

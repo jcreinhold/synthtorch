@@ -49,12 +49,6 @@ class SimpleConvNet(torch.nn.Module):
             x = l(x)
         return x
 
-    def _fwd_train(self, src, tgt):
-        """ internal method for nn-train """
-        tgt_pred = self.__call__(src)
-        loss = self.criterion(tgt_pred, tgt)
-        return loss
-
     def _fwd_pred(self, src):
         """ internal method for nn-predict """
         tgt_pred = self.__call__(src)

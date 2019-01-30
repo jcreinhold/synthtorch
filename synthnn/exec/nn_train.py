@@ -34,6 +34,8 @@ with warnings.catch_warnings():
     from synthnn.util.exec import get_args, get_device, setup_log, write_out_config
 
 
+######## Helper functions ########
+
 def arg_parser():
     parser = argparse.ArgumentParser(description='train a CNN for MR image synthesis')
 
@@ -124,6 +126,17 @@ def arg_parser():
     return parser
 
 
+def criterion(out, tgt, model):
+    """ helper function to handle multiple outputs in model evaluation """
+    if isinstance(out, tuple):
+        loss = model.module.criterion(tgt, *out) if isinstance(model, nn.DataParallel) else model.criterion(tgt, *out)
+    else:
+        loss = model.module.criterion(tgt, out) if isinstance(model, nn.DataParallel) else model.criterion(tgt, out)
+    return loss
+
+
+######### Main routine ###########
+
 def main(args=None):
     args, no_config_file = get_args(args, arg_parser)
     setup_log(args.verbosity)
@@ -157,9 +170,8 @@ def main(args=None):
                          n_input=n_input, n_output=n_output, no_skip=args.no_skip)
         elif args.nn_arch == 'vae':
             from synthnn.models.vae import VAE
-            model = VAE(args.n_layers, args.img_dim, channel_base_power=args.channel_base_power,
-                         activation=args.activation, is_3d=use_3d,
-                         n_input=n_input, n_output=n_output, latent_size=args.latent_size)
+            model = VAE(args.n_layers, args.img_dim, channel_base_power=args.channel_base_power, activation=args.activation,
+                        is_3d=use_3d, n_input=n_input, n_output=n_output, latent_size=args.latent_size)
         else:
             raise SynthNNError(f'Invalid NN type: {args.nn_arch}. {{nconv, unet, vae}} are the only supported options.')
         model.train(True)
@@ -230,7 +242,8 @@ def main(args=None):
             for src, tgt in train_loader:
                 src, tgt = src.to(device), tgt.to(device)
 
-                loss = model._fwd_train(src, tgt)
+                out = model(src)
+                loss = criterion(out, tgt, model)
                 t_losses.append(loss.item())
 
                 # Zero gradients, perform a backward pass, and update the weights.
@@ -249,7 +262,8 @@ def main(args=None):
             with torch.set_grad_enabled(False):
                 for src, tgt in validation_loader:
                     src, tgt = src.to(device), tgt.to(device)
-                    loss = model._fwd_train(src, tgt)
+                    out = model(src)
+                    loss = criterion(out, tgt, model)
                     v_losses.append(loss.item())
                 validation_losses.append(v_losses)
 
