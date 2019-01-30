@@ -29,7 +29,7 @@ with warnings.catch_warnings():
 
 ######## Helper functions ########
 
-def fwd(mdl, img): return mdl._fwd_pred(img).cpu().detach().numpy()
+def fwd(mdl, img): return mdl.predict(img).cpu().detach().numpy()
 
 
 def batch2d(model, img, out_img, axis, device, bs, i, nsyn):

@@ -73,6 +73,7 @@ class VAE(Unet):
         x = F.relu(self.fc_bn1(self.fc1(x.view(x.size(0), self.esz))))
         mu = self.fc21(x)
         logvar = self.fc22(x)
+        logger.debug(f'{self.sz}')
         return mu, logvar
 
     def __test_encode(self, x):
@@ -90,8 +91,8 @@ class VAE(Unet):
 
     def decode(self, z):
         z = F.relu(self.fc_bn3(self.fc3(z)))
-        z = F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz)
-        for i, (ul, s) in enumerate(zip(self.up_layers, reversed(self.sz)), 1):
+        z = self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:], 0)
+        for i, ul in enumerate(self.up_layers, 1):
             z = ul(z)
             z = self._up(z, self.sz[-i-1][2:], i)
             z = self.upsampconvs[i-1](z)
@@ -103,8 +104,8 @@ class VAE(Unet):
         z = self.reparameterize(mu, logvar)
         return self.decode(z), mu, logvar
 
-    def _fwd_pred(self, x):
-        """ internal method for nn-predict """
+    def predict(self, x):
+        """ predict from a sample `x` """
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
         return self.decode(z)
