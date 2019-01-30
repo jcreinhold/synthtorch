@@ -63,24 +63,23 @@ class VAE(Unet):
         self.fc_bn4 = nn.BatchNorm1d(self.esz)
 
     def encode(self, x):
+        x = self.start(x)
+        x = self._down(x, 0)
+        for i, dl in enumerate(self.down_layers, 1):
+            x = dl(x)
+            x = self._down(x, i)
+        x = F.relu(self.fc_bn1(self.fc1(x.view(x.size(0), self.esz))))
+        mu = self.fc21(x)
+        logvar = self.fc22(x)
+        return mu, logvar
+
+    def __test_encode(self, x):
         self.sz.append(x.shape)
         x = self.start(x)
         x = self._down(x, 0)
         for i, dl in enumerate(self.down_layers, 1):
             x = dl(x)
             self.sz.append(x.shape)
-            x = self._down(x, i)
-        x = F.relu(self.fc_bn1(self.fc1(x.view(x.size(0), self.esz))))
-        mu = self.fc21(x)
-        logvar = self.fc22(x)
-        logger.debug(f'{self.sz}')
-        return mu, logvar
-
-    def __test_encode(self, x):
-        x = self.start(x)
-        x = self._down(x, 0)
-        for i, dl in enumerate(self.down_layers, 1):
-            x = dl(x)
             x = self._down(x, i)
         return x.shape
 
