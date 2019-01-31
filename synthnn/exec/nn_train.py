@@ -219,7 +219,7 @@ def main(args=None):
             tfm = []
 
         # add data augmentation if desired
-        if args.prob is not None:
+        if args.prob is not None and args.tiff:  # currently only support transforms on tiff images
             logger.debug('Adding data augmentation transforms')
             tfm.extend(tfms.get_transforms(args.prob, args.tfm_x, args.tfm_y, args.rotate, args.translate, args.scale,
                                            args.vflip, args.hflip, args.gamma, args.gain, args.noise_std))

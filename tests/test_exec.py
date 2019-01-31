@@ -83,7 +83,7 @@ class TestCLI(unittest.TestCase):
         args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -ps 0 -bs 2 '
                                   f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} '
                                   f'-vsd {self.train_dir} -vtd {self.train_dir} -p 1 1 1 1 -r 10 -ts 0.5 -sc 0.1 '
-                                  f'-hf -vf -g 0.1 -gn 1.2 -std 1 -tx -ty').split()
+                                  f'-hf -vf -g 0.1 -gn 0.2 -std 1 -tx -ty').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)
