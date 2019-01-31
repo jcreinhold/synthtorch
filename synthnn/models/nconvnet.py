@@ -49,7 +49,4 @@ class SimpleConvNet(torch.nn.Module):
             x = l(x)
         return x
 
-    def predict(self, src):
-        """ predict from a sample `src` """
-        tgt_pred = self.__call__(src)
-        return tgt_pred
+    predict = forward

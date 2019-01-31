@@ -44,12 +44,33 @@ def arg_parser():
                           help='path to directory with source images (multiple paths can be provided for multi-modal synthesis)')
     required.add_argument('-t', '--target-dir', type=str, required=True, nargs='+',
                           help='path to directory with target images (multiple paths can be provided for multi-modal synthesis)')
+    required.add_argument('-o', '--trained-model', type=str, default=None,
+                          help='path to output the trained model')
 
     options = parser.add_argument_group('Options')
-    options.add_argument('-o', '--trained-model', type=str, default=None,
-                         help='path to output the trained model')
-    options.add_argument('-na', '--nn-arch', type=str, default='unet', choices=('unet', 'nconv', 'vae'),
-                         help='specify neural network architecture to use')
+    options.add_argument('-bs', '--batch-size', type=int, default=5,
+                         help='batch size (num of images to process at once) [Default=5]')
+    options.add_argument('--disable-cuda', action='store_true', default=False,
+                         help='Disable CUDA regardless of availability')
+    options.add_argument('-mp', '--fp16', action='store_true', default=False,
+                         help='enable mixed precision training')
+    options.add_argument('-gs', '--gpu-selector', type=int, nargs='+', default=None, help='use gpu(s) selected here, None '
+                                                                                   'uses all available gpus if --multi-gpus enabled '
+                                                                                   'else None uses first available GPU [Default=None]')
+    options.add_argument('-mg', '--multi-gpu', action='store_true', default=False, help='use multiple gpus [Default=False]')
+    options.add_argument('-n', '--n-jobs', type=int, default=0,
+                            help='number of CPU processors to use (use 0 if CUDA enabled) [Default=0]')
+    options.add_argument('-ocf', '--out-config-file', type=str, default=None,
+                         help='output a config file for the options used in this experiment '
+                              '(saves them as a json file with the name as input in this argument)')
+    options.add_argument('-ps', '--patch-size', type=int, default=64,
+                         help='patch size^3 extracted from image [Default=64]')
+    options.add_argument('-pm','--pin-memory', action='store_true', default=False, help='pin memory in dataloader [Default=False]')
+    options.add_argument('-pl', '--plot-loss', type=str, default=None,
+                            help='plot the loss vs epoch and save at the filename provided here [Default=None]')
+    options.add_argument('-sa', '--sample-axis', type=int, default=2,
+                            help='axis on which to sample for 2d (None for random orientation when NIfTI images given) [Default=2]')
+    options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
     options.add_argument('-vs', '--valid-split', type=float, default=0.2,
                           help='split the data in source_dir and target_dir into train/validation '
                                'with this split percentage [Default=0]')
@@ -61,68 +82,62 @@ def arg_parser():
                                'see -vs for default action if this is not provided [Default=None]')
     options.add_argument('-v', '--verbosity', action="count", default=0,
                          help="increase output verbosity (e.g., -vv is more than -v)")
-    options.add_argument('-ocf', '--out-config-file', type=str, default=None,
-                         help='output a config file for the options used in this experiment '
-                              '(saves them as a json file with the name as input in this argument)')
 
     nn_options = parser.add_argument_group('Neural Network Options')
-    nn_options.add_argument('-ps', '--patch-size', type=int, default=64,
-                            help='patch size^3 extracted from image [Default=64]')
-    nn_options.add_argument('-n', '--n-jobs', type=int, default=0,
-                            help='number of CPU processors to use (use 0 if CUDA enabled) [Default=0]')
-    nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,
-                            help='number of epochs [Default=100]')
-    nn_options.add_argument('-nl', '--n-layers', type=int, default=3,
-                            help='number of layers to use in network (different meaning per arch) [Default=3]')
-    nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
-                            help='convolutional kernel size (cubed) [Default=3]')
-    nn_options.add_argument('-dc', '--deconv', action='store_true', default=False,
-                            help='use transpose conv and strided conv for upsampling & downsampling respectively [Default=False]')
-    nn_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
-                            help='use this type of interpolation for upsampling (when deconv is false) [Default=nearest]')
-    nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
-                            help='dropout probability per conv block [Default=0]')
-    nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
-                            help='learning rate of the neural network (uses Adam) [Default=1e-3]')
-    nn_options.add_argument('-bs', '--batch-size', type=int, default=5,
-                            help='batch size (num of images to process at once) [Default=5]')
+    nn_options.add_argument('-ac', '--activation', type=str, default='relu', choices=('relu', 'lrelu'),
+                            help='type of activation to use throughout network except output [Default=relu]')
+    nn_options.add_argument('-atu', '--add-two-up', action='store_true', default=False,
+                            help='Add two to the kernel size on the upsampling in the U-Net as '
+                                 'per Zhao, et al. 2017 [Default=False]')
     nn_options.add_argument('-cbp', '--channel-base-power', type=int, default=5,
                             help='2 ** channel_base_power is the number of channels in the first layer '
                                  'and increases in each proceeding layer such that in the n-th layer there are '
                                  '2 ** (channel_base_power + n) channels [Default=5]')
-    nn_options.add_argument('-pl', '--plot-loss', type=str, default=None,
-                            help='plot the loss vs epoch and save at the filename provided here [Default=None]')
+    nn_options.add_argument('-dc', '--deconv', action='store_true', default=False,
+                            help='use transpose conv and strided conv for upsampling & downsampling respectively [Default=False]')
+    nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
+                            help='dropout probability per conv block [Default=0]')
+    nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
+                            help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
+    nn_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
+                            help='use this type of interpolation for upsampling (when deconv is false) [Default=nearest]')
+    nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
+                            help='convolutional kernel size (cubed) [Default=3]')
+    nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
+                            help='learning rate of the neural network (uses Adam) [Default=1e-3]')
+    nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,
+                            help='number of epochs [Default=100]')
+    nn_options.add_argument('-nl', '--n-layers', type=int, default=3,
+                            help='number of layers to use in network (different meaning per arch) [Default=3]')
+    nn_options.add_argument('-3d', '--net3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
+    nn_options.add_argument('-na', '--nn-arch', type=str, default='unet', choices=('unet', 'nconv', 'vae'),
+                            help='specify neural network architecture to use')
+    nn_options.add_argument('-ns', '--no-skip', action='store_true', default=False, help='do not use skip connections in unet [Default=False]')
+    nn_options.add_argument('-nm', '--normalization', type=str, default='instance', choices=('instance', 'batch', 'none'),
+                            help='type of normalization layer to use in network [Default=instance]')
+    nn_options.add_argument('-oac', '--out-activation', type=str, default='linear', choices=('relu', 'lrelu', 'linear'),
+                            help='type of activation to use in network on output [Default=linear]')
     nn_options.add_argument('-usc', '--upsampconv', action='store_true', default=False,
                             help='Use resize-convolution in the U-net as per the Distill article: '
                                  '"Deconvolution and Checkerboard Artifacts" [Default=False]')
-    nn_options.add_argument('-atu', '--add-two-up', action='store_true', default=False,
-                            help='Add two to the kernel size on the upsampling in the U-Net as '
-                                 'per Zhao, et al. 2017 [Default=False]')
-    nn_options.add_argument('-nm', '--normalization', type=str, default='instance', choices=('instance', 'batch', 'none'),
-                            help='type of normalization layer to use in network [Default=instance]')
-    nn_options.add_argument('-ac', '--activation', type=str, default='relu', choices=('relu', 'lrelu'),
-                            help='type of activation to use throughout network except output [Default=relu]')
-    nn_options.add_argument('-oac', '--out-activation', type=str, default='linear', choices=('relu', 'lrelu', 'linear'),
-                            help='type of activation to use in network on output [Default=linear]')
-    nn_options.add_argument('-mp', '--fp16', action='store_true', default=False,
-                            help='enable mixed precision training')
-    nn_options.add_argument('--disable-cuda', action='store_true', default=False,
-                            help='Disable CUDA regardless of availability')
-    nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
-                            help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
-    nn_options.add_argument('-sa', '--sample-axis', type=int, default=2,
-                            help='axis on which to sample for 2d (None for random orientation when NIfTI images given) [Default=2]')
-    nn_options.add_argument('--net3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
-    nn_options.add_argument('--multi-gpu', action='store_true', default=False, help='use multiple gpus [Default=False]')
-    nn_options.add_argument('--gpu-selector', type=int, nargs='+', default=None, help='use gpu(s) selected here, None '
-                                                                                      'uses all available gpus if --multi-gpus enabled '
-                                                                                      'else None uses first available GPU [Default=None]')
-    nn_options.add_argument('--tiff', action='store_true', default=False, help='dataset are tiff images [Default=False]')
-    nn_options.add_argument('--no-skip', action='store_true', default=False, help='do not use skip connections in unet [Default=False]')
-    nn_options.add_argument('--pin-memory', action='store_true', default=False, help='pin memory in dataloader [Default=False]')
-    nn_options.add_argument('--img-dim', type=int, nargs='+', default=None, help='if using VAE, then input image dimension must '
+
+    vae_options = parser.add_argument_group('VAE Options')
+    vae_options.add_argument('-id', '--img-dim', type=int, nargs='+', default=None, help='if using VAE, then input image dimension must '
                                                                                   'be specified [Default=None]')
-    nn_options.add_argument('--latent-size', type=int, default=2048, help='if using VAE, this controls latent dimension size [Default=2048]')
+    vae_options.add_argument('-ls', '--latent-size', type=int, default=2048, help='if using VAE, this controls latent dimension size [Default=2048]')
+
+    aug_options = parser.add_argument_group('Data Augmentation Options')
+    aug_options.add_argument('-p', '--prob', type=float, nargs=4, default=None, help='probability of (Affine, Flip, Gamma, Noise) [Default=None]')
+    aug_options.add_argument('-r', '--rotate', type=float, default=None, help='max rotation angle [Default=None]')
+    aug_options.add_argument('-ts', '--translate', type=float, default=None, help='max fractional translation [Default=None]')
+    aug_options.add_argument('-sc', '--scale', type=float, default=None, help='max scale (1-scale,1+scale) [Default=None]')
+    aug_options.add_argument('-hf', '--hflip', action='store_true', default=True, help='horizontal flip [Default=None]')
+    aug_options.add_argument('-vf', '--vflip', action='store_true', default=True, help='vertical flip [Default=None]')
+    aug_options.add_argument('-g', '--gamma', type=float, default=None, help='gamma parameter (gain * x ** gamma) [Default=None]')
+    aug_options.add_argument('-gn', '--gain', type=float, default=None, help='gain parameter (gain * x ** gamma) [Default=None]')
+    aug_options.add_argument('-std', '--noise-std', type=float, default=None, help='noise standard deviation/power [Default=None]')
+    aug_options.add_argument('-tx', '--tfm-x', action='store_true', default=True, help='apply transforms to x [Default=None]')
+    aug_options.add_argument('-ty', '--tfm-y', action='store_true', default=False, help='apply transforms to x [Default=None]')
     return parser
 
 
@@ -202,7 +217,15 @@ def main(args=None):
             tfm = [cropper] if args.patch_size > 0 else [] if args.net3d else [tfms.RandomSlice(args.sample_axis)]
         else:
             tfm = []
-        tfm.append(tfms.ToTensor())
+
+        # add data augmentation if desired
+        if args.prob is not None:
+            logger.debug('Adding data augmentation transforms')
+            tfm.extend(tfms.get_transforms(args.prob, args.tfm_x, args.tfm_y, args.rotate, args.translate, args.scale,
+                                           args.vflip, args.hflip, args.gamma, args.gain, args.noise_std))
+        else:
+            logger.debug('No data augmentation will be used (except random cropping if patch_size > 0)')
+            tfm.append(tfms.ToTensor())
 
         # define dataset and split into training/validation set
         dataset = MultimodalNiftiDataset(args.source_dir, args.target_dir, Compose(tfm)) if not args.tiff else \
@@ -241,12 +264,9 @@ def main(args=None):
             if use_valid: model.train(True)
             for src, tgt in train_loader:
                 src, tgt = src.to(device), tgt.to(device)
-
                 out = model(src)
                 loss = criterion(out, tgt, model)
                 t_losses.append(loss.item())
-
-                # Zero gradients, perform a backward pass, and update the weights.
                 optimizer.zero_grad()
                 if args.fp16 and amp_handle is not None:
                     with amp_handle.scale_loss(loss, optimizer) as scaled_loss:

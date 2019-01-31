@@ -198,7 +198,4 @@ class Unet(torch.nn.Module):
         fc = nn.Sequential(c, get_act(out_act)) if out_act != 'linear' else nn.Sequential(c)
         return fc
 
-    def predict(self, src):
-        """ predict from a sample `src` """
-        tgt_pred = self.__call__(src)
-        return tgt_pred
+    predict = forward

@@ -79,6 +79,17 @@ class TestCLI(unittest.TestCase):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
+    def test_nconv_data_aug_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -ps 0 -bs 2 '
+                                  f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} '
+                                  f'-vsd {self.train_dir} -vtd {self.train_dir} -p 1 1 1 1 -r 10 -ts 0.5 -sc 0.1 '
+                                  f'-hf -vf -g 0.1 -gn 1.2 -std 1 -tx -ty').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
     def test_unet_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 -bs 2 --net3d '
                                   f'-ocf {self.jsonfn}').split()
@@ -90,7 +101,7 @@ class TestCLI(unittest.TestCase):
 
     def test_vae_2d_3l_cli(self):
         train_args = f'-s {self.train_dir}/1/ -t {self.train_dir}/2/'.split()
-        args = train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 3 -bs 4 --tiff '
+        args = train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 2 -bs 4 --tiff '
                              f'--img-dim 256 256 --latent-size 10 -ocf {self.jsonfn} -sa 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
