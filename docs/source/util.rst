@@ -12,9 +12,3 @@ Helper Tools
 
 .. automodule:: synthnn.util.helper
    :members:
-
-Metrics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: synthnn.util.metrics
-   :members:

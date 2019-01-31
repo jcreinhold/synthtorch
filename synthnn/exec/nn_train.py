@@ -131,13 +131,13 @@ def arg_parser():
     aug_options.add_argument('-r', '--rotate', type=float, default=None, help='max rotation angle [Default=None]')
     aug_options.add_argument('-ts', '--translate', type=float, default=None, help='max fractional translation [Default=None]')
     aug_options.add_argument('-sc', '--scale', type=float, default=None, help='max scale (1-scale,1+scale) [Default=None]')
-    aug_options.add_argument('-hf', '--hflip', action='store_true', default=True, help='horizontal flip [Default=None]')
-    aug_options.add_argument('-vf', '--vflip', action='store_true', default=True, help='vertical flip [Default=None]')
-    aug_options.add_argument('-g', '--gamma', type=float, default=None, help='gamma parameter (gain * x ** gamma) [Default=None]')
-    aug_options.add_argument('-gn', '--gain', type=float, default=None, help='gain parameter (gain * x ** gamma) [Default=None]')
+    aug_options.add_argument('-hf', '--hflip', action='store_true', default=False, help='horizontal flip [Default=False]')
+    aug_options.add_argument('-vf', '--vflip', action='store_true', default=False, help='vertical flip [Default=False]')
+    aug_options.add_argument('-g', '--gamma', type=float, default=None, help='gamma (1-gamma,1+gamma) for (gain * x ** gamma) [Default=None]')
+    aug_options.add_argument('-gn', '--gain', type=float, default=None, help='gain (1-gain,1+gain) for (gain * x ** gamma) [Default=None]')
     aug_options.add_argument('-std', '--noise-std', type=float, default=None, help='noise standard deviation/power [Default=None]')
-    aug_options.add_argument('-tx', '--tfm-x', action='store_true', default=True, help='apply transforms to x [Default=None]')
-    aug_options.add_argument('-ty', '--tfm-y', action='store_true', default=False, help='apply transforms to x [Default=None]')
+    aug_options.add_argument('-tx', '--tfm-x', action='store_true', default=True, help='apply transforms to x (change this with config file) [Default=True]')
+    aug_options.add_argument('-ty', '--tfm-y', action='store_true', default=False, help='apply transforms to y [Default=False]')
     return parser
 
 
