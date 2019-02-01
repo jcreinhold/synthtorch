@@ -17,6 +17,7 @@ before_install:
   - conda update --yes conda
 install:
   - travis_retry . ./create_env.sh
+  - conda install libgcc --yes  # attempt to fix "`CXXABI_1.3.9' not found" error
   - python --version
   - which python
   - pip --version
