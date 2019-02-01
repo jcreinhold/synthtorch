@@ -12,7 +12,8 @@ Created on: Nov 2, 2018
 
 __all__ = ['get_act',
            'get_norm2d',
-           'get_norm3d']
+           'get_norm3d',
+           'init_weights']
 
 from typing import Optional, Union
 
@@ -111,3 +112,38 @@ def get_norm3d(name: str, num_features: int, params: Optional[dict]=None) -> nor
     else:
         raise SynthNNError(f'Normalization: "{name}" not a valid normalization routine or not supported.')
     return norm
+
+
+def init_weights(net, init_type='kaiming', init_gain=0.02):
+    """
+    Initialize network weights
+    (inspired by https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/)
+
+    Args:
+        net (nn.Module): network to be initialized
+        init_type (str): the name of an initialization method: normal, xavier, kaiming, or orthogonal
+        init_gain (float): scaling factor for normal, xavier and orthogonal.
+
+    Returns:
+        None
+    """
+    def init_func(m):  # define the initialization function
+        classname = m.__class__.__name__
+        if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
+            if init_type == 'normal':
+                nn.init.normal_(m.weight.data, 0.0, init_gain)
+            elif init_type == 'xavier':
+                nn.init.xavier_normal_(m.weight.data, gain=init_gain)
+            elif init_type == 'kaiming':
+                nn.init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
+            elif init_type == 'orthogonal':
+                nn.init.orthogonal_(m.weight.data, gain=init_gain)
+            else:
+                raise NotImplementedError('initialization method [%s] is not implemented' % init_type)
+            if hasattr(m, 'bias') and m.bias is not None:
+                nn.init.constant_(m.bias.data, 0.0)
+        elif classname.find('BatchNorm2d') != -1:  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
+            nn.init.normal_(m.weight.data, 1.0, init_gain)
+            nn.init.constant_(m.bias.data, 0.0)
+
+    net.apply(init_func)

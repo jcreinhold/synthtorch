@@ -95,6 +95,8 @@ def write_out_config(args, n_gpus, n_input, n_output, use_3d):
             "deconv": args.deconv,
             "dropout_prob": args.dropout_prob,
             "enable_bias": args.enable_bias,
+            "init": args.init,
+            "init_gain": args.init_gain,
             "interp_mode": args.interp_mode,
             "kernel_size": args.kernel_size,
             "n_layers": args.n_layers,
@@ -106,6 +108,7 @@ def write_out_config(args, n_gpus, n_input, n_output, use_3d):
             "upsampconv": args.upsampconv
         },
         "Training Options": {
+            "clip": args.clip,
             "fp16": args.fp16,
             "learning_rate": args.learning_rate,
             "n_epochs": args.n_epochs,

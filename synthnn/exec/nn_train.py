@@ -30,7 +30,7 @@ with warnings.catch_warnings():
     from torch.utils.data.sampler import SubsetRandomSampler
     from niftidataset import MultimodalNiftiDataset, MultimodalTiffDataset
     import niftidataset.transforms as tfms
-    from synthnn import SynthNNError
+    from synthnn import SynthNNError, init_weights
     from synthnn.util.exec import get_args, get_device, setup_log, write_out_config
 
 
@@ -50,6 +50,8 @@ def arg_parser():
     options = parser.add_argument_group('Options')
     options.add_argument('-bs', '--batch-size', type=int, default=5,
                          help='batch size (num of images to process at once) [Default=5]')
+    options.add_argument('-c', '--clip', type=float, default=None,
+                         help='gradient clipping threshold [Default=None]')
     options.add_argument('--disable-cuda', action='store_true', default=False,
                          help='Disable CUDA regardless of availability')
     options.add_argument('-mp', '--fp16', action='store_true', default=False,
@@ -99,6 +101,10 @@ def arg_parser():
                             help='dropout probability per conv block [Default=0]')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
                             help='enable bias calculation in upsampconv layers and final conv layer [Default=False]')
+    nn_options.add_argument('-in', '--init', type=str, default='kaiming', choices=('normal', 'xavier', 'kaiming', 'orthogonal'),
+                            help='use this type of initialization for the network [Default=kaiming]')
+    nn_options.add_argument('-ing', '--init-gain', type=float, default=0.2,
+                            help='use this initialization gain for initialization [Default=0.2]')
     nn_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
                             help='use this type of interpolation for upsampling (when deconv is false) [Default=nearest]')
     nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
@@ -204,6 +210,10 @@ def main(args=None):
             logger.debug(f'Enabling use of {n_gpus} gpus')
             model = torch.nn.DataParallel(model, device_ids=args.gpu_selector)
 
+        # initialize the weights with user-defined initialization routine
+        logger.debug(f'Initializing weights with {args.init}')
+        init_weights(model, args.init, args.init_gain)
+
         # check number of jobs requested and CPUs available
         num_cpus = os.cpu_count()
         if num_cpus < args.n_jobs:
@@ -273,6 +283,7 @@ def main(args=None):
                         scaled_loss.backward()
                 else:
                     loss.backward()
+                if args.clip is not None: nn.utils.clip_grad_norm_(model.parameters(), args.clip)
                 optimizer.step()
             train_losses.append(t_losses)
 
@@ -287,6 +298,7 @@ def main(args=None):
                     v_losses.append(loss.item())
                 validation_losses.append(v_losses)
 
+            if np.any(np.isnan(t_losses)): raise SynthNNError('NaN in training loss, cannot recover. Exiting.')
             log = f'Epoch: {t+1} - Training Loss: {np.mean(t_losses):.2f}'
             if use_valid: log += f', Validation Loss: {np.mean(v_losses):.2f}'
             logger.info(log)
