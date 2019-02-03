@@ -35,7 +35,7 @@ To use a deep neural network via pytorch for synthesis, we provide an example ca
 ```bash
 nn-train -s t1/ \
          -t flair/ \
-         --output model_dir/unet.pth \
+         -o model_dir/unet.pth \
          --nn-arch unet \
          --n-layers 3 \
          --n-epochs 100 \
