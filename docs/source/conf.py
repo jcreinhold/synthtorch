@@ -18,7 +18,7 @@ import os
 import sys
 
 MOCK_MODULES = ['nibabel','numpy','matplotlib','matplotlib.pyplot','torch','torch.nn','torch.utils','torch.optim',
-                'torch.utils.data','torch.utils.data.sampler','niftidataset','niftidataset.transforms','torchvision',
+                'torch.utils.data','torch.utils.data.sampler','niftidataset','niftidataset.transforms','torchvision','torch.nn.functional',
                 'torchvision.transforms','fastai','fastai.vision','synthqc','niftidataset.fastai','torch.optim.lr_scheduler']
 
 for mod_name in MOCK_MODULES:
