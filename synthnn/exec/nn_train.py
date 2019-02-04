@@ -30,7 +30,7 @@ with warnings.catch_warnings():
     from torch.utils.data.sampler import SubsetRandomSampler
     from niftidataset import MultimodalNiftiDataset, MultimodalTiffDataset
     import niftidataset.transforms as tfms
-    from synthnn import SynthNNError, init_weights
+    from synthnn import SynthNNError, init_weights, BurnCosineLR
     from synthnn.util.exec import get_args, get_device, setup_log, write_out_config
 
 
@@ -56,9 +56,11 @@ def arg_parser():
                          help='Disable CUDA regardless of availability')
     options.add_argument('-mp', '--fp16', action='store_true', default=False,
                          help='enable mixed precision training')
-    options.add_argument('-gs', '--gpu-selector', type=int, nargs='+', default=None, help='use gpu(s) selected here, None '
-                                                                                   'uses all available gpus if --multi-gpus enabled '
-                                                                                   'else None uses first available GPU [Default=None]')
+    options.add_argument('-gs', '--gpu-selector', type=int, nargs='+', default=None,
+                         help='use gpu(s) selected here, None uses all available gpus if --multi-gpus enabled '
+                              'else None uses first available GPU [Default=None]')
+    options.add_argument('-lrs', '--lr-scheduler', action='store_true', default=False,
+                         help='use a cosine-annealing based learning rate scheduler [Default=False]')
     options.add_argument('-mg', '--multi-gpu', action='store_true', default=False, help='use multiple gpus [Default=False]')
     options.add_argument('-n', '--n-jobs', type=int, default=0,
                             help='number of CPU processors to use (use 0 if CUDA enabled) [Default=0]')
@@ -266,6 +268,7 @@ def main(args=None):
         # train the model
         logger.info(f'LR: {args.learning_rate:.5f}')
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        if args.lr_scheduler: scheduler = BurnCosineLR(optimizer, args.n_epochs)
         use_valid = args.valid_split > 0 or (args.valid_source_dir is not None and args.valid_target_dir is not None)
         train_losses, validation_losses = [], []
         for t in range(args.n_epochs):
@@ -286,6 +289,7 @@ def main(args=None):
                 if args.clip is not None: nn.utils.clip_grad_norm_(model.parameters(), args.clip)
                 optimizer.step()
             train_losses.append(t_losses)
+            if args.lr_scheduler: scheduler.step()
 
             # validation
             v_losses = []
@@ -299,8 +303,8 @@ def main(args=None):
                 validation_losses.append(v_losses)
 
             if np.any(np.isnan(t_losses)): raise SynthNNError('NaN in training loss, cannot recover. Exiting.')
-            log = f'Epoch: {t+1} - Training Loss: {np.mean(t_losses):.2f}'
-            if use_valid: log += f', Validation Loss: {np.mean(v_losses):.2f}'
+            log = f'Epoch: {t+1} - Training Loss: {np.mean(t_losses):.2e}'
+            if use_valid: log += f', Validation Loss: {np.mean(v_losses):.2e}'
             logger.info(log)
 
         # output a config file if desired
