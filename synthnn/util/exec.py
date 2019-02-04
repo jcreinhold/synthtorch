@@ -92,7 +92,6 @@ def write_out_config(args, n_gpus, n_input, n_output, use_3d):
             "activation": args.activation,
             "add_two_up": args.add_two_up,
             "channel_base_power": args.channel_base_power,
-            "deconv": args.deconv,
             "dropout_prob": args.dropout_prob,
             "enable_bias": args.enable_bias,
             "init": args.init,

@@ -97,8 +97,6 @@ def arg_parser():
                             help='2 ** channel_base_power is the number of channels in the first layer '
                                  'and increases in each proceeding layer such that in the n-th layer there are '
                                  '2 ** (channel_base_power + n) channels [Default=5]')
-    nn_options.add_argument('-dc', '--deconv', action='store_true', default=False,
-                            help='use transpose conv and strided conv for upsampling & downsampling respectively [Default=False]')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
                             help='dropout probability per conv block [Default=0]')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
@@ -108,7 +106,7 @@ def arg_parser():
     nn_options.add_argument('-ing', '--init-gain', type=float, default=0.2,
                             help='use this initialization gain for initialization [Default=0.2]')
     nn_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
-                            help='use this type of interpolation for upsampling (when deconv is false) [Default=nearest]')
+                            help='use this type of interpolation for upsampling [Default=nearest]')
     nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
                             help='convolutional kernel size (cubed) [Default=3]')
     nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
@@ -136,14 +134,14 @@ def arg_parser():
 
     aug_options = parser.add_argument_group('Data Augmentation Options')
     aug_options.add_argument('-p', '--prob', type=float, nargs=4, default=None, help='probability of (Affine, Flip, Gamma, Noise) [Default=None]')
-    aug_options.add_argument('-r', '--rotate', type=float, default=None, help='max rotation angle [Default=None]')
+    aug_options.add_argument('-r', '--rotate', type=float, default=0, help='max rotation angle [Default=0]')
     aug_options.add_argument('-ts', '--translate', type=float, default=None, help='max fractional translation [Default=None]')
     aug_options.add_argument('-sc', '--scale', type=float, default=None, help='max scale (1-scale,1+scale) [Default=None]')
     aug_options.add_argument('-hf', '--hflip', action='store_true', default=False, help='horizontal flip [Default=False]')
     aug_options.add_argument('-vf', '--vflip', action='store_true', default=False, help='vertical flip [Default=False]')
     aug_options.add_argument('-g', '--gamma', type=float, default=None, help='gamma (1-gamma,1+gamma) for (gain * x ** gamma) [Default=None]')
     aug_options.add_argument('-gn', '--gain', type=float, default=None, help='gain (1-gain,1+gain) for (gain * x ** gamma) [Default=None]')
-    aug_options.add_argument('-std', '--noise-std', type=float, default=None, help='noise standard deviation/power [Default=None]')
+    aug_options.add_argument('-std', '--noise-std', type=float, default=0, help='noise standard deviation/power [Default=0]')
     aug_options.add_argument('-tx', '--tfm-x', action='store_true', default=True, help='apply transforms to x (change this with config file) [Default=True]')
     aug_options.add_argument('-ty', '--tfm-y', action='store_true', default=False, help='apply transforms to y [Default=False]')
     return parser
@@ -188,7 +186,7 @@ def main(args=None):
             from synthnn.models.unet import Unet
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
-                         activation=args.activation, output_activation=args.out_activation, deconv=args.deconv, interp_mode=args.interp_mode,
+                         activation=args.activation, output_activation=args.out_activation, interp_mode=args.interp_mode,
                          upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias, is_3d=use_3d,
                          n_input=n_input, n_output=n_output, no_skip=args.no_skip)
         elif args.nn_arch == 'vae':
@@ -231,8 +229,12 @@ def main(args=None):
             tfm = []
 
         # add data augmentation if desired
-        if args.prob is not None and args.tiff:  # currently only support transforms on tiff images
+        if args.prob is not None:  # currently only support transforms on tiff images
             logger.debug('Adding data augmentation transforms')
+            if args.net3d and (args.prob[0] > 0 or args.prob[1] > 0):
+                logger.warning('Cannot do affine or flipping data augmentation with 3d networks')
+                args.prob[:2] = 0
+                args.rotate, args.translate, args.scale, args.hflip, args.vflip = 0, None, None, False, False
             tfm.extend(tfms.get_transforms(args.prob, args.tfm_x, args.tfm_y, args.rotate, args.translate, args.scale,
                                            args.vflip, args.hflip, args.gamma, args.gain, args.noise_std))
         else:
@@ -268,7 +270,9 @@ def main(args=None):
         # train the model
         logger.info(f'LR: {args.learning_rate:.5f}')
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-        if args.lr_scheduler: scheduler = BurnCosineLR(optimizer, args.n_epochs)
+        if args.lr_scheduler:
+            logger.debug('Enabling burn-in cosine annealing LR scheduler')
+            scheduler = BurnCosineLR(optimizer, args.n_epochs)
         use_valid = args.valid_split > 0 or (args.valid_source_dir is not None and args.valid_target_dir is not None)
         train_losses, validation_losses = [], []
         for t in range(args.n_epochs):
@@ -305,6 +309,7 @@ def main(args=None):
             if np.any(np.isnan(t_losses)): raise SynthNNError('NaN in training loss, cannot recover. Exiting.')
             log = f'Epoch: {t+1} - Training Loss: {np.mean(t_losses):.2e}'
             if use_valid: log += f', Validation Loss: {np.mean(v_losses):.2e}'
+            if args.lr_scheduler: log += f', LR: {scheduler.get_lr()[0]:.2e}'
             logger.info(log)
 
         # output a config file if desired

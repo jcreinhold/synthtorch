@@ -46,9 +46,8 @@ class Unet(torch.nn.Module):
         activation (str): type of activation to use throughout network except final ([relu], lrelu, linear, sigmoid, tanh)
         output_activation (str): final activation in network (relu, lrelu, [linear], sigmoid, tanh)
         is_3d (bool): if false define a 2d unet, otherwise the network is 3d
-        deconv (bool): use transpose conv for upsampling and strided conv for down (instead of upsamp with interp)
-        interp_mode (str): when using interpolation for upsampling (i.e., deconv==False), use one of
-            {'nearest', 'bilinear', 'trilinear'} depending on if the unet is 3d or 2d
+        interp_mode (str): use one of {'nearest', 'bilinear', 'trilinear'} for upsampling interpolation method
+            depending on if the unet is 3d or 2d
         upsampconv (bool): Use resize-convolution in the U-net as per the Distill article:
                             "Deconvolution and Checkerboard Artifacts" [Default=False]
         enable_dropout (bool): enable the use of dropout (if dropout_p is set to zero then there will be no dropout,
@@ -68,7 +67,7 @@ class Unet(torch.nn.Module):
     """
     def __init__(self, n_layers:int, kernel_size:int=3, dropout_p:float=0, channel_base_power:int=5,
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu', output_activation:str='linear',
-                 is_3d:bool=True, deconv:bool=True, interp_mode:str='nearest', upsampconv:bool=False, enable_dropout:bool=True,
+                 is_3d:bool=True, interp_mode:str='nearest', upsampconv:bool=False, enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip=False):
         super(Unet, self).__init__()
         # setup and store instance parameters
@@ -81,7 +80,6 @@ class Unet(torch.nn.Module):
         self.act = a = activation
         self.out_act = oa = output_activation
         self.is_3d = is_3d
-        self.deconv = deconv
         self.interp_mode = interp_mode
         self.upsampconv = upsampconv
         self.enable_dropout = enable_dropout
@@ -95,20 +93,15 @@ class Unet(torch.nn.Module):
         self.start = self._unet_blk(n_input, lc(0), lc(1), act=(a, a), norm=(nm, nm))
         self.down_layers = nn.ModuleList([self._unet_blk(lc(n), lc(n), lc(n+1), act=(a, a), norm=(nm, nm))
                                           for n in range(1, n_layers)])
-        self.bridge = self._unet_blk(lc(n_layers), lc(n_layers), lc(n_layers+1), act=(a, a), norm=(nm, nm))
-        self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n-1) if not no_skip else lc(n), lc(n-1), lc(n-1),
-                                                       (kernel_size+self.a2u, kernel_size),
+        self.bridge = self._unet_blk(lc(n_layers), lc(n_layers), lc(n_layers), act=(a, a), norm=(nm, nm))
+        self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n) if not no_skip else lc(n),
+                                                       lc(n-1), lc(n-1), (kernel_size+self.a2u, kernel_size),
                                                        act=(a, a), norm=(nm, nm))
-                                        for n in reversed(range(3, n_layers+2))])
-        self.finish = self._final_conv(lc(2) + n_input if not no_skip else lc(2), n_output, oa, bias=enable_bias)
+                                        for n in reversed(range(2, n_layers+1))])
+        self.finish = self._final_conv(lc(1) + n_input if not no_skip else lc(1), n_output, oa, bias=enable_bias)
         if upsampconv:
             self.upsampconvs = nn.ModuleList([self._conv(lc(n), lc(n), 3, bias=enable_bias)
-                                              for n in reversed(range(2, n_layers+1))])
-        if deconv:
-            self.downconv = nn.ModuleList([self._conv_act(lc(n), lc(n), act=a, norm=nm, mode='down')
-                                           for n in range(1, n_layers+1)])
-            self.upconv = nn.ModuleList([self._conv_act(lc(n), lc(n), 2, act=a, norm=nm, mode='up')
-                                         for n in reversed(range(2, n_layers+2))])
+                                              for n in reversed(range(1, n_layers))])
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         x = self._fwd_skip(x) if not self.no_skip else self._fwd_no_skip(x)
@@ -117,14 +110,14 @@ class Unet(torch.nn.Module):
     def _fwd_skip(self, x:torch.Tensor) -> torch.Tensor:
         dout = [x]
         dout.append(self.start(x))
-        x = self._down(dout[-1], 0)
-        for i, dl in enumerate(self.down_layers, 1):
+        x = self._down(dout[-1])
+        for dl in self.down_layers:
             dout.append(dl(x))
-            x = self._dropout(self._down(dout[-1], i))
-        x = self._dropout(self._up(self.bridge(x), dout[-1].shape[2:], 0))
+            x = self._dropout(self._down(dout[-1]))
+        x = self._dropout(self._up(self.bridge(x), dout[-1].shape[2:]))
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
             x = ul(torch.cat((x, d), dim=1))
-            x = self._dropout(self._up(x, dout[-i-1].shape[2:], i))
+            x = self._dropout(self._up(x, dout[-i-1].shape[2:]))
             if self.upsampconv: x = self.upsampconvs[i-1](x)
         x = self.finish(torch.cat((x, dout[0]), dim=1))
         return x
@@ -132,25 +125,25 @@ class Unet(torch.nn.Module):
     def _fwd_no_skip(self, x:torch.Tensor) -> torch.Tensor:
         sz = [x.shape]
         x = self.start(x)
-        x = self._down(x, 0)
-        for i, dl in enumerate(self.down_layers, 1):
+        x = self._down(x)
+        for dl in self.down_layers:
             x = dl(x)
             sz.append(x.shape)
-            x = self._dropout(self._down(x, i))
-        x = self._dropout(self._up(self.bridge(x), sz[-1][2:], 0))
+            x = self._dropout(self._down(x))
+        x = self._dropout(self._up(self.bridge(x), sz[-1][2:]))
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
             x = ul(x)
-            x = self._dropout(self._up(x, sz[-i-1][2:], i))
+            x = self._dropout(self._up(x, sz[-i-1][2:]))
             if self.upsampconv: x = self.upsampconvs[i-1](x)
         x = self.finish(x)
         return x
 
-    def _down(self, x:torch.Tensor, i:int) -> torch.Tensor:
-        y = (F.max_pool3d(x, (2,2,2)) if self.is_3d else F.max_pool2d(x, (2,2))) if not self.deconv else self.downconv[i](x)
+    def _down(self, x:torch.Tensor) -> torch.Tensor:
+        y = (F.max_pool3d(x, (2,2,2)) if self.is_3d else F.max_pool2d(x, (2,2)))
         return y
 
-    def _up(self, x:torch.Tensor, sz:Union[Tuple[int,int,int], Tuple[int,int]], i:int) -> torch.Tensor:
-        y = F.interpolate(x, size=sz, mode=self.interp_mode) if not self.deconv else self.upconv[i](x)
+    def _up(self, x:torch.Tensor, sz:Union[Tuple[int,int,int], Tuple[int,int]]) -> torch.Tensor:
+        y = F.interpolate(x, size=sz, mode=self.interp_mode)
         return y
 
     def _dropout(self, x:torch.Tensor) -> torch.Tensor:
@@ -162,14 +155,8 @@ class Unet(torch.nn.Module):
         ksz = self.kernel_sz if kernel_sz is None else kernel_sz
         stride = 1 if mode is None else 2
         bias = False if self.norm != 'none' and not bias else True
-        if mode is None or mode == 'down':
-            c = nn.Sequential(nn.ReplicationPad3d(ksz // 2), nn.Conv3d(in_c, out_c, ksz, stride=stride, bias=bias)) if self.is_3d else \
-                nn.Sequential(nn.ReflectionPad2d(ksz // 2),  nn.Conv2d(in_c, out_c, ksz, stride=stride, bias=bias))
-        elif mode == 'up':
-            c = nn.Sequential(nn.ConvTranspose3d(in_c, out_c, ksz, stride=stride, bias=bias)) if self.is_3d else \
-                nn.Sequential(nn.ConvTranspose2d(in_c, out_c, ksz, stride=stride, bias=bias))
-        else:
-            raise SynthNNError(f'{mode} invalid, must be one of {{downconv, upconv}}')
+        c = nn.Sequential(nn.ReplicationPad3d(ksz // 2), nn.Conv3d(in_c, out_c, ksz, stride=stride, bias=bias)) if self.is_3d else \
+            nn.Sequential(nn.ReflectionPad2d(ksz // 2),  nn.Conv2d(in_c, out_c, ksz, stride=stride, bias=bias))
         return c
 
     def _conv_act(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None,

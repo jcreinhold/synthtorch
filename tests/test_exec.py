@@ -80,7 +80,7 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(retval, 0)
 
     def test_nconv_lr_scheduler_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 '
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
                                   f'-ocf {self.jsonfn} -bs 2 -lrs -v').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -88,11 +88,23 @@ class TestCLI(unittest.TestCase):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
-    def test_nconv_data_aug_cli(self):
+    def test_nconv_data_aug_2d_cli(self):
+        train_args = f'-s {self.train_dir}/1/ -t {self.train_dir}/2/'.split()
+        args = train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -ps 0 -bs 2 '
+                             f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} --tiff '
+                             f'-p 1 1 1 1 -r 10 -ts 0.5 -sc 0.1 '
+                             f'-hf -vf -g 0.1 -gn 0.2 -std 1 -tx -ty').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self.__modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_data_aug_3d_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -ps 0 -bs 2 '
-                                  f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} '
-                                  f'-vsd {self.train_dir} -vtd {self.train_dir} -p 1 1 1 1 -r 10 -ts 0.5 -sc 0.1 '
-                                  f'-hf -vf -g 0.1 -gn 0.2 -std 1 -tx -ty').split()
+                                  f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} --net3d '
+                                  f'-vsd {self.train_dir} -vtd {self.train_dir} -p 0 0 1 1 '
+                                  f'-g 0.01 -gn 0 -std 1 -tx -ty').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self.__modify_ocf(self.jsonfn)

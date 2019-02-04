@@ -31,10 +31,10 @@ class VAE(Unet):
                  channel_base_power:int=5, activation:str='relu', is_3d:bool=True,
                  n_input:int=1, n_output:int=1, latent_size=2048):
         super(VAE, self).__init__(n_layers, channel_base_power=channel_base_power, activation=activation,
-                                  normalization='batch', deconv=False, is_3d=is_3d, upsampconv=True,
+                                  normalization='batch', is_3d=is_3d, upsampconv=True,
                                   enable_dropout=False, enable_bias=True, n_input=n_input, n_output=n_output,
                                   no_skip=True)
-        del self.bridge, self.up_layers[0], self.upsampconvs[0], self.finish  # not needed
+        del self.bridge
         self.sz = []
         self.latent_size = latent_size
         self.criterion = VAELoss()
@@ -44,11 +44,6 @@ class VAE(Unet):
         self.fsz = img_dim_conv[1:]
         self.esz = int(np.prod(self.fsz))
         logger.debug(f'Size after Conv = {self.fsz}; Encoding size = {self.esz}')
-
-        # fix decoder
-        self.up_layers.append(self._unet_blk(lc(2), lc(1), lc(1), (3, 3), act=(activation, activation), norm=('batch', 'batch')))
-        self.upsampconvs.append(self._conv(lc(1), lc(1), 3, bias=True))
-        self.finish = self._final_conv(lc(1), n_output, 'linear', bias=True)
 
         # Latent vectors mu and sigma
         self.fc1 = nn.Linear(self.esz, latent_size)
@@ -64,10 +59,10 @@ class VAE(Unet):
 
     def encode(self, x):
         x = self.start(x)
-        x = self._down(x, 0)
-        for i, dl in enumerate(self.down_layers, 1):
+        x = self._down(x)
+        for dl in self.down_layers:
             x = dl(x)
-            x = self._down(x, i)
+            x = self._down(x)
         x = F.relu(self.fc_bn1(self.fc1(x.view(x.size(0), self.esz))))
         mu = self.fc21(x)
         logvar = self.fc22(x)
@@ -76,11 +71,11 @@ class VAE(Unet):
     def __test_encode(self, x):
         self.sz.append(x.shape)
         x = self.start(x)
-        x = self._down(x, 0)
-        for i, dl in enumerate(self.down_layers, 1):
+        x = self._down(x)
+        for dl in self.down_layers:
             x = dl(x)
             self.sz.append(x.shape)
-            x = self._down(x, i)
+            x = self._down(x)
         return x.shape
 
     def reparameterize(self, mu, logvar):
@@ -90,10 +85,10 @@ class VAE(Unet):
 
     def decode(self, z):
         z = F.relu(self.fc_bn3(self.fc3(z)))
-        z = self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:], 0)
+        z = self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:])
         for i, ul in enumerate(self.up_layers, 1):
             z = ul(z)
-            z = self._up(z, self.sz[-i-1][2:], i)
+            z = self._up(z, self.sz[-i-1][2:])
             z = self.upsampconvs[i-1](z)
         z = self.finish(z)
         return z

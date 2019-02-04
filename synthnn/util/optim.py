@@ -20,7 +20,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 class BurnCosineLR(_LRScheduler):
     """
     Set the learning rate of each parameter group using a cosine annealing
-    schedule but starting at -T_max//3
+    schedule but starting at -T_max//3 (to allow for a ``burn-in'' time)
 
     Args:
         optimizer (Optimizer): Wrapped optimizer.

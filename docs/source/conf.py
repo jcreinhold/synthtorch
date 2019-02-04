@@ -17,9 +17,9 @@ import mock
 import os
 import sys
 
-MOCK_MODULES = ['nibabel','numpy','matplotlib','matplotlib.pyplot','torch','torch.nn','torch.utils',
+MOCK_MODULES = ['nibabel','numpy','matplotlib','matplotlib.pyplot','torch','torch.nn','torch.utils','torch.optim',
                 'torch.utils.data','torch.utils.data.sampler','niftidataset','niftidataset.transforms','torchvision',
-                'torchvision.transforms','fastai','fastai.vision','synthqc','niftidataset.fastai']
+                'torchvision.transforms','fastai','fastai.vision','synthqc','niftidataset.fastai','torch.optim.lr_scheduler']
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
@@ -44,7 +44,7 @@ author = 'Jacob Reinhold'
 # The short X.Y version
 version = '0.1'
 # The full version, including alpha/beta/rc tags
-release = '0.1.4'
+release = '0.1.5'
 
 
 # -- General configuration ---------------------------------------------------
