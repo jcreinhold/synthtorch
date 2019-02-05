@@ -31,10 +31,9 @@ class VAE(Unet):
                  channel_base_power:int=5, activation:str='relu', is_3d:bool=True,
                  n_input:int=1, n_output:int=1, latent_size=2048):
         super(VAE, self).__init__(n_layers, channel_base_power=channel_base_power, activation=activation,
-                                  normalization='batch', is_3d=is_3d, upsampconv=True,
-                                  enable_dropout=False, enable_bias=True, n_input=n_input, n_output=n_output,
-                                  no_skip=True)
-        del self.bridge
+                                  normalization='batch', is_3d=is_3d, enable_dropout=False, enable_bias=True,
+                                  n_input=n_input, n_output=n_output, no_skip=True)
+        del self.bridge, self.upsampconvs[0]
         self.sz = []
         self.latent_size = latent_size
         self.criterion = VAELoss()

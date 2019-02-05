@@ -35,7 +35,6 @@ def setup_log(verbosity):
 
 
 def get_args(args, arg_parser=None):
-    print(len(sys.argv[1:]))
     if arg_parser is not None:
         no_config_file = args is not None or (args is None and len(sys.argv[1:]) > 1) or sys.argv[1] == '-h' or sys.argv[1] == '--help'
     else:
@@ -105,7 +104,6 @@ def write_out_config(args, n_gpus, n_input, n_output, use_3d):
             "no_skip": args.no_skip,
             "normalization": args.normalization,
             "out_activation": args.out_activation,
-            "upsampconv": args.upsampconv
         },
         "Training Options": {
             "clip": args.clip,

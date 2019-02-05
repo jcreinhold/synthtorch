@@ -48,8 +48,6 @@ class Unet(torch.nn.Module):
         is_3d (bool): if false define a 2d unet, otherwise the network is 3d
         interp_mode (str): use one of {'nearest', 'bilinear', 'trilinear'} for upsampling interpolation method
             depending on if the unet is 3d or 2d
-        upsampconv (bool): Use resize-convolution in the U-net as per the Distill article:
-                            "Deconvolution and Checkerboard Artifacts" [Default=False]
         enable_dropout (bool): enable the use of dropout (if dropout_p is set to zero then there will be no dropout,
             however if this is false and dropout_p > 0, then no dropout will be used) [Default=True]
         enable_bias (bool): enable bias calculation in final and upsampconv layers [Default=False]
@@ -67,7 +65,7 @@ class Unet(torch.nn.Module):
     """
     def __init__(self, n_layers:int, kernel_size:int=3, dropout_p:float=0, channel_base_power:int=5,
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu', output_activation:str='linear',
-                 is_3d:bool=True, interp_mode:str='nearest', upsampconv:bool=False, enable_dropout:bool=True,
+                 is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip=False):
         super(Unet, self).__init__()
         # setup and store instance parameters
@@ -81,27 +79,26 @@ class Unet(torch.nn.Module):
         self.out_act = oa = output_activation
         self.is_3d = is_3d
         self.interp_mode = interp_mode
-        self.upsampconv = upsampconv
         self.enable_dropout = enable_dropout
         self.enable_bias = enable_bias
         self.n_input = n_input
         self.n_output = n_output
         self.no_skip = no_skip
         self.criterion = nn.MSELoss()
+        nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
-        self.start = self._unet_blk(n_input, lc(0), lc(1), act=(a, a), norm=(nm, nm))
-        self.down_layers = nn.ModuleList([self._unet_blk(lc(n), lc(n), lc(n+1), act=(a, a), norm=(nm, nm))
-                                          for n in range(1, n_layers)])
-        self.bridge = self._unet_blk(lc(n_layers), lc(n_layers), lc(n_layers), act=(a, a), norm=(nm, nm))
+        self.start = self._unet_blk(n_input, lc(0), lc(0), act=(a, a), norm=(nm, nm))
+        self.down_layers = nn.ModuleList([self._unet_blk(lc(n), lc(n+1), lc(n+1), act=(a, a), norm=(nm, nm))
+                                          for n in range(nl)])
+        self.bridge = self._unet_blk(lc(nl), lc(nl+1), lc(nl+1), act=(a, a), norm=(nm, nm))
         self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n) if not no_skip else lc(n),
-                                                       lc(n-1), lc(n-1), (kernel_size+self.a2u, kernel_size),
+                                                       lc(n), lc(n), (kernel_size+self.a2u, kernel_size),
                                                        act=(a, a), norm=(nm, nm))
-                                        for n in reversed(range(2, n_layers+1))])
-        self.finish = self._final_conv(lc(1) + n_input if not no_skip else lc(1), n_output, oa, bias=enable_bias)
-        if upsampconv:
-            self.upsampconvs = nn.ModuleList([self._conv(lc(n), lc(n), 3, bias=enable_bias)
-                                              for n in reversed(range(1, n_layers))])
+                                        for n in reversed(range(1,nl+1))])
+        self.finish = self._final_conv(lc(0) + n_input if not no_skip else lc(0), n_output, oa, bias=enable_bias)
+        self.upsampconvs = nn.ModuleList([self._conv(lc(n+1), lc(n), 3, bias=enable_bias)
+                                          for n in reversed(range(nl+1))])
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         x = self._fwd_skip(x) if not self.no_skip else self._fwd_no_skip(x)
@@ -114,11 +111,11 @@ class Unet(torch.nn.Module):
         for dl in self.down_layers:
             dout.append(dl(x))
             x = self._dropout(self._down(dout[-1]))
-        x = self._dropout(self._up(self.bridge(x), dout[-1].shape[2:]))
+        x = self.upsampconvs[0](self._dropout(self._up(self.bridge(x), dout[-1].shape[2:])))
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
             x = ul(torch.cat((x, d), dim=1))
             x = self._dropout(self._up(x, dout[-i-1].shape[2:]))
-            if self.upsampconv: x = self.upsampconvs[i-1](x)
+            x = self.upsampconvs[i](x)
         x = self.finish(torch.cat((x, dout[0]), dim=1))
         return x
 
@@ -130,11 +127,11 @@ class Unet(torch.nn.Module):
             x = dl(x)
             sz.append(x.shape)
             x = self._dropout(self._down(x))
-        x = self._dropout(self._up(self.bridge(x), sz[-1][2:]))
+        x = self.upsampconvs[0](self._dropout(self._up(self.bridge(x), sz[-1][2:])))
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
             x = ul(x)
             x = self._dropout(self._up(x, sz[-i-1][2:]))
-            if self.upsampconv: x = self.upsampconvs[i-1](x)
+            x = self.upsampconvs[i](x)
         x = self.finish(x)
         return x
 

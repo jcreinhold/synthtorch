@@ -123,9 +123,6 @@ def arg_parser():
                             help='type of normalization layer to use in network [Default=instance]')
     nn_options.add_argument('-oac', '--out-activation', type=str, default='linear', choices=('relu', 'lrelu', 'linear'),
                             help='type of activation to use in network on output [Default=linear]')
-    nn_options.add_argument('-usc', '--upsampconv', action='store_true', default=False,
-                            help='Use resize-convolution in the U-net as per the Distill article: '
-                                 '"Deconvolution and Checkerboard Artifacts" [Default=False]')
 
     vae_options = parser.add_argument_group('VAE Options')
     vae_options.add_argument('-id', '--img-dim', type=int, nargs='+', default=None, help='if using VAE, then input image dimension must '
@@ -187,7 +184,7 @@ def main(args=None):
             model = Unet(args.n_layers, kernel_size=args.kernel_size, dropout_p=args.dropout_prob,
                          channel_base_power=args.channel_base_power, add_two_up=args.add_two_up, normalization=args.normalization,
                          activation=args.activation, output_activation=args.out_activation, interp_mode=args.interp_mode,
-                         upsampconv=args.upsampconv, enable_dropout=True, enable_bias=args.enable_bias, is_3d=use_3d,
+                         enable_dropout=True, enable_bias=args.enable_bias, is_3d=use_3d,
                          n_input=n_input, n_output=n_output, no_skip=args.no_skip)
         elif args.nn_arch == 'vae':
             from synthnn.models.vae import VAE
