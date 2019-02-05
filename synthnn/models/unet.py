@@ -66,7 +66,7 @@ class Unet(torch.nn.Module):
     def __init__(self, n_layers:int, kernel_size:int=3, dropout_p:float=0, channel_base_power:int=5,
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu', output_activation:str='linear',
                  is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
-                 enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip=False):
+                 enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers

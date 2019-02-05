@@ -33,7 +33,7 @@ class VAE(Unet):
         super(VAE, self).__init__(n_layers, channel_base_power=channel_base_power, activation=activation,
                                   normalization='batch', is_3d=is_3d, enable_dropout=False, enable_bias=True,
                                   n_input=n_input, n_output=n_output, no_skip=True)
-        del self.bridge, self.upsampconvs[0]
+        del self.bridge
         self.sz = []
         self.latent_size = latent_size
         self.criterion = VAELoss()
@@ -55,6 +55,9 @@ class VAE(Unet):
         self.fc_bn3 = nn.BatchNorm1d(latent_size)
         self.fc4 = nn.Linear(latent_size, self.esz)
         self.fc_bn4 = nn.BatchNorm1d(self.esz)
+
+        # replace first upsampconv to not reduce channels
+        self.upsampconvs[0] = self._conv(lc(n_layers-1), lc(n_layers-1), 3, bias=True)
 
     def encode(self, x):
         x = self.start(x)
@@ -84,11 +87,11 @@ class VAE(Unet):
 
     def decode(self, z):
         z = F.relu(self.fc_bn3(self.fc3(z)))
-        z = self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:])
+        z = self.upsampconvs[0](self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:]))
         for i, ul in enumerate(self.up_layers, 1):
             z = ul(z)
             z = self._up(z, self.sz[-i-1][2:])
-            z = self.upsampconvs[i-1](z)
+            z = self.upsampconvs[i](z)
         z = self.finish(z)
         return z
 
