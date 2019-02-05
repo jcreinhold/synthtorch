@@ -161,7 +161,7 @@ def main(args=None):
                     out_img_nib = [nib.Nifti1Image(out_img[i]/count_mtx, img_nib.affine, img_nib.header) for i in range(args.n_output)]
                 else:  # whole-image-based 3D synthesis
                     test_img = torch.from_numpy(img).to(device)[None, ...]  # add empty batch dimension
-                    out_img = np.squeeze(fwd(model, test_img))
+                    out_img = fwd(model, test_img)[0]  # remove empty batch dimension
                     out_img_nib = [nib.Nifti1Image(out_img[i], img_nib.affine, img_nib.header) for i in range(args.n_output)]
                 save_imgs(out_img_nib, output_dir, k, logger)
 
