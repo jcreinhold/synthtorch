@@ -35,8 +35,9 @@ def setup_log(verbosity):
 
 
 def get_args(args, arg_parser=None):
+    print(len(sys.argv[1:]))
     if arg_parser is not None:
-        no_config_file = args is not None or (args is None and len(sys.argv[1:]) > 1)
+        no_config_file = args is not None or (args is None and len(sys.argv[1:]) > 1) or sys.argv[1] == '-h' or sys.argv[1] == '--help'
     else:
         no_config_file = not sys.argv[1].endswith('.json') if args is None else not args[0].endswith('json')
     if no_config_file and arg_parser is None:
