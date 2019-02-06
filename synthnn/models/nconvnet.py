@@ -44,9 +44,10 @@ class SimpleConvNet(torch.nn.Module):
             nn.InstanceNorm3d(n_output, affine=True) if is_3d else nn.InstanceNorm2d(n_output, affine=True),
             nn.Dropout3d(dropout_p) if is_3d else nn.Dropout2d(dropout_p)) for ksz in self.kernel_sz])
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
         for l in self.layers:
             x = l(x)
         return x
 
-    predict = forward
+    def predict(self, x:torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        return self.forward(x)

@@ -30,11 +30,12 @@ Requirements
 ------------
 
 - matplotlib
-- nibabel
-- [niftidataset](https://github.com/jcreinhold/niftidataset)
-- numpy
-- torch
-- torchvision
+- nibabel >= 2.3.1
+- [niftidataset](https://github.com/jcreinhold/niftidataset) >= 0.1.4
+- numpy >= 1.15.4
+- pillow >= 5.3.0
+- torch >= 1.0.0
+- torchvision >= 0.2.1
 
 Installation
 ------------
@@ -46,7 +47,9 @@ Tutorial
 
 [5 minute Overview](https://github.com/jcreinhold/synthnn/blob/master/tutorials/5min_tutorial.md)
 
-In addition to the above small tutorial, there is consolidated documentation [here](https://synthnn.readthedocs.io/en/latest/).
+[Jupyter Notebook example](https://nbviewer.jupyter.org/github/jcreinhold/synthnn/blob/master/tutorials/tutorial.ipynb)
+
+In addition to the above small tutorial and example notebook, there is consolidated documentation [here](https://synthnn.readthedocs.io/en/latest/).
 
 Singularity
 -----------

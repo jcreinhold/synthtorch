@@ -3,7 +3,7 @@
 """
 tests.test_exec
 
-test the synthit command line interfaces for runtime errors
+test the synthnn command line interfaces for runtime errors
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
@@ -13,19 +13,17 @@ Created on: Sep 07, 2018
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
 from synthnn.exec.nn_train import main as nn_train
 from synthnn.exec.nn_predict import main as nn_predict
-from synthnn.util.io import glob_nii, split_filename
+from niftidataset import glob_imgs, split_filename
 
 try:
-    import fastai
-    from synthnn.exec.fa_train import main as fa_train
+    import annom
 except ImportError:
-    fastai = None
+    annom = None
 
 
 class TestCLI(unittest.TestCase):
@@ -35,38 +33,53 @@ class TestCLI(unittest.TestCase):
         self.nii_dir = os.path.join(wd, 'test_data', 'nii')
         self.mask_dir = os.path.join(wd, 'test_data', 'masks')
         self.tif_dir = os.path.join(wd, 'test_data', 'tif')
+        self.png_dir = os.path.join(wd, 'test_data', 'png')
         self.out_dir = tempfile.mkdtemp()
         os.mkdir(os.path.join(self.out_dir, 'models'))
-        self.train_dir = os.path.join(self.out_dir, 'train')
+        self.train_dir = os.path.join(self.out_dir, 'imgs')
         os.mkdir(self.train_dir)
-        os.mkdir(os.path.join(self.train_dir, '1'))
-        os.mkdir(os.path.join(self.train_dir, '2'))
-        nii = glob_nii(self.nii_dir)[0]
+        os.mkdir(os.path.join(self.train_dir, 'tif'))
+        os.mkdir(os.path.join(self.train_dir, 'png'))
+        nii = glob_imgs(self.nii_dir)[0]
         tif = os.path.join(self.tif_dir, 'test.tif')
+        png = os.path.join(self.png_dir, 'test.png')
         path, base, ext = split_filename(nii)
         for i in range(8):
             shutil.copy(nii, os.path.join(self.train_dir, base + str(i) + ext))
-            shutil.copy(tif, os.path.join(self.train_dir, '1', base + str(i) + '.tif'))
-            shutil.copy(tif, os.path.join(self.train_dir, '2', base + str(i) + '.tif'))
+            shutil.copy(tif, os.path.join(self.train_dir, 'tif', base + str(i) + '.tif'))
+            shutil.copy(png, os.path.join(self.train_dir, 'png', base + str(i) + '.png'))
         self.train_args = f'-s {self.train_dir} -t {self.train_dir}'.split()
         self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
         self.jsonfn = f'{self.out_dir}/test.json'
 
-    def __modify_ocf(self, jsonfn, multi=1):
+    def _modify_ocf(self, jsonfn, multi=1, temperature_map=False, calc_var=False,
+                    mc=None, predict_seg=False, png_out=False, tif_out=False):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
         with open(jsonfn, 'w') as f:
-            arg_dict['Required']['predict_dir'] = [f'{self.nii_dir}'] * multi
+            arg_dict['Required']['predict_dir'] = ([f'{self.nii_dir}'] * multi) if not png_out and not tif_out else \
+                                                   [f'{self.train_dir}/png'] if png_out and not tif_out else \
+                                                   [f'{self.train_dir}/tif']
             arg_dict['Required']['predict_out'] = f'{self.out_dir}/test'
+            arg_dict['Prediction Options']['calc_var'] = calc_var
+            arg_dict['Prediction Options']['monte_carlo'] = mc
+            arg_dict['Prediction Options']['temperature_map'] = temperature_map
+            arg_dict['SegAE Options']['predict_seg'] = predict_seg
             json.dump(arg_dict, f, sort_keys=True, indent=2)
+
+    def tearDown(self):
+        shutil.rmtree(self.out_dir)
+
+
+class TestNConv(TestCLI):
 
     def test_nconv_nopatch_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -ps 0 -bs 2 '
                                   f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} '
-                                  f'-vsd {self.train_dir} -vtd {self.train_dir}').split()
+                                  f'-vsd {self.train_dir} -vtd {self.train_dir} -v').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -75,39 +88,130 @@ class TestCLI(unittest.TestCase):
                                   f'-ocf {self.jsonfn} -bs 2').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
-    def test_nconv_lr_scheduler_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
-                                  f'-ocf {self.jsonfn} -bs 2 -lrs -v').split()
+    def test_nconv_checkpoint_and_load_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 2 -nl 1 -ps 16 ' 
+                                  f'-ocf {self.jsonfn} -bs 2 -chk 1').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
+        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 2 -nl 1 -ps 16 ' 
+                                  f'-ocf {self.jsonfn} -bs 2').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
         retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_burn_cosine_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -lrs burncosine -v').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_restarts_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -lrs cosinerestart -tm 1.2 -rp 5 -v').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_adabound_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -opt adabound').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_amsbound_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -opt amsbound').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_amsgrad_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -opt amsgrad').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_nesterov_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -opt nesterov').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_sgdw_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -opt sgdw').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_adamw_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -opt adamw').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_weightdecay_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -wd 0.1').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_writecsv_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -csv {self.out_dir}/test.csv').split()
+        retval = nn_train(args)
         self.assertEqual(retval, 0)
 
     def test_nconv_data_aug_2d_cli(self):
-        train_args = f'-s {self.train_dir}/1/ -t {self.train_dir}/2/'.split()
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -ps 0 -bs 2 '
-                             f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} --tiff '
-                             f'-p 1 1 1 1 -r 10 -ts 0.5 -sc 0.1 '
-                             f'-hf -vf -g 0.1 -gn 0.2 -std 1 -tx -ty').split()
+                             f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} -e tif '
+                             f'-p 1 1 1 1 1 -r 10 -ts 0.5 -sc 0.1 -mean 1 -std 1 '
+                             f'-hf -vf -g 0.1 -gn 0.2 -pwr 1 -tx -ty -blk 5 6').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
     def test_nconv_data_aug_3d_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -ps 0 -bs 2 '
                                   f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} --net3d '
-                                  f'-vsd {self.train_dir} -vtd {self.train_dir} -p 0 0 1 1 '
-                                  f'-g 0.01 -gn 0 -std 1 -tx -ty').split()
+                                  f'-vsd {self.train_dir} -vtd {self.train_dir} -p 0 0 1 1 1 '
+                                  f'-g 0.01 -gn 0 -pwr 1 -tx -ty').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -116,7 +220,7 @@ class TestCLI(unittest.TestCase):
                                   f'-ocf {self.jsonfn} -bs 2 -c 0.25').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -125,60 +229,56 @@ class TestCLI(unittest.TestCase):
                                   f'-ocf {self.jsonfn} -bs 1').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
-    def test_unet_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 -bs 2 --net3d '
-                                  f'-ocf {self.jsonfn}').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    def test_vae_2d_3l_cli(self):
-        train_args = f'-s {self.train_dir}/1/ -t {self.train_dir}/2/'.split()
-        args = train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 2 -bs 4 --tiff '
-                             f'--img-dim 256 256 --latent-size 10 -ocf {self.jsonfn} -sa 0').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        #TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
-
-    def test_vae_2d_5l_cli(self):
-        train_args = f'-s {self.train_dir}/1/ -t {self.train_dir}/2/'.split()
-        args = train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 5 -cbp 1 -bs 4 --tiff '
-                             f'--img-dim 256 256 --latent-size 10 -ocf {self.jsonfn} -sa 0').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        #TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
-
-    def test_vae_3d_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 1 -ps 16 -bs 4 --net3d '
-                                  f'--img-dim 16 16 16 --latent-size 10 -ocf {self.jsonfn}').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    def test_unet_no_skip_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 -bs 2 --net3d --no-skip '
-                                  f'-ocf {self.jsonfn}').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    def test_unet_multimodal_cli(self):
-        train_args = f'-s {self.train_dir}/1/ {self.train_dir}/1/ -t {self.train_dir}/2/ {self.train_dir}/2/'.split()
-        args = train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 -bs 2 --tiff '
+    def test_nconv_2d_crop_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -ps 0 -bs 2 -e tif -ps 8 '
                              f'-ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn, multi=2)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_2d_var_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -ps 0 -bs 2 -e tif '
+                             f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, calc_var=True)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_png_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -ps 0 -bs 2 -e png '
+                             f'-ocf {self.jsonfn}  -p 1 1 0 0 0 ').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, calc_var=True, png_out=True)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_tif_predict_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -ps 0 -bs 2 -e tif '
+                             f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, calc_var=True, tif_out=True)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_3d_var_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -ps 0 -bs 1 --net3d '
+                                  f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, calc_var=True)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -188,22 +288,299 @@ class TestCLI(unittest.TestCase):
                              f'-ocf {self.jsonfn} -bs 2').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn, multi=2)
+        self._modify_ocf(self.jsonfn, multi=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
     def test_nconv_multimodal_tiff_cli(self):
-        train_args = f'-s {self.train_dir}/1/ {self.train_dir}/1/ -t {self.train_dir}/2/ {self.train_dir}/2/'.split()
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 '
-                             f'-ocf {self.jsonfn} -bs 2 --tiff').split()
+                             f'-ocf {self.jsonfn} -bs 2 -e tif').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self.__modify_ocf(self.jsonfn, multi=2)
+        self._modify_ocf(self.jsonfn, multi=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
-    def tearDown(self):
-        shutil.rmtree(self.out_dir)
+
+class TestUnet(TestCLI):
+
+    def test_unet_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 -bs 2 --net3d '
+                                  f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_cp_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 -bs 2 --net3d '
+                                  f'-ocf {self.jsonfn} -l cp').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_mae_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 -bs 2 --net3d '
+                                  f'-ocf {self.jsonfn} -l mae').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_layernorm_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 -bs 2 --net3d '
+                                  f'-ocf {self.jsonfn} -nm layer').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_spectral_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 -bs 2 --net3d '
+                                  f'-ocf {self.jsonfn} -nm spectral').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_weight_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 -bs 2 --net3d '
+                                  f'-ocf {self.jsonfn} -nm weight').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_attention_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 3 -ps 0 -bs 2 -e tif -ps 8 '
+                             f'-ocf {self.jsonfn} -at').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_noise_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 2 -nl 3 -cbp 1 -ps 16 -bs 2 --net3d '
+                                  f'-ocf {self.jsonfn} -nz 1').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_no_skip_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 -bs 2 --net3d --no-skip '
+                                  f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_multimodal_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 -bs 2 -e tif '
+                             f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+
+class TestVAE(TestCLI):
+
+    def test_vae_2d_3l_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 2 -bs 4 -e tif -ps 32 '
+                             f'--img-dim 32 32 --latent-size 10 -ocf {self.jsonfn} -sa 0').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        #TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
+
+    def test_vae_2d_5l_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 5 -cbp 1 -bs 4 -e tif -ps 32 '
+                             f'--img-dim 32 32 --latent-size 10 -ocf {self.jsonfn} -sa 0').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        #TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
+
+    def test_vae_3d_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 1 -ps 16 -bs 4 --net3d '
+                                  f'--img-dim 16 16 16 --latent-size 10 -ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+
+class TestSegAE(TestCLI):
+
+    def test_segae_2d_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 2 -nl 3 -cbp 2 -ps 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -is 1 -nseg 4 -li 0.1 0.2 0.3 0.4 -fl').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_segae_2d_mse_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 3 -cbp 2 -ps 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} --use-mse -is 0 -sm 0.1 --clip 1').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_segae_2d_noskip_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 3 -cbp 2 -ps 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ns -is 0').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_segae_2d_mask_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 2 -nl 3 -cbp 2 -ps 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -mask -is 1').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_segae_2d_predict_seg_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 3 -cbp 1 -ps 0 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -is 0').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, multi=2, predict_seg=True)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_segae_3d_cli(self):
+        train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir}'.split()
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 1 -cbp 1 -ps 0 -bs 4 --net3d '
+                             f'-ocf {self.jsonfn} -is 0').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_segae_3d_predict_seg_cli(self):
+        train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir}'.split()
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 1 -cbp 1 -ps 0 -bs 4 --net3d '
+                             f'-ocf {self.jsonfn} -is 0').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, multi=2, predict_seg=True)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+
+class TestOrdNet(TestCLI):
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_ord_2d_cli(self):
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+            valid = f'-vsd {self.train_dir}/tif/ -vtd {self.train_dir}/tif/'
+            args = train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -e tif '
+                                 f'-ocf {self.jsonfn} -ord 1 10 10 {valid} -dp 0.5').split()
+            retval = nn_train(args)
+            self.assertEqual(retval, 0)
+            self._modify_ocf(self.jsonfn, mc=2)
+            retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_ord_3d_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -ps 16 -3d '
+                                  f'-ocf {self.jsonfn} -ord 1 10 2 -vs 0.5 -ns -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_ord_2d_temperature_map_calc_var_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ord 1 10 4 -vs 0.5 -ns -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, temperature_map=True, calc_var=True, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_ord_2d_temperature_map_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ord 1 10 3 -vs 0.5 -ns -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, temperature_map=True, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_ord_2d_temperature_map_png_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -ord 1 10 3 -vs 0.5 -ns -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, temperature_map=True, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_ord_3d_temperature_map_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -ps 16 -3d '
+                                  f'-ocf {self.jsonfn} -ord 1 10 5 -vs 0.5 -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, temperature_map=True, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+
+class TestLRSDNet(TestCLI):
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_lrsd_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/lrsdnet.mdl -na lrsdnet -ne 1 -nl 2 -cbp 2 -ps 32 -bs 4 -3d '
+                                  f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
 
 
 if __name__ == '__main__':

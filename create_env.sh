@@ -24,6 +24,8 @@ conda update -n base conda --yes
 packages=(
     numpy
     matplotlib
+    scikit-learn
+    scipy
 )
 
 fastai_packages=(
@@ -37,7 +39,7 @@ if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" == false ]]; then
     pytorch_packages=(
         pytorch
         torchvision
-        cuda92
+        cudatoolkit=9.0
     )
 else
     pytorch_packages=(

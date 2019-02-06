@@ -16,7 +16,9 @@ PyTorch is the backend.
    :caption: Contents:
 
    exec
+   learn
    models
+   plot
    util
 
 Indices and tables

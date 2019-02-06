@@ -19,13 +19,13 @@ import sys
 
 MOCK_MODULES = ['nibabel','numpy','matplotlib','matplotlib.pyplot','torch','torch.nn','torch.utils','torch.optim',
                 'torch.utils.data','torch.utils.data.sampler','niftidataset','niftidataset.transforms','torchvision','torch.nn.functional',
-                'torchvision.transforms','fastai','fastai.vision','synthqc','niftidataset.fastai','torch.optim.lr_scheduler']
+                'torchvision.transforms','fastai','fastai.vision','synthqc','niftidataset.fastai','torch.optim.lr_scheduler','annom','dataclasses']
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
 # this should not be needed with the above, but meh
-autodoc_mock_imports = ['nibabel','numpy','torch','torchvision','matplotlib','niftidataset','fastai','synthqc']
+autodoc_mock_imports = ['nibabel','numpy','torch','torchvision','matplotlib','niftidataset','fastai','synthqc','annom','dataclasses']
 
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
@@ -42,9 +42,9 @@ copyright = '2018, Jacob Reinhold'
 author = 'Jacob Reinhold'
 
 # The short X.Y version
-version = '0.1'
+version = '0.2'
 # The full version, including alpha/beta/rc tags
-release = '0.1.5'
+release = '0.2.0'
 
 
 # -- General configuration ---------------------------------------------------

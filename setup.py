@@ -20,7 +20,7 @@ with open('README.md') as f:
 with open('LICENSE') as f:
     license = f.read()
 
-version = '0.1.5'
+version = '0.2.0'
 
 args = dict(
     name='synthnn',
@@ -41,8 +41,9 @@ args = dict(
 )
 
 setup(install_requires=['matplotlib',
-                        'nibabel',
-                        'niftidataset',
-                        'numpy',
-                        'torch',
-                        'torchvision'], **args)
+                        'nibabel>=2.3.1',
+                        'niftidataset>=0.1.4',
+                        'numpy>=1.15.4',
+                        'pillow>=5.3.0'
+                        'torch>=1.0.0',
+                        'torchvision>=0.2.1'], **args)

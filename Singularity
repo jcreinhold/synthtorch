@@ -32,8 +32,8 @@ From: continuumio/miniconda3
 
     # install environment and package
     /opt/conda/bin/conda update -n base conda --yes
-    /opt/conda/bin/conda install --override-channels -c pytorch -c defaults numpy==1.15.4 matplotlib pytorch torchvision cudatoolkit=9.2 cuda92 --yes
-    /opt/conda/bin/conda install --override-channels -c conda-forge -c defaults numpy==1.15.4 nibabel scikit-image --yes
+    /opt/conda/bin/conda install --override-channels -c pytorch -c defaults numpy=1.15.4 matplotlib pytorch torchvision cudatoolkit=9.0 --yes
+    /opt/conda/bin/conda install --override-channels -c conda-forge -c defaults numpy=1.15.4 nibabel scikit-image --yes
     /opt/conda/bin/pip install git+git://github.com/jcreinhold/niftidataset.git
     /opt/conda/bin/pip install git+git://github.com/jcreinhold/synthqc.git
     /opt/conda/bin/pip install git+git://github.com/NVIDIA/apex.git
