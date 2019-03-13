@@ -163,7 +163,7 @@ class Learner:
     def predict(self, fn:str, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False):
         self.model.eval()
         f = fn[0].lower()
-        tmap = temperature_map if self.predictor.n_seg is None else True
+        tmap = temperature_map if self.predictor.n_seg is None else True  # hack to produce segmentations w/ segae
         if f.endswith('.nii') or f.endswith('.nii.gz'):
             img_nib = nib.load(fn[0])
             img = np.stack([np.asarray(nib.load(f).get_data(), dtype=np.float32) for f in fn])
@@ -268,7 +268,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
         try:
             from annom.models import OrdNet
         except (ImportError, ModuleNotFoundError):
-            raise SynthNNError('Cannot use the OrdNet loss without the annom toolbox.')
+            raise SynthNNError('Cannot use the OrdNet without the annom toolbox.')
         model = OrdNet(config.n_layers, kernel_size=config.kernel_size, dropout_p=config.dropout_prob,
                        channel_base_power=config.channel_base_power, add_two_up=config.add_two_up, normalization=config.normalization,
                        activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
@@ -279,15 +279,25 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
         try:
             from annom.models import LRSDNet
         except (ImportError, ModuleNotFoundError):
-            raise SynthNNError('Cannot use the LRSDNet loss without the annom toolbox.')
+            raise SynthNNError('Cannot use the LRSDNet without the annom toolbox.')
         model = LRSDNet(config.n_layers, kernel_size=config.kernel_size, dropout_p=config.dropout_prob,
                         channel_base_power=config.channel_base_power, add_two_up=config.add_two_up, normalization=config.normalization,
                         activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
                         enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
                         n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
-                        noise_lvl=config.noise_lvl, attention=config.attention)
+                        noise_lvl=config.noise_lvl, attention=config.attention, penalty=config.lrsd_weights)
+    elif config.nn_arch == 'hotnet':
+        try:
+            from annom.models import HotNet
+        except (ImportError, ModuleNotFoundError):
+            raise SynthNNError('Cannot use the HotNet without the annom toolbox.')
+        model = HotNet(config.n_layers, kernel_size=config.kernel_size, dropout_p=config.dropout_prob,
+                       channel_base_power=config.channel_base_power, add_two_up=config.add_two_up, normalization=config.normalization,
+                       activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
+                       enable_bias=config.enable_bias, is_3d=config.net3d, n_input=config.n_input, n_output=config.n_output,
+                       no_skip=config.no_skip, noise_lvl=config.noise_lvl, attention=config.attention)
     else:
-        raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv, unet, vae}} are the only supported options.')
+        raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,ordnet,lrsdnet,hotnet}} are the only supported options.')
     return model
 
 

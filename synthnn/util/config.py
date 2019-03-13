@@ -108,6 +108,7 @@ class ExperimentConfig(dict):
         self.betas = None
         self.restart_period = None
         self.t_mult = None
+        self.lrsd_weights = None
         super(ExperimentConfig, self).__init__(*args, **kwargs)
         self.__dict__ = self
         self._check_config()
@@ -134,8 +135,8 @@ class ExperimentConfig(dict):
                 self.block = None
                 self.mean, self.std = None, None
 
-        if self.ord_params is None and self.temperature_map:
-            logger.warning('temperature_map is only a valid option when using ordinal regression.')
+        if (self.nn_arch.lower() != 'ordnet' and self.nn_arch.lower() != 'hotnet') and self.temperature_map:
+            logger.warning('temperature_map is only a valid option when using OrdNet or HotNet.')
             self.temperature_map = False
 
         if self.loss == 'lrds' and not self.net3d:
@@ -237,8 +238,13 @@ def _get_arg_dict(args):
             "no_skip": args.no_skip,
             "noise_lvl": args.noise_lvl,
             "normalization": args.normalization,
-            "ord_params": args.ord_params,
             "out_activation": args.out_activation,
+        },
+        "LRSDNet Options": {
+            "lrsd_weights": args.lrsd_weights
+        },
+        "OrdNet Options": {
+            "ord_params": args.ord_params,
             "temperature_map": False if not hasattr(args,'temperature_map') else args.temperature_map
         },
         "VAE Options": {

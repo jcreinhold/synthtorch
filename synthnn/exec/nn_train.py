@@ -109,15 +109,6 @@ def arg_parser():
     nn_options.add_argument('-ac', '--activation', type=str, default='relu',
                             choices=('relu', 'lrelu','prelu','elu','celu','selu','tanh','sigmoid'),
                             help='type of activation to use throughout network except output [Default=relu]')
-    nn_options.add_argument('-atu', '--add-two-up', action='store_true', default=False,
-                            help='Add two to the kernel size on the upsampling in the U-Net as '
-                                 'per Zhao, et al. 2017 [Default=False]')
-    nn_options.add_argument('-at', '--attention', action='store_true', default=False,
-                            help='use attention gates in up conv layers in unet[Default=False]')
-    nn_options.add_argument('-cbp', '--channel-base-power', type=int, default=5,
-                            help='2 ** channel_base_power is the number of channels in the first layer '
-                                 'and increases in each proceeding layer such that in the n-th layer there are '
-                                 '2 ** (channel_base_power + n) channels [Default=5]')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
                             help='dropout probability per conv block [Default=0]')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
@@ -126,8 +117,6 @@ def arg_parser():
                             help='use this type of initialization for the network [Default=kaiming]')
     nn_options.add_argument('-ing', '--init-gain', type=float, default=0.2,
                             help='use this initialization gain for initialization [Default=0.2]')
-    nn_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
-                            help='use this type of interpolation for upsampling [Default=nearest]')
     nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
                             help='convolutional kernel size (squared or cubed) [Default=3]')
     nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
@@ -138,18 +127,40 @@ def arg_parser():
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
     nn_options.add_argument('-3d', '--net3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
     nn_options.add_argument('-na', '--nn-arch', type=str, default='unet',
-                            choices=('unet','nconv','vae','segae','ordnet','lrsdnet'),
+                            choices=('unet','nconv','vae','segae','ordnet','lrsdnet','hotnet'),
                             help='specify neural network architecture to use')
-    nn_options.add_argument('-ns', '--no-skip', action='store_true', default=False, help='do not use skip connections in unet [Default=False]')
-    nn_options.add_argument('-nz', '--noise-lvl', type=float, default=0, help='add this level of noise to model parameters [Default=0]')
     nn_options.add_argument('-nm', '--normalization', type=str, default='instance',
                             choices=('instance', 'batch', 'layer', 'weight', 'spectral', 'none'),
                             help='type of normalization layer to use in network [Default=instance]')
-    nn_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
-                            help='ordinal regression params (start, stop, n_bins) [Default=None]')
     nn_options.add_argument('-oac', '--out-activation', type=str, default='linear',
                             choices=('linear','relu', 'lrelu','prelu','elu','celu','selu','tanh','sigmoid'),
                             help='type of activation to use in network on output [Default=linear]')
+
+    unet_options = parser.add_argument_group('UNet Options')
+    unet_options.add_argument('-atu', '--add-two-up', action='store_true', default=False,
+                              help='Add two to the kernel size on the upsampling in the U-Net as '
+                                   'per Zhao, et al. 2017 [Default=False]')
+    unet_options.add_argument('-at', '--attention', action='store_true', default=False,
+                              help='use attention gates in up conv layers in unet[Default=False]')
+
+    unet_options.add_argument('-cbp', '--channel-base-power', type=int, default=5,
+                              help='2 ** channel_base_power is the number of channels in the first layer '
+                                   'and increases in each proceeding layer such that in the n-th layer there are '
+                                   '2 ** (channel_base_power + n) channels [Default=5]')
+    unet_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
+                              help='use this type of interpolation for upsampling [Default=nearest]')
+    unet_options.add_argument('-ns', '--no-skip', action='store_true', default=False,
+                              help='do not use skip connections in unet [Default=False]')
+    unet_options.add_argument('-nz', '--noise-lvl', type=float, default=0,
+                              help='add this level of noise to model parameters [Default=0]')
+
+    lrsdnet_options = parser.add_argument_group('LRSDNet Options')
+    lrsdnet_options.add_argument('-lrsd', '--lrsd-weights', type=float, nargs=2, default=None,
+                                 help='penalties for lrsd [Default=None]')
+
+    ordnet_options = parser.add_argument_group('OrdNet Options')
+    ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
+                                help='ordinal regression params (start, stop, n_bins) [Default=None]')
 
     vae_options = parser.add_argument_group('VAE Options')
     vae_options.add_argument('-id', '--img-dim', type=int, nargs='+', default=None,
