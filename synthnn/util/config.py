@@ -243,7 +243,7 @@ def _get_arg_dict(args):
         "LRSDNet Options": {
             "lrsd_weights": args.lrsd_weights
         },
-        "OrdNet Options": {
+        "Ord/HotNet Options": {
             "ord_params": args.ord_params,
             "temperature_map": False if not hasattr(args,'temperature_map') else args.temperature_map
         },

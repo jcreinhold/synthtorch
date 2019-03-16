@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class SegAE(Unet):
 
     def __init__(self, n_layers:int=2, dropout_p:float=0, channel_base_power:int=5, activation:str='lrelu',
-                 is_3d:bool=True, enable_dropout:bool=True, n_input:int=1, n_output:int=1,
+                 is_3d:bool=True, enable_dropout:bool=True, n_input:int=1, n_output:int=1, inplace:bool=False,
                  n_seg:int=5, ortho_penalty:float=1, norm_penalty:float=1, use_mse:bool=False, no_skip:bool=True,
                  use_mask:bool=True, initialize:int=5, seg_min:float=0, freeze_last:bool=False,
                  last_init:List[float]=None):
@@ -49,7 +49,7 @@ class SegAE(Unet):
         super(SegAE, self).__init__(n_layers, dropout_p=dropout_p, channel_base_power=channel_base_power,
                                     activation=activation, normalization='batch', is_3d=is_3d,
                                     enable_dropout=enable_dropout, enable_bias=True, n_input=n_input, n_output=n_output,
-                                    no_skip=no_skip)
+                                    no_skip=no_skip, inplace=inplace)
         self.criterion = SegAELoss(ortho_penalty, norm_penalty, use_mse, initialize, n_seg)
         self.finish[2].weight.requires_grad = not freeze_last
 

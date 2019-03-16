@@ -60,7 +60,7 @@ class Learner:
         if isinstance(config,str):
             config = ExperimentConfig.load_json(config)
         device, use_cuda = get_device(config.gpu_selector, config.disable_cuda)
-        model = get_model(config, True, device)
+        model = get_model(config, True, device, False)
         logger.debug(model)
         logger.info(f'Number of trainable parameters in model: {get_num_params(model)}')
         if os.path.isfile(config.trained_model):
@@ -95,7 +95,7 @@ class Learner:
             config = ExperimentConfig.load_json(config)
         device, use_cuda = get_device(config.gpu_selector, config.disable_cuda)
         nsyn = config.monte_carlo or 1
-        model = get_model(config, nsyn > 1 and config.dropout_prob > 0, device)
+        model = get_model(config, nsyn > 1 and config.dropout_prob > 0, device, True)
         logger.debug(model)
         model, _ = load_model(model, config.trained_model, device)
         if use_cuda: model.cuda(device=device)
@@ -227,7 +227,7 @@ class Learner:
         torch.save(state, fn)
 
 
-def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional[torch.device]=None):
+def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional[torch.device]=None, inplace:bool=False):
     """
     instantiate a model based on an ExperimentConfig class instance
 
@@ -251,7 +251,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                      activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
                      enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
                      n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
-                     noise_lvl=config.noise_lvl, loss=config.loss, attention=config.attention)
+                     noise_lvl=config.noise_lvl, loss=config.loss, attention=config.attention, inplace=inplace)
     elif config.nn_arch == 'vae':
         from ..models.vae import VAE
         model = VAE(config.n_layers, config.img_dim, channel_base_power=config.channel_base_power, activation=config.activation,
@@ -260,7 +260,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
         from ..models.segae import SegAE
         model = SegAE(config.n_layers, dropout_p=config.dropout_prob, channel_base_power=config.channel_base_power,
                       activation=config.activation, is_3d=config.net3d, enable_dropout=enable_dropout,
-                      n_input=config.n_input, n_output=config.n_output, n_seg=config.n_seg,
+                      n_input=config.n_input, n_output=config.n_output, inplace=inplace, n_seg=config.n_seg,
                       ortho_penalty=config.ortho_penalty, norm_penalty=config.norm_penalty, use_mse=config.use_mse,
                       no_skip=config.no_skip, use_mask=config.use_mask, initialize=config.initialize_seg,
                       seg_min=config.seg_min, freeze_last=config.freeze_last, last_init=config.last_init)
@@ -274,7 +274,8 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                        activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
                        enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
                        n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
-                       noise_lvl=config.noise_lvl, attention=config.attention, ord_params=config.ord_params, device=device)
+                       noise_lvl=config.noise_lvl, attention=config.attention, ord_params=config.ord_params,
+                       inplace=inplace, device=device)
     elif config.nn_arch == 'lrsdnet':
         try:
             from annom.models import LRSDNet
@@ -285,7 +286,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                         activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
                         enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
                         n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
-                        noise_lvl=config.noise_lvl, attention=config.attention, penalty=config.lrsd_weights)
+                        noise_lvl=config.noise_lvl, attention=config.attention, inplace=inplace, penalty=config.lrsd_weights)
     elif config.nn_arch == 'hotnet':
         try:
             from annom.models import HotNet
@@ -295,7 +296,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                        channel_base_power=config.channel_base_power, add_two_up=config.add_two_up, normalization=config.normalization,
                        activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
                        enable_bias=config.enable_bias, is_3d=config.net3d, n_input=config.n_input, n_output=config.n_output,
-                       no_skip=config.no_skip, noise_lvl=config.noise_lvl, attention=config.attention)
+                       no_skip=config.no_skip, noise_lvl=config.noise_lvl, attention=config.attention, inplace=inplace)
     else:
         raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,ordnet,lrsdnet,hotnet}} are the only supported options.')
     return model

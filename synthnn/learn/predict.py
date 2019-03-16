@@ -140,7 +140,9 @@ class Predictor:
         return out_img
 
     def _fwd(self, img, temperature_map):
-        return self.model.predict(img, temperature_map).cpu().detach().numpy()
+        with torch.no_grad():
+            out = self.model.predict(img, temperature_map).cpu().detach().numpy()
+        return out
 
     @staticmethod
     def _get_overlapping_3d_idxs(psz, img):

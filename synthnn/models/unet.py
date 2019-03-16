@@ -58,6 +58,7 @@ class Unet(torch.nn.Module):
         noise_lvl (float): add gaussian noise to weights with this std [Default=0]
         loss (str): loss function used to train network
         attention (bool): use (self-)attention gates (only works with 2d networks)
+        inplace (bool): use inplace operations (for prediction)
 
     References:
         [1] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
@@ -71,7 +72,7 @@ class Unet(torch.nn.Module):
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu',
                  output_activation:str='linear', is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
-                 loss:Optional[str]=None, attention:bool=False):
+                 loss:Optional[str]=None, attention:bool=False, inplace:bool=False):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -92,6 +93,7 @@ class Unet(torch.nn.Module):
         self.noise_lvl = noise_lvl
         self.criterion = get_loss(loss)
         self.use_attention = attention and not is_3d
+        self.inplace = inplace
         nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
@@ -163,8 +165,8 @@ class Unet(torch.nn.Module):
 
     def _add_noise(self, x:torch.Tensor) -> torch.Tensor:
         if self.dropout_p > 0:
-            x = F.dropout3d(x, self.dropout_p, training=self.enable_dropout) if self.is_3d else \
-                F.dropout2d(x, self.dropout_p, training=self.enable_dropout)
+            x = F.dropout3d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace) if self.is_3d else \
+                F.dropout2d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace)
         if self.noise_lvl > 0:
             x.add_(torch.randn_like(x.detach()) * self.noise_lvl)
         return x
