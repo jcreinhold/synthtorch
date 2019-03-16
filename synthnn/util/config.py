@@ -127,12 +127,11 @@ class ExperimentConfig(dict):
             self.attention = False
 
         if self.prob is not None:
-            if self.net3d and (self.prob[0] > 0 or self.prob[1] > 0 or self.prob[3] > 0):
-                logger.warning('Cannot do affine, flipping, block or normalization data augmentation with 3D networks.')
-                self.prob[0], self.prob[1], self.prob[3] = 0, 0, 0
+            if self.net3d and (self.prob[0] > 0 or self.prob[1] > 0):
+                logger.warning('Cannot do affine, flipping or normalization data augmentation with 3D networks.')
+                self.prob[0], self.prob[1] = 0, 0
                 self.rotate, self.translate, self.scale = 0, None, None
                 self.hflip, self.vflip = False, False
-                self.block = None
                 self.mean, self.std = None, None
 
         if (self.nn_arch.lower() != 'ordnet' and self.nn_arch.lower() != 'hotnet') and self.temperature_map:

@@ -385,7 +385,7 @@ def get_data_augmentation(config:ExperimentConfig):
         logger.info('Adding data augmentation transforms')
         train_tfms.extend(niftitfms.get_transforms(config.prob, config.tfm_x, config.tfm_y, config.rotate, config.translate,
                                                    config.scale, config.vflip, config.hflip, config.gamma, config.gain,
-                                                   config.noise_pwr, config.block, config.mean, config.std))
+                                                   config.noise_pwr, config.block, config.mean, config.std, config.net3d))
         valid_tfms.extend(niftitfms.get_transforms(0, config.tfm_x, config.tfm_y, 0, None, None, False, False,
                                                    None, None, 0, None, config.mean, config.std))
     else:
