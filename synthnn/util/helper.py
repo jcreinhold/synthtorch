@@ -169,6 +169,8 @@ def get_loss(name:str):
         loss = CosineProximityLoss()
     elif name == 'mae':
         loss = nn.L1Loss()
+    elif name == 'bce':
+        loss = nn.BCEWithLogitsLoss()
     else:
         raise ValueError(f'Loss function {name} not supported.')
     return loss

@@ -58,7 +58,7 @@ def arg_parser():
     options.add_argument('-gs', '--gpu-selector', type=int, nargs='+', default=None,
                          help='use gpu(s) selected here, None uses all available gpus if --multi-gpus enabled '
                               'else None uses first available GPU [Default=None]')
-    options.add_argument('-l', '--loss', type=str, default=None, choices=('mse','mae','cp'),
+    options.add_argument('-l', '--loss', type=str, default=None, choices=('mse','mae','cp','bce'),
                          help='Use this specified loss function [Default=None, MSE for Unet]')
     options.add_argument('-mg', '--multi-gpu', action='store_true', default=False, help='use multiple gpus [Default=False]')
     options.add_argument('-n', '--n-jobs', type=int, default=0,

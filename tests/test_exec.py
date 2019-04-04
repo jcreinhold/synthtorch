@@ -38,14 +38,17 @@ class TestCLI(unittest.TestCase):
         os.mkdir(os.path.join(self.out_dir, 'models'))
         self.train_dir = os.path.join(self.out_dir, 'imgs')
         os.mkdir(self.train_dir)
+        os.mkdir(os.path.join(self.train_dir, 'mask'))
         os.mkdir(os.path.join(self.train_dir, 'tif'))
         os.mkdir(os.path.join(self.train_dir, 'png'))
         nii = glob_imgs(self.nii_dir)[0]
+        msk = glob_imgs(self.mask_dir)[0]
         tif = os.path.join(self.tif_dir, 'test.tif')
         png = os.path.join(self.png_dir, 'test.png')
         path, base, ext = split_filename(nii)
         for i in range(8):
             shutil.copy(nii, os.path.join(self.train_dir, base + str(i) + ext))
+            shutil.copy(msk, os.path.join(self.train_dir, 'mask', base + str(i) + ext))
             shutil.copy(tif, os.path.join(self.train_dir, 'tif', base + str(i) + '.tif'))
             shutil.copy(png, os.path.join(self.train_dir, 'png', base + str(i) + '.png'))
         self.train_args = f'-s {self.train_dir} -t {self.train_dir}'.split()
@@ -317,6 +320,16 @@ class TestUnet(TestCLI):
     def test_unet_cp_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 -bs 2 --net3d '
                                   f'-ocf {self.jsonfn} -l cp').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_bce_cli(self):
+        train_args = f'-s {self.train_dir} -t {self.train_dir}/mask/'.split()
+        args = train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 -bs 2 --net3d '
+                             f'-ocf {self.jsonfn} -l bce').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
