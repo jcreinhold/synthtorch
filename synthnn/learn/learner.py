@@ -264,6 +264,9 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                       ortho_penalty=config.ortho_penalty, norm_penalty=config.norm_penalty, use_mse=config.use_mse,
                       no_skip=config.no_skip, use_mask=config.use_mask, initialize=config.initialize_seg,
                       seg_min=config.seg_min, freeze_last=config.freeze_last, last_init=config.last_init)
+    elif config.nn_arch == 'densenet':
+        from ..models.densenet import DenseNet
+        model = DenseNet(drop_rate=config.dropout_prob, n_input=config.n_input, n_output=config.n_output, loss=config.loss)
     elif config.nn_arch == 'ordnet':
         try:
             from annom.models import OrdNet
@@ -298,7 +301,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                        enable_bias=config.enable_bias, is_3d=config.net3d, n_input=config.n_input, n_output=config.n_output,
                        no_skip=config.no_skip, noise_lvl=config.noise_lvl, attention=config.attention, inplace=inplace)
     else:
-        raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,ordnet,lrsdnet,hotnet}} are the only supported options.')
+        raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet}} are the only supported options.')
     return model
 
 

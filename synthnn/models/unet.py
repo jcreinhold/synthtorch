@@ -37,7 +37,7 @@ class Unet(torch.nn.Module):
     Args:
         n_layers (int): number of layers (to go down and up)
         kernel_size (int): size of kernel (symmetric)
-        dropout_p (int): dropout probability for each layer
+        dropout_p (float): dropout probability for each layer
         channel_base_power (int): 2 ** channel_base_power is the number of channels in the first layer
             and increases in each proceeding layer such that in the n-th layer there are
             2 ** channel_base_power + n channels (this follows the convention in [1])

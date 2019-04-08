@@ -306,6 +306,19 @@ class TestNConv(TestCLI):
         self.assertEqual(retval, 0)
 
 
+class TestDenseNet(TestCLI):
+
+    def test_densenet_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/densenet.mdl -na densenet -ne 1 -ps 0 -bs 2 -e tif '
+                             f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+
 class TestUnet(TestCLI):
 
     def test_unet_cli(self):

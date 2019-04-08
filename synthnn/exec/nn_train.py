@@ -127,7 +127,7 @@ def arg_parser():
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
     nn_options.add_argument('-3d', '--net3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
     nn_options.add_argument('-na', '--nn-arch', type=str, default='unet',
-                            choices=('unet','nconv','vae','segae','ordnet','lrsdnet','hotnet'),
+                            choices=('unet','nconv','vae','segae','densenet','ordnet','lrsdnet','hotnet'),
                             help='specify neural network architecture to use')
     nn_options.add_argument('-nm', '--normalization', type=str, default='instance',
                             choices=('instance', 'batch', 'layer', 'weight', 'spectral', 'none'),

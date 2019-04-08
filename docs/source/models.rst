@@ -18,3 +18,15 @@ N-layer CNN
 
 .. automodule:: synthnn.models.nconvnet
    :members:
+
+SegAE
+~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: synthnn.models.segae
+   :members:
+
+DenseNet
+~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: synthnn.models.densenet
+   :members:
