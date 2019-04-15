@@ -127,8 +127,8 @@ class ExperimentConfig(dict):
             self.attention = False
 
         if self.prob is not None:
-            if self.net3d and (self.prob[0] > 0 or self.prob[1] > 0):
-                logger.warning('Cannot do affine, flipping or normalization data augmentation with 3D networks.')
+            if (self.net3d or self.n_input > 1 or self.n_output > 1) and (self.prob[0] > 0 or self.prob[1] > 0):
+                logger.warning('Cannot do affine, flipping or normalization data augmentation with multi-modal/3D networks.')
                 self.prob[0], self.prob[1] = 0, 0
                 self.rotate, self.translate, self.scale = 0, None, None
                 self.hflip, self.vflip = False, False
