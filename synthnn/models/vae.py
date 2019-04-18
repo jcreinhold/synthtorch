@@ -60,10 +60,10 @@ class VAE(Unet):
         self.upsampconvs[0] = self._conv(lc(n_layers-1), lc(n_layers-1), 3, bias=True)
 
     def encode(self, x):
-        x = self.start(x)
+        for si in self.start: x = si(x)
         x = self._down(x)
         for dl in self.down_layers:
-            x = dl(x)
+            for dli in dl: x = dli(x)
             x = self._down(x)
         x = F.relu(self.fc_bn1(self.fc1(x.view(x.size(0), self.esz))))
         mu = self.fc21(x)
@@ -72,10 +72,10 @@ class VAE(Unet):
 
     def __test_encode(self, x):
         self.sz.append(x.shape)
-        x = self.start(x)
+        for si in self.start: x = si(x)
         x = self._down(x)
         for dl in self.down_layers:
-            x = dl(x)
+            for dli in dl: x = dli(x)
             self.sz.append(x.shape)
             x = self._down(x)
         return x.shape
@@ -89,7 +89,7 @@ class VAE(Unet):
         z = F.relu(self.fc_bn3(self.fc3(z)))
         z = self.upsampconvs[0](self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:]))
         for i, ul in enumerate(self.up_layers, 1):
-            z = ul(z)
+            for uli in ul: z = uli(z)
             z = self._up(z, self.sz[-i-1][2:])
             z = self.upsampconvs[i](z)
         z = self.finish(z)

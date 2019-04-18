@@ -118,18 +118,22 @@ class Unet(torch.nn.Module):
         x = self.finish(x)
         return x
 
-    def _fwd_skip_nf(self, x:torch.Tensor):
+    def _fwd_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
         dout = [x]
-        dout.append(self.start(x))
+        x = self._add_noise(self.start[0](x))
+        dout.append(self._add_noise(self.start[1](x)))
         x = self._down(dout[-1])
         for dl in self.down_layers:
-            dout.append(dl(x))
-            x = self._add_noise(self._down(dout[-1]))
-        x = self.upsampconvs[0](self._add_noise(self._up(self.bridge(x), dout[-1].shape[2:])))
+            for dli in dl: x = self._add_noise(dli(x))
+            dout.append(x)
+            x = self._down(dout[-1])
+        x = self._add_noise(self.bridge[0](x))
+        x = self.upsampconvs[0](self._add_noise(self._up(self.bridge[1](x), dout[-1].shape[2:])))
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
             if self.use_attention: d = self.attention[i-1](d)
-            x = ul(torch.cat((x, d), dim=1))
-            x = self._add_noise(self._up(x, dout[-i-1].shape[2:]))
+            x = self._add_noise(ul[0](torch.cat((x, d), dim=1)), i == self.n_layers-1)
+            x = self._add_noise(ul[1](x), i == self.n_layers-1)
+            x = self._up(x, dout[-i-1].shape[2:])
             x = self.upsampconvs[i](x)
         x = torch.cat((x, dout[0]), dim=1)
         return x
@@ -141,17 +145,18 @@ class Unet(torch.nn.Module):
 
     def _fwd_no_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
         sz = [x.shape]
-        x = self.start(x)
+        for si in self.start: x = self._add_noise(si(x))
         x = self._down(x)
         for dl in self.down_layers:
-            x = dl(x)
+            for dli in dl: x = self._add_noise(dli(x))
             sz.append(x.shape)
-            x = self._add_noise(self._down(x))
-        x = self.upsampconvs[0](self._add_noise(self._up(self.bridge(x), sz[-1][2:])))
+            x = self._down(x)
+        x = self._add_noise(self.bridge[0](x))
+        x = self.upsampconvs[0](self._add_noise(self._up(self.bridge[1](x), sz[-1][2:])))
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
             if self.use_attention: x = self.attention[i-1](x)
-            x = ul(x)
-            x = self._add_noise(self._up(x, sz[-i-1][2:]))
+            for uli in ul: x = self._add_noise(uli(x), i == self.n_layers-1)
+            x = self._up(x, sz[-i-1][2:])
             x = self.upsampconvs[i](x)
         return x
 
@@ -163,12 +168,13 @@ class Unet(torch.nn.Module):
         y = F.interpolate(x, size=sz, mode=self.interp_mode)
         return y
 
-    def _add_noise(self, x:torch.Tensor) -> torch.Tensor:
+    def _add_noise(self, x:torch.Tensor, skip:bool=False) -> torch.Tensor:
+        if skip: return x
         if self.dropout_p > 0:
             x = F.dropout3d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace) if self.is_3d else \
                 F.dropout2d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace)
         if self.noise_lvl > 0:
-            x.add_(torch.randn_like(x.detach()) * self.noise_lvl)
+            x = x + (torch.randn_like(x.detach()) * self.noise_lvl)
         return x
 
     def _conv(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None, bias:bool=False) -> nn.Sequential:
@@ -204,7 +210,7 @@ class Unet(torch.nn.Module):
                   norm:Tuple[Optional[str],Optional[str]]=(None,None)) -> nn.Sequential:
         layers = [self._conv_act(in_c,  mid_c, kernel_sz[0], act[0], norm[0]),
                   self._conv_act(mid_c, out_c, kernel_sz[1], act[1], norm[1])]
-        dca = nn.Sequential(*layers)
+        dca = nn.ModuleList(layers)
         return dca
 
     def _upsampconv(self, in_c:int, out_c:int):
