@@ -107,7 +107,7 @@ class Unet(torch.nn.Module):
                                         for n in reversed(range(1,nl+1))])
         self.finish = self._final(lc(0) + n_input if not no_skip else lc(0), n_output, oa, bias=enable_bias)
         self.upsampconvs = nn.ModuleList([self._upsampconv(lc(n+1), lc(n)) for n in reversed(range(nl+1))])
-        if self.use_attention: self.attention = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(1,nl+1))])
+        if self.use_attention: self.attn = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(1, nl+1))])
 
     def forward(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
         x = self._fwd_skip(x, **kwargs) if not self.no_skip else self._fwd_no_skip(x, **kwargs)
@@ -130,10 +130,10 @@ class Unet(torch.nn.Module):
         x = self._add_noise(self.bridge[0](x))
         x = self.upsampconvs[0](self._add_noise(self._up(self.bridge[1](x), dout[-1].shape[2:])))
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
-            if self.use_attention: d = self.attention[i-1](d)
-            x = self._add_noise(ul[0](torch.cat((x, d), dim=1)), i == self.n_layers-1)
-            x = self._add_noise(ul[1](x), i == self.n_layers-1)
-            x = self._up(x, dout[-i-1].shape[2:])
+            if self.use_attention: d = self.attn[i-1](d)
+            x = torch.cat((x, d), dim=1)
+            for uli in ul: x = self._add_noise(uli(x))
+            x = self._up(x, dout[-i-1].shape[2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
         x = torch.cat((x, dout[0]), dim=1)
         return x
@@ -154,9 +154,9 @@ class Unet(torch.nn.Module):
         x = self._add_noise(self.bridge[0](x))
         x = self.upsampconvs[0](self._add_noise(self._up(self.bridge[1](x), sz[-1][2:])))
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
-            if self.use_attention: x = self.attention[i-1](x)
-            for uli in ul: x = self._add_noise(uli(x), i == self.n_layers-1)
-            x = self._up(x, sz[-i-1][2:])
+            if self.use_attention: x = self.attn[i-1](x)
+            for uli in ul: x = self._add_noise(uli(x))
+            x = self._up(x, sz[-i-1][2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
         return x
 
@@ -168,8 +168,7 @@ class Unet(torch.nn.Module):
         y = F.interpolate(x, size=sz, mode=self.interp_mode)
         return y
 
-    def _add_noise(self, x:torch.Tensor, skip:bool=False) -> torch.Tensor:
-        if skip: return x
+    def _add_noise(self, x:torch.Tensor) -> torch.Tensor:
         if self.dropout_p > 0:
             x = F.dropout3d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace) if self.is_3d else \
                 F.dropout2d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace)
