@@ -40,24 +40,20 @@ class SelfAttention(nn.Module):
 class SeparableConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, dilation=1, bias=True):
         super(SeparableConv2d, self).__init__()
-        self.conv = nn.Conv2d(in_channels, in_channels, kernel_size, stride, padding, dilation,
-                              groups=in_channels, bias=bias)
-        self.pointwise = nn.Conv2d(in_channels, out_channels, 1, 1, 0, 1, 1, bias=bias)
+        conv = nn.Conv2d(in_channels, in_channels, kernel_size, stride, padding, dilation, groups=in_channels, bias=bias)
+        pointwise = nn.Conv2d(in_channels, out_channels, 1, 1, 0, 1, 1, bias=bias)
+        self.sep_conv = nn.Sequential(conv, pointwise)
 
     def forward(self, x):
-        x = self.conv(x)
-        x = self.pointwise(x)
-        return x
+        return self.sep_conv(x)
 
 
 class SeparableConv3d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, dilation=1, bias=True):
         super(SeparableConv3d, self).__init__()
-        self.conv = nn.Conv3d(in_channels, in_channels, kernel_size, stride, padding, dilation,
-                              groups=in_channels, bias=bias)
-        self.pointwise = nn.Conv3d(in_channels, out_channels, 1, 1, 0, 1, 1, bias=bias)
+        conv = nn.Conv3d(in_channels, in_channels, kernel_size, stride, padding, dilation, groups=in_channels, bias=bias)
+        pointwise = nn.Conv3d(in_channels, out_channels, 1, 1, 0, 1, 1, bias=bias)
+        self.sep_conv = nn.Sequential(conv, pointwise)
 
     def forward(self, x):
-        x = self.conv(x)
-        x = self.pointwise(x)
-        return x
+        return self.sep_conv(x)
