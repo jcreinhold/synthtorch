@@ -24,7 +24,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ..learn import SelfAttention
+from ..learn import SelfAttention, SeparableConv2d, SeparableConv3d
 from ..util import get_act, get_norm3d, get_norm2d, get_loss
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,7 @@ class Unet(torch.nn.Module):
         loss (str): loss function used to train network
         attention (bool): use (self-)attention gates (only works with 2d networks)
         inplace (bool): use inplace operations (for prediction)
+        separable (bool): use separable convolutions instead of full convolutions
 
     References:
         [1] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
@@ -72,7 +73,7 @@ class Unet(torch.nn.Module):
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu',
                  output_activation:str='linear', is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
-                 loss:Optional[str]=None, attention:bool=False, inplace:bool=False):
+                 loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -93,6 +94,7 @@ class Unet(torch.nn.Module):
         self.noise_lvl = noise_lvl
         self.criterion = get_loss(loss)
         self.use_attention = attention and not is_3d
+        self.separable = separable
         self.inplace = inplace
         nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
@@ -179,8 +181,12 @@ class Unet(torch.nn.Module):
     def _conv(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None, bias:bool=False) -> nn.Sequential:
         ksz = self.kernel_sz if kernel_sz is None else kernel_sz
         bias = False if self.norm != 'none' and not bias else True
-        layers = [nn.Conv3d(in_c, out_c, ksz, bias=bias)] if self.is_3d else \
-                 [nn.Conv2d(in_c, out_c, ksz, bias=bias)]
+        if not self.separable or ksz == 1:
+            layers = [nn.Conv3d(in_c, out_c, ksz, bias=bias)] if self.is_3d else \
+                     [nn.Conv2d(in_c, out_c, ksz, bias=bias)]
+        else:
+            layers = [SeparableConv3d(in_c, out_c, ksz, bias=bias)] if self.is_3d else \
+                     [SeparableConv2d(in_c, out_c, ksz, bias=bias)]
         if ksz > 1: layers = [nn.ReplicationPad3d(ksz // 2)] + layers if self.is_3d else \
                              [nn.ReflectionPad2d(ksz // 2)] + layers
         c = nn.Sequential(*layers) if len(layers) > 1 else layers[0]

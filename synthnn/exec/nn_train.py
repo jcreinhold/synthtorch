@@ -153,6 +153,8 @@ def arg_parser():
                               help='do not use skip connections in unet [Default=False]')
     unet_options.add_argument('-nz', '--noise-lvl', type=float, default=0,
                               help='add this level of noise to model parameters [Default=0]')
+    unet_options.add_argument('-sp', '--separable', action='store_true', default=False,
+                              help='use separable convolutions instead of full convolutions [Default=False]')
 
     lrsdnet_options = parser.add_argument_group('LRSDNet Options')
     lrsdnet_options.add_argument('-lrsd', '--lrsd-weights', type=float, nargs=2, default=None,
