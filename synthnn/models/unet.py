@@ -60,6 +60,7 @@ class Unet(torch.nn.Module):
         attention (bool): use (self-)attention gates (only works with 2d networks)
         inplace (bool): use inplace operations (for prediction)
         separable (bool): use separable convolutions instead of full convolutions
+        softmax (bool): use a softmax before the final layer
 
     References:
         [1] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
@@ -73,7 +74,8 @@ class Unet(torch.nn.Module):
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu',
                  output_activation:str='linear', is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
-                 loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False):
+                 loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False,
+                 softmax:bool=False):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -96,6 +98,7 @@ class Unet(torch.nn.Module):
         self.use_attention = attention and not is_3d
         self.separable = separable
         self.inplace = inplace
+        self.softmax = softmax
         nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
@@ -137,6 +140,7 @@ class Unet(torch.nn.Module):
             for uli in ul: x = self._add_noise(uli(x))
             x = self._up(x, dout[-i-1].shape[2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
+        if self.softmax: F.softmax(x, dim=1)
         x = torch.cat((x, dout[0]), dim=1)
         return x
 
@@ -160,6 +164,7 @@ class Unet(torch.nn.Module):
             for uli in ul: x = self._add_noise(uli(x))
             x = self._up(x, sz[-i-1][2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
+        if self.softmax: F.softmax(x, dim=1)
         return x
 
     def _down(self, x:torch.Tensor) -> torch.Tensor:

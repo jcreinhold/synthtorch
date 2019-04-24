@@ -414,6 +414,16 @@ class TestUnet(TestCLI):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
+    def test_unet_softmax_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 3 -bs 2 -e tif -ps 8 '
+                             f'-ocf {self.jsonfn} -sx').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
     def test_unet_noise_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 2 -nl 3 -cbp 1 -ps 16 -bs 2 --net3d '
                                   f'-ocf {self.jsonfn} -nz 1').split()

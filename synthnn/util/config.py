@@ -58,6 +58,7 @@ class ExperimentConfig(dict):
         self.ord_params = None
         self.out_activation = None
         self.separable = None
+        self.softmax = None
         self.checkpoint = None
         self.clip = None
         self.fp16 = None
@@ -239,7 +240,8 @@ def _get_arg_dict(args):
             "noise_lvl": args.noise_lvl,
             "normalization": args.normalization,
             "out_activation": args.out_activation,
-            "separable": args.separable
+            "separable": args.separable,
+            "softmax": args.softmax
         },
         "LRSDNet Options": {
             "lrsd_weights": args.lrsd_weights

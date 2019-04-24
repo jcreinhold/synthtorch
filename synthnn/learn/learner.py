@@ -251,7 +251,8 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                      activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
                      enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
                      n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
-                     noise_lvl=config.noise_lvl, loss=config.loss, attention=config.attention, inplace=inplace, separable=config.separable)
+                     noise_lvl=config.noise_lvl, loss=config.loss, attention=config.attention, inplace=inplace,
+                     separable=config.separable, softmax=config.softmax)
     elif config.nn_arch == 'vae':
         from ..models.vae import VAE
         model = VAE(config.n_layers, config.img_dim, channel_base_power=config.channel_base_power, activation=config.activation,
@@ -278,7 +279,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                        enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
                        n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
                        noise_lvl=config.noise_lvl, attention=config.attention, ord_params=config.ord_params,
-                       inplace=inplace, separable=config.separable, device=device)
+                       inplace=inplace, separable=config.separable, device=device, softmax=config.softmax)
     elif config.nn_arch == 'lrsdnet':
         try:
             from annom.models import LRSDNet
@@ -290,7 +291,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                         enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
                         n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
                         noise_lvl=config.noise_lvl, attention=config.attention, inplace=inplace, separable=config.separable,
-                        penalty=config.lrsd_weights)
+                        penalty=config.lrsd_weights, softmax=config.softmax)
     elif config.nn_arch == 'hotnet':
         try:
             from annom.models import HotNet
@@ -301,7 +302,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                        activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
                        enable_bias=config.enable_bias, is_3d=config.net3d, n_input=config.n_input, n_output=config.n_output,
                        no_skip=config.no_skip, noise_lvl=config.noise_lvl, attention=config.attention, inplace=inplace,
-                       separable=config.separable)
+                       separable=config.separable, softmax=config.softmax)
     else:
         raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet}} are the only supported options.')
     return model
