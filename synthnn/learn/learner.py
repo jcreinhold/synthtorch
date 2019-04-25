@@ -415,7 +415,7 @@ def load_model(model, fn, device):
     Returns:
         model, last_epoch: fills in the weights and returns the last epoch
     """
-    checkpoint = torch.load(fn)
+    checkpoint = torch.load(fn, map_location=device)
     last_epoch = checkpoint['epoch']
     model.load_state_dict(checkpoint['state_dict'])
     model = model.to(device)
