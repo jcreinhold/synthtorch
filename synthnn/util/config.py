@@ -105,6 +105,7 @@ class ExperimentConfig(dict):
         self.noise_pwr = None
         self.mean = None
         self.std = None
+        self.threshold = None
         self.tfm_x = None
         self.tfm_y = None
         self.betas = None
@@ -284,6 +285,7 @@ def _get_arg_dict(args):
             "noise_pwr": args.noise_pwr,
             "mean": args.mean,
             "std": args.std,
+            "threshold": args.threshold,
             "tfm_x": args.tfm_x,
             "tfm_y": args.tfm_y
         }

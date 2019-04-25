@@ -198,6 +198,7 @@ def arg_parser():
     aug_options.add_argument('-g', '--gamma', type=float, default=None, help='gamma (1-gamma,1+gamma) for (gain * x ** gamma) [Default=None]')
     aug_options.add_argument('-gn', '--gain', type=float, default=None, help='gain (1-gain,1+gain) for (gain * x ** gamma) [Default=None]')
     aug_options.add_argument('-blk', '--block', type=int, nargs=2, default=None, help='insert random blocks of this size range [Default=None]')
+    aug_options.add_argument('-th', '--threshold', type=float, default=None, help='threshold for foreground for blocks, if none use mean [Default=None]')
     aug_options.add_argument('-pwr', '--noise-pwr', type=float, default=0, help='noise standard deviation/power [Default=0]')
     aug_options.add_argument('-mean', '--mean', type=float, nargs='+', default=None,
                              help='normalize input images with this mean (one entry per input directory) [Default=None]')
