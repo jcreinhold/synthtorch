@@ -137,7 +137,8 @@ class Unet(torch.nn.Module):
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
             if self.use_attention: d = self.attn[i-1](d)
             x = torch.cat((x, d), dim=1)
-            for uli in ul: x = self._add_noise(uli(x))
+            x = self._add_noise(ul[0](x))
+            x = self._add_noise(ul[1](x), i == self.n_layers-1)  # no dropout before 1x1
             x = self._up(x, dout[-i-1].shape[2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
         if self.softmax: F.softmax(x, dim=1)
@@ -161,7 +162,8 @@ class Unet(torch.nn.Module):
         x = self.upsampconvs[0](self._add_noise(self._up(self.bridge[1](x), sz[-1][2:])))
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
             if self.use_attention: x = self.attn[i-1](x)
-            for uli in ul: x = self._add_noise(uli(x))
+            x = self._add_noise(ul[0](x))
+            x = self._add_noise(ul[1](x), i == self.n_layers-1)  # no dropout before 1x1
             x = self._up(x, sz[-i-1][2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
         if self.softmax: F.softmax(x, dim=1)
@@ -175,7 +177,8 @@ class Unet(torch.nn.Module):
         y = F.interpolate(x, size=sz, mode=self.interp_mode)
         return y
 
-    def _add_noise(self, x:torch.Tensor) -> torch.Tensor:
+    def _add_noise(self, x:torch.Tensor, skip:bool=False) -> torch.Tensor:
+        if skip: return x
         if self.dropout_p > 0:
             x = F.dropout3d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace) if self.is_3d else \
                 F.dropout2d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace)
