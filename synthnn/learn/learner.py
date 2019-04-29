@@ -302,7 +302,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
                        activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
                        enable_bias=config.enable_bias, is_3d=config.net3d, n_input=config.n_input, n_output=config.n_output,
                        no_skip=config.no_skip, noise_lvl=config.noise_lvl, attention=config.attention, inplace=inplace,
-                       separable=config.separable, softmax=config.softmax)
+                       separable=config.separable, softmax=config.softmax, edge=config.edge)
     else:
         raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet}} are the only supported options.')
     return model

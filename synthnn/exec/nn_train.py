@@ -162,9 +162,11 @@ def arg_parser():
     lrsdnet_options.add_argument('-lrsd', '--lrsd-weights', type=float, nargs=2, default=None,
                                  help='penalties for lrsd [Default=None]')
 
-    ordnet_options = parser.add_argument_group('OrdNet Options')
+    ordnet_options = parser.add_argument_group('OrdNet/HotNet Options')
     ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
                                 help='ordinal regression params (start, stop, n_bins) [Default=None]')
+    ordnet_options.add_argument('-ed', '--edge', action='store_true', default=False,
+                                help='use edge map [Default=False]')
 
     vae_options = parser.add_argument_group('VAE Options')
     vae_options.add_argument('-id', '--img-dim', type=int, nargs='+', default=None,

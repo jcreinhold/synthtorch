@@ -106,6 +106,7 @@ class ExperimentConfig(dict):
         self.mean = None
         self.std = None
         self.threshold = None
+        self.edge = None
         self.tfm_x = None
         self.tfm_y = None
         self.betas = None
@@ -248,6 +249,7 @@ def _get_arg_dict(args):
             "lrsd_weights": args.lrsd_weights
         },
         "Ord/HotNet Options": {
+            "edge": args.edge,
             "ord_params": args.ord_params,
             "temperature_map": False if not hasattr(args,'temperature_map') else args.temperature_map
         },
