@@ -83,8 +83,8 @@ class DenseNet(nn.Module):
     """
 
     def __init__(self, growth_rate:int=4, block_config:Tuple[int,int,int,int]=(6, 6, 6, 6),
-                 num_init_features:int=32, bn_size:int=4, drop_rate:float=0, n_input:int=1, n_output:int=1,
-                 loss:Optional[str]=None):
+                 num_init_features:int=32, bn_size:int=4, dropout_prob:float=0, n_input:int=1, n_output:int=1,
+                 loss:Optional[str]=None, **kwargs):
 
         super(DenseNet, self).__init__()
         self.criterion = get_loss(loss)
@@ -100,7 +100,7 @@ class DenseNet(nn.Module):
         num_features = num_init_features
         for i, num_layers in enumerate(block_config):
             block = _DenseBlock(num_layers=num_layers, num_input_features=num_features,
-                                bn_size=bn_size, growth_rate=growth_rate, drop_rate=drop_rate)
+                                bn_size=bn_size, growth_rate=growth_rate, drop_rate=dropout_prob)
             self.layers.add_module('denseblock%d' % (i + 1), block)
             num_features = num_features + num_layers * growth_rate
             if i != len(block_config) - 1:

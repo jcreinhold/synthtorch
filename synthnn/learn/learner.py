@@ -59,7 +59,7 @@ class Learner:
     def train_setup(cls, config:Union[str,ExperimentConfig]):
         if isinstance(config,str):
             config = ExperimentConfig.load_json(config)
-        device, use_cuda = get_device(config.gpu_selector, config.disable_cuda)
+        device, use_cuda = get_device(config.disable_cuda)
         model = get_model(config, True, device, False)
         logger.debug(model)
         logger.info(f'Number of trainable parameters in model: {get_num_params(model)}')
@@ -86,14 +86,14 @@ class Learner:
         model.train()
         segae_flag = config.n_seg if config.predict_seg else None
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
-                              config.n_output, config.net3d, config.mean, config.std, segae_flag)
+                              config.n_output, config.is_3d, config.mean, config.std, segae_flag)
         return cls(model, device, train_loader, valid_loader, optimizer, predictor)
 
     @classmethod
     def predict_setup(cls, config:Union[str,ExperimentConfig]):
         if isinstance(config,str):
             config = ExperimentConfig.load_json(config)
-        device, use_cuda = get_device(config.gpu_selector, config.disable_cuda)
+        device, use_cuda = get_device(config.disable_cuda)
         nsyn = config.monte_carlo or 1
         model = get_model(config, nsyn > 1 and config.dropout_prob > 0, device, True)
         logger.debug(model)
@@ -102,7 +102,7 @@ class Learner:
         model.eval()
         segae_flag = config.n_seg if config.predict_seg and config.nn_arch == 'segae' else None
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
-                              config.n_output, config.net3d, config.mean, config.std, segae_flag)
+                              config.n_output, config.is_3d, config.mean, config.std, segae_flag)
         return cls(model, device, predictor=predictor)
 
     def fit(self, n_epochs, clip:float=None, checkpoint:int=None, trained_model:str=None):
@@ -194,15 +194,14 @@ class Learner:
         except ImportError:
             logger.info('Mixed precision training (i.e., the package `apex`) not available.')
 
-    def multigpu(self, gpu_selector:List=None):
+    def multigpu(self):
         """ put the model on the GPU if available and desired """
         n_gpus = torch.cuda.device_count()
         if n_gpus <= 1:
             logger.warning('Multi-GPU functionality is not available on your system.')
         else:
-            n_gpus = len(gpu_selector) if gpu_selector is not None else n_gpus
             logger.info(f'Enabling use of {n_gpus} gpus')
-            self.model = torch.nn.DataParallel(self.model, device_ids=gpu_selector)
+            self.model = torch.nn.DataParallel(self.model)
 
     def lr_scheduler(self, n_epochs, type='burncosine', restart_period=None, t_mult=None):
         if type == 'burncosine':
@@ -242,86 +241,49 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
     if config.nn_arch == 'nconv':
         from ..models.nconvnet import SimpleConvNet
         logger.warning('The nconv network is for basic testing.')
-        model = SimpleConvNet(config.n_layers, kernel_size=config.kernel_size, dropout_p=config.dropout_prob,
-                              n_input=config.n_input, n_output=config.n_output, is_3d=config.net3d)
+        model = SimpleConvNet(**config)
     elif config.nn_arch == 'unet':
         from ..models.unet import Unet
-        model = Unet(config.n_layers, kernel_size=config.kernel_size, dropout_p=config.dropout_prob,
-                     channel_base_power=config.channel_base_power, add_two_up=config.add_two_up, normalization=config.normalization,
-                     activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
-                     enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
-                     n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
-                     noise_lvl=config.noise_lvl, loss=config.loss, attention=config.attention, inplace=inplace,
-                     separable=config.separable, softmax=config.softmax)
+        model = Unet(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'vae':
         from ..models.vae import VAE
-        model = VAE(config.n_layers, config.img_dim, channel_base_power=config.channel_base_power, activation=config.activation,
-                    is_3d=config.net3d, n_input=config.n_input, n_output=config.n_output, latent_size=config.latent_size)
+        model = VAE(**config)
     elif config.nn_arch == 'segae':
         from ..models.segae import SegAE
-        model = SegAE(config.n_layers, dropout_p=config.dropout_prob, channel_base_power=config.channel_base_power,
-                      activation=config.activation, is_3d=config.net3d, enable_dropout=enable_dropout,
-                      n_input=config.n_input, n_output=config.n_output, inplace=inplace, n_seg=config.n_seg,
-                      ortho_penalty=config.ortho_penalty, norm_penalty=config.norm_penalty, use_mse=config.use_mse,
-                      no_skip=config.no_skip, use_mask=config.use_mask, initialize=config.initialize_seg,
-                      seg_min=config.seg_min, freeze_last=config.freeze_last, last_init=config.last_init)
+        model = SegAE(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'densenet':
         from ..models.densenet import DenseNet
-        model = DenseNet(drop_rate=config.dropout_prob, n_input=config.n_input, n_output=config.n_output, loss=config.loss)
+        model = DenseNet(**config)
     elif config.nn_arch == 'ordnet':
         try:
             from annom.models import OrdNet
         except (ImportError, ModuleNotFoundError):
             raise SynthNNError('Cannot use the OrdNet without the annom toolbox.')
-        model = OrdNet(config.n_layers, kernel_size=config.kernel_size, dropout_p=config.dropout_prob,
-                       channel_base_power=config.channel_base_power, add_two_up=config.add_two_up, normalization=config.normalization,
-                       activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
-                       enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
-                       n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
-                       noise_lvl=config.noise_lvl, attention=config.attention, ord_params=config.ord_params,
-                       inplace=inplace, separable=config.separable, device=device, softmax=config.softmax)
+        model = OrdNet(enable_dropout=enable_dropout, inplace=inplace, device=device, **config)
     elif config.nn_arch == 'lrsdnet':
         try:
             from annom.models import LRSDNet
         except (ImportError, ModuleNotFoundError):
             raise SynthNNError('Cannot use the LRSDNet without the annom toolbox.')
-        model = LRSDNet(config.n_layers, kernel_size=config.kernel_size, dropout_p=config.dropout_prob,
-                        channel_base_power=config.channel_base_power, add_two_up=config.add_two_up, normalization=config.normalization,
-                        activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
-                        enable_dropout=enable_dropout, enable_bias=config.enable_bias, is_3d=config.net3d,
-                        n_input=config.n_input, n_output=config.n_output, no_skip=config.no_skip,
-                        noise_lvl=config.noise_lvl, attention=config.attention, inplace=inplace, separable=config.separable,
-                        penalty=config.lrsd_weights, softmax=config.softmax)
+        model = LRSDNet(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'hotnet':
         try:
             from annom.models import HotNet
         except (ImportError, ModuleNotFoundError):
             raise SynthNNError('Cannot use the HotNet without the annom toolbox.')
-        model = HotNet(config.n_layers, kernel_size=config.kernel_size, dropout_p=config.dropout_prob,
-                       channel_base_power=config.channel_base_power, add_two_up=config.add_two_up, normalization=config.normalization,
-                       activation=config.activation, output_activation=config.out_activation, interp_mode=config.interp_mode,
-                       enable_bias=config.enable_bias, is_3d=config.net3d, n_input=config.n_input, n_output=config.n_output,
-                       no_skip=config.no_skip, noise_lvl=config.noise_lvl, attention=config.attention, inplace=inplace,
-                       separable=config.separable, softmax=config.softmax, edge=config.edge)
+        model = HotNet(inplace=inplace, **config)
     else:
         raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet}} are the only supported options.')
     return model
 
 
-def get_device(gpu_selector=None, disable_cuda=False):
+def get_device(disable_cuda=False):
     """ get the device(s) for tensors to be put on """
     cuda_avail = torch.cuda.is_available()
     use_cuda = cuda_avail and not disable_cuda
     if use_cuda: torch.backends.cudnn.benchmark = True
     if not cuda_avail and not disable_cuda: logger.warning('CUDA does not appear to be available on your system.')
-    n_gpus = torch.cuda.device_count()
-    if gpu_selector is not None:
-        if len(gpu_selector) > n_gpus or any([gpu_id >= n_gpus for gpu_id in gpu_selector]):
-            raise SynthNNError('Invalid number of gpus or invalid GPU ID input in --gpu-selector')
-        cuda = f"cuda:{gpu_selector[0]}"  # arbitrarily choose first GPU given
-    else:
-        cuda = "cuda"
-    device = torch.device(cuda if use_cuda else "cpu")
+    device = torch.device("cuda" if use_cuda else "cpu")
     return device, use_cuda
 
 
@@ -375,10 +337,10 @@ def get_data_augmentation(config:ExperimentConfig):
     """ get all data augmentation transforms for training """
     # control random cropping patch size (or if used at all)
     if config.ext is None:
-        cropper = niftitfms.RandomCrop3D(config.patch_size) if config.net3d else \
+        cropper = niftitfms.RandomCrop3D(config.patch_size) if config.is_3d else \
                   niftitfms.RandomCrop2D(config.patch_size, config.sample_axis)
         tfms = [cropper] if config.patch_size > 0 else \
-               [] if config.net3d else \
+               [] if config.is_3d else \
                [niftitfms.RandomSlice(config.sample_axis)]
     else:
         tfms = [niftitfms.RandomCrop(config.patch_size)] if config.patch_size > 0 else []
@@ -392,7 +354,7 @@ def get_data_augmentation(config:ExperimentConfig):
         train_tfms.extend(niftitfms.get_transforms(config.prob, config.tfm_x, config.tfm_y, config.rotate, config.translate,
                                                    config.scale, config.vflip, config.hflip, config.gamma, config.gain,
                                                    config.noise_pwr, config.block, config.mean, config.std, config.threshold,
-                                                   config.net3d))
+                                                   config.is_3d))
         valid_tfms.extend(niftitfms.get_transforms(0, config.tfm_x, config.tfm_y, 0, None, None, False, False,
                                                    None, None, 0, None, config.mean, config.std))
     else:

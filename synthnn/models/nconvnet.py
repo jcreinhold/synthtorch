@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleConvNet(torch.nn.Module):
-    def __init__(self, n_layers:int, n_input:int=1, n_output:int=1, kernel_size:int=3, dropout_p:float=0, is_3d:bool=True):
+    def __init__(self, n_layers:int, n_input:int=1, n_output:int=1, kernel_size:int=3, dropout_p:float=0, is_3d:bool=True, **kwargs):
         super(SimpleConvNet, self).__init__()
         self.n_layers = n_layers
         self.n_input = n_input

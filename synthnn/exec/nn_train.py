@@ -55,9 +55,6 @@ def arg_parser():
                          help='extension of training/validation images [Default=None (.nii and .nii.gz)]')
     options.add_argument('-mp', '--fp16', action='store_true', default=False,
                          help='enable mixed precision training')
-    options.add_argument('-gs', '--gpu-selector', type=int, nargs='+', default=None,
-                         help='use gpu(s) selected here, None uses all available gpus if --multi-gpus enabled '
-                              'else None uses first available GPU [Default=None]')
     options.add_argument('-l', '--loss', type=str, default=None, choices=('mse','mae','cp','bce'),
                          help='Use this specified loss function [Default=None, MSE for Unet]')
     options.add_argument('-mg', '--multi-gpu', action='store_true', default=False, help='use multiple gpus [Default=False]')
@@ -125,7 +122,7 @@ def arg_parser():
                             help='number of epochs [Default=100]')
     nn_options.add_argument('-nl', '--n-layers', type=int, default=3,
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
-    nn_options.add_argument('-3d', '--net3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
+    nn_options.add_argument('-3d', '--is-3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
     nn_options.add_argument('-na', '--nn-arch', type=str, default='unet',
                             choices=('unet','nconv','vae','segae','densenet','ordnet','lrsdnet','hotnet'),
                             help='specify neural network architecture to use')
@@ -142,7 +139,6 @@ def arg_parser():
                                    'per Zhao, et al. 2017 [Default=False]')
     unet_options.add_argument('-at', '--attention', action='store_true', default=False,
                               help='use attention gates in up conv layers in unet[Default=False]')
-
     unet_options.add_argument('-cbp', '--channel-base-power', type=int, default=5,
                               help='2 ** channel_base_power is the number of channels in the first layer '
                                    'and increases in each proceeding layer such that in the n-th layer there are '
@@ -165,8 +161,7 @@ def arg_parser():
     ordnet_options = parser.add_argument_group('OrdNet/HotNet Options')
     ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
                                 help='ordinal regression params (start, stop, n_bins) [Default=None]')
-    ordnet_options.add_argument('-ed', '--edge', action='store_true', default=False,
-                                help='use edge map [Default=False]')
+    ordnet_options.add_argument('-ed', '--edge', action='store_true', default=False, help='use edge map [Default=False]')
 
     vae_options = parser.add_argument_group('VAE Options')
     vae_options.add_argument('-id', '--img-dim', type=int, nargs='+', default=None,
@@ -177,8 +172,8 @@ def arg_parser():
     segae_options = parser.add_argument_group('SegAE Options')
     segae_options.add_argument('-fl', '--freeze-last', action='store_true', default=False,
                                help='freeze the last layer for training [Default=False]')
-    segae_options.add_argument('-is', '--initialize-seg', type=int, default=5,
-                               help='number of epochs to initialize segmentation layers with seed [Default=5]')
+    segae_options.add_argument('-is', '--initialize-seg', type=int, default=0,
+                               help='number of epochs to initialize segmentation layers with seed [Default=0]')
     segae_options.add_argument('-nseg', '--n-seg', type=int, default=5, help='number of segmentation layers [Default=5]')
     segae_options.add_argument('-li', '--last-init', type=float, nargs='+', default=None,
                                help='initial numbers for last layer [Default=None]')
@@ -226,7 +221,7 @@ def main(args=None):
         learner = Learner.train_setup(args)
 
         if args.fp16: learner.fp16()
-        if args.multi_gpu: learner.multigpu(args.gpu_selector)
+        if args.multi_gpu: learner.multigpu()
         if args.lr_scheduler is not None:
             learner.lr_scheduler(args.n_epochs, args.lr_scheduler, args.restart_period, args.t_mult)
 

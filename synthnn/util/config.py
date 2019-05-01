@@ -23,96 +23,110 @@ logger = logging.getLogger(__name__)
 class ExperimentConfig(dict):
 
     def __init__(self, *args, **kwargs):
-        self.predict_dir = None
-        self.predict_out = None
-        self.source_dir = None
-        self.target_dir = None
-        self.trained_model = None
-        self.batch_size = None
-        self.disable_cuda = None
-        self.ext = None
-        self.gpu_selector = None
-        self.multi_gpu = None
-        self.out_config_file = None
-        self.patch_size = None
-        self.pin_memory = None
-        self.sample_axis = None
-        self.seed = None
-        self.verbosity = None
-        self.activation = None
-        self.add_two_up = None
-        self.attention = None
-        self.channel_base_power = None
-        self.dropout_prob = None
-        self.enable_bias = None
-        self.init = None
-        self.init_gain = None
-        self.interp_mode = None
-        self.kernel_size = None
-        self.n_layers = None
-        self.net3d = None
-        self.nn_arch = None
-        self.no_skip = None
-        self.noise_lvl = None
-        self.normalization = None
-        self.ord_params = None
-        self.out_activation = None
-        self.separable = None
-        self.softmax = None
-        self.checkpoint = None
-        self.clip = None
-        self.fp16 = None
-        self.learning_rate = None
-        self.loss = None
-        self.lr_scheduler = None
-        self.n_epochs = None
-        self.n_jobs = None
-        self.no_load_opt = None
-        self.optimizer = None
-        self.plot_loss = None
-        self.valid_source_dir = None
-        self.valid_split = None
-        self.valid_target_dir = None
-        self.weight_decay = None
-        self.write_csv = None
-        self.calc_var = None
-        self.monte_carlo = None
-        self.temperature_map = None
-        self.img_dim = None
-        self.latent_size = None
-        self.freeze_last = None
-        self.last_init = None
-        self.n_seg = None
-        self.ortho_penalty = None
-        self.norm_penalty = None
-        self.use_mse = None
-        self.use_mask = None
-        self.predict_seg = None
-        self.initialize_seg = None
-        self.seg_min = None
-        self.n_gpus = None
-        self.n_input = None
-        self.n_output = None
-        self.prob = None
-        self.rotate = None
-        self.translate = None
-        self.scale = None
-        self.hflip = None
-        self.vflip = None
-        self.gamma = None
-        self.gain = None
-        self.block = None
-        self.noise_pwr = None
-        self.mean = None
-        self.std = None
-        self.threshold = None
-        self.edge = None
-        self.tfm_x = None
-        self.tfm_y = None
-        self.betas = None
-        self.restart_period = None
-        self.t_mult = None
-        self.lrsd_weights = None
+        ### Setup all variables in the config class with default values
+        # Required
+        self.predict_dir        = None
+        self.predict_out        = None
+        self.source_dir         = None
+        self.target_dir         = None
+        self.trained_model      = None
+        # Options
+        self.batch_size         = None
+        self.disable_cuda       = False
+        self.ext                = None
+        self.multi_gpu          = False
+        self.out_config_file    = None
+        self.patch_size         = 0
+        self.pin_memory         = True
+        self.sample_axis        = None
+        self.seed               = 0
+        self.verbosity          = 0
+        # Optimizer Options
+        self.betas              = (0.9, 0.99)
+        self.learning_rate      = 0.001
+        self.lr_scheduler       = None
+        self.no_load_opt        = True
+        self.optimizer          = "adam"
+        self.restart_period     = None
+        self.t_mult             = None
+        self.weight_decay       = 0.01
+        # Neural Network Options
+        self.activation         = "relu"
+        self.dropout_prob       = 0
+        self.init               = "kaiming"
+        self.init_gain          = 0.02
+        self.kernel_size        = 3
+        self.n_layers           = 3
+        self.is_3d              = True
+        self.nn_arch            = "unet"
+        # Training Options
+        self.checkpoint         = None
+        self.clip               = None
+        self.fp16               = False
+        self.loss               = None
+        self.n_epochs           = 100
+        self.n_jobs             = 6
+        self.plot_loss          = None
+        self.valid_source_dir   = None
+        self.valid_split        = None
+        self.valid_target_dir   = None
+        self.write_csv          = None
+        # Prediction Options
+        self.calc_var           = False
+        self.monte_carlo        = None
+        # UNet Options
+        self.add_two_up         = False
+        self.attention          = False
+        self.channel_base_power = 4
+        self.enable_bias        = True
+        self.interp_mode        = "nearest"
+        self.no_skip            = False
+        self.noise_lvl          = 0
+        self.normalization      = "batch"
+        self.out_activation     = "linear"
+        self.separable          = False
+        self.softmax            = False
+        # LRSDNet Options
+        self.lrsd_weights       = None
+        # Ord/HotNet Options
+        self.edge               = False
+        self.ord_params         = None
+        self.temperature_map    = False
+        # VAE Options
+        self.img_dim            = None
+        self.latent_size        = None
+        # SegAE Options
+        self.freeze_last        = None
+        self.initialize_seg     = 0
+        self.last_init          = None
+        self.n_seg              = None
+        self.norm_penalty       = None
+        self.ortho_penalty      = None
+        self.predict_seg        = None
+        self.seg_min            = 0
+        self.use_mask           = None
+        self.use_mse            = None
+        # Internal
+        self.n_gpus             = 1
+        self.n_input            = 1
+        self.n_output           = 1
+        # Data Augmentation Options
+        self.prob               = None
+        self.rotate             = 0
+        self.translate          = None
+        self.scale              = None
+        self.hflip              = False
+        self.vflip              = False
+        self.gamma              = None
+        self.gain               = None
+        self.block              = None
+        self.noise_pwr          = 0
+        self.mean               = None
+        self.std                = None
+        self.threshold          = None
+        self.tfm_x              = True
+        self.tfm_y              = False
+        # instantiate the class and check the setup
         super(ExperimentConfig, self).__init__(*args, **kwargs)
         self.__dict__ = self
         self._check_config()
@@ -122,16 +136,16 @@ class ExperimentConfig(dict):
         if self.ord_params is not None and self.n_output > 1:
             raise SynthNNError('Ordinal regression does not support multiple outputs.')
 
-        if self.net3d and not (self.ext is None or 'nii' in self.ext):
+        if self.is_3d and not (self.ext is None or 'nii' in self.ext):
             logger.warning(f'Cannot train a 3D network with {self.ext} images, creating a 2D network.')
-            self.net3d = False
+            self.is_3d = False
 
-        if self.attention and self.net3d:
+        if self.attention and self.is_3d:
             logger.warning('Cannot use attention with 3D networks, not using attention.')
             self.attention = False
 
         if self.prob is not None:
-            if (self.net3d or self.n_input > 1 or self.n_output > 1) and (self.prob[0] > 0 or self.prob[1] > 0):
+            if (self.is_3d or self.n_input > 1 or self.n_output > 1) and (self.prob[0] > 0 or self.prob[1] > 0):
                 logger.warning('Cannot do affine, flipping or normalization data augmentation with multi-modal/3D networks.')
                 self.prob[0], self.prob[1] = 0, 0
                 self.rotate, self.translate, self.scale = 0, None, None
@@ -142,7 +156,7 @@ class ExperimentConfig(dict):
             logger.warning('temperature_map is only a valid option when using OrdNet or HotNet.')
             self.temperature_map = False
 
-        if self.loss == 'lrds' and not self.net3d:
+        if self.loss == 'lrds' and not self.is_3d:
             raise SynthNNError('low-rank and sparse decomposition is only supported for 3d')
 
         if self.loss == 'lrds' and len(self.target_dir) > 1:
@@ -176,8 +190,8 @@ def _flatten(d): return {k: v for item in d.values() for k, v in item.items()}
 def _get_arg_dict(args):
     arg_dict = {
         "Required": {
-            "predict_dir": ["SET ME!"] if not hasattr(args,'predict_dir') else args.predict_dir,
-            "predict_out": "SET ME!" if not hasattr(args,'predict_out') else args.predict_out,
+            "predict_dir": args.predict_dir if hasattr(args,'predict_dir') else ["SET ME!"],
+            "predict_out": args.predict_out if hasattr(args,'predict_out') else "SET ME!",
             "source_dir": args.source_dir,
             "target_dir": args.target_dir,
             "trained_model": args.trained_model
@@ -186,7 +200,6 @@ def _get_arg_dict(args):
             "batch_size": args.batch_size,
             "disable_cuda": args.disable_cuda,
             "ext": args.ext,
-            "gpu_selector": args.gpu_selector,
             "multi_gpu": args.multi_gpu,
             "out_config_file": args.out_config_file,
             "patch_size": args.patch_size,
@@ -212,7 +225,7 @@ def _get_arg_dict(args):
             "init_gain": args.init_gain,
             "kernel_size": args.kernel_size,
             "n_layers": args.n_layers,
-            "net3d": args.net3d,
+            "is_3d": args.is_3d,
             "nn_arch": args.nn_arch,
         },
         "Training Options": {
@@ -229,8 +242,8 @@ def _get_arg_dict(args):
             "write_csv": args.write_csv
         },
         "Prediction Options": {
-            "calc_var": False if not hasattr(args,'calc_var') else args.calc_var,
-            "monte_carlo": None if not hasattr(args,'monte_carlo') else args.monte_carlo,
+            "calc_var": args.calc_var if hasattr(args,'calc_var') else False,
+            "monte_carlo": args.monte_carlo if hasattr(args,'monte_carlo') else None,
         },
         "UNet Options": {
             "add_two_up": args.add_two_up,
@@ -246,28 +259,28 @@ def _get_arg_dict(args):
             "softmax": args.softmax
         },
         "LRSDNet Options": {
-            "lrsd_weights": args.lrsd_weights
+            "lrsd_weights": args.lrsd_weights if hasattr(args,'lrsd_weights') else None
         },
         "Ord/HotNet Options": {
-            "edge": args.edge,
-            "ord_params": args.ord_params,
-            "temperature_map": False if not hasattr(args,'temperature_map') else args.temperature_map
+            "edge": args.edge if hasattr(args,'edge') else None,
+            "ord_params": args.ord_params if hasattr(args,'ord_params') else None,
+            "temperature_map": args.temperature_map if hasattr(args,'temperature_map') else False
         },
         "VAE Options": {
-            "img_dim": args.img_dim,
-            "latent_size": args.latent_size if args.nn_arch == 'vae' else None
+            "img_dim": args.img_dim if hasattr(args,'img_dim') and args.nn_arch =='vae' else None,
+            "latent_size": args.latent_size if hasattr(args,'latent_size') and args.nn_arch == 'vae' else None
         },
         "SegAE Options": {
-            "freeze_last": args.freeze_last,
-            "initialize_seg": args.initialize_seg,
-            "last_init": args.last_init,
-            "n_seg": args.n_seg,
-            "norm_penalty": args.norm_penalty,
-            "ortho_penalty": args.ortho_penalty,
-            "seg_min": args.seg_min,
-            "use_mse": args.use_mse,
-            "use_mask": args.use_mask,
-            "predict_seg": False if not hasattr(args,'predict_seg') else args.predict_seg
+            "freeze_last": args.freeze_last if hasattr(args,'freeze_last') else None,
+            "initialize_seg": args.initialize_seg if hasattr(args,'initialize_seg') else 0,
+            "last_init": args.last_init if hasattr(args,'last_init') else None,
+            "n_seg": args.n_seg if hasattr(args,'n_seg') else None,
+            "norm_penalty": args.norm_penalty if hasattr(args,'norm_penalty') else None,
+            "ortho_penalty": args.ortho_penalty if hasattr(args,'ortho_penalty') else None,
+            "seg_min": args.seg_min if hasattr(args,'seg_min') else 0,
+            "use_mse": args.use_mse if hasattr(args,'use_mse') else None,
+            "use_mask": args.use_mask if hasattr(args,'use_mask') else None,
+            "predict_seg": args.predict_seg if hasattr(args,'predict_seg') else False
         },
         "Internal": {
             "n_gpus": args.n_gpus,

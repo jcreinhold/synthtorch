@@ -62,7 +62,7 @@ def main(args=None):
         predict_fns = zip(*[glob_imgs(pd, ext) for pd in predict_dir])
         png_temp_flag = not (args.temperature_map and 'png' in ext)  # force tif output in this case
 
-        if args.net3d and args.patch_size > 0 and args.calc_var:
+        if args.is_3d and args.patch_size > 0 and args.calc_var:
             raise SynthNNError('Patch-based 3D variance calculation not currently supported.')
 
         for k, fn in enumerate(predict_fns):

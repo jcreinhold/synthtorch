@@ -20,7 +20,7 @@ with open('README.md') as f:
 with open('LICENSE') as f:
     license = f.read()
 
-version = '0.2.1'
+version = '0.3.0'
 
 args = dict(
     name='synthnn',
@@ -37,7 +37,7 @@ args = dict(
         'console_scripts': ['nn-train=synthnn.exec.nn_train:main',
                             'nn-predict=synthnn.exec.nn_predict:main']
     },
-    dependency_links=[f'git+git://github.com/jcreinhold/niftidataset.git@master#egg=niftidataset-{version}']
+    dependency_links=[f'git+git://github.com/jcreinhold/niftidataset.git@master#egg=niftidataset-0.1.4']
 )
 
 setup(install_requires=['matplotlib',
@@ -45,5 +45,5 @@ setup(install_requires=['matplotlib',
                         'niftidataset>=0.1.4',
                         'numpy>=1.15.4',
                         'pillow>=5.3.0'
-                        'torch>=1.0.0',
-                        'torchvision>=0.2.1'], **args)
+                        'torch>=1.1.0',
+                        'torchvision>=0.2.2'], **args)
