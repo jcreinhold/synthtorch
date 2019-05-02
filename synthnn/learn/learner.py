@@ -173,7 +173,7 @@ class Learner:
             img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
             out = self.predictor.img_predict(img, nsyn, tmap, calc_var)
             out_img = [Image.fromarray(out)]
-        elif f.endswith('.png'):
+        elif f.endswith('.png') or f.endswith('.jpg') or f.endswith('.jpeg'):
             img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
             out = self.predictor.png_predict(img, nsyn, tmap, calc_var)
             out_img = [Image.fromarray(out)]

@@ -51,7 +51,7 @@ def arg_parser():
                          help="write the loss to a csv file of this filename [Default=None]")
     options.add_argument('--disable-cuda', action='store_true', default=False,
                          help='Disable CUDA regardless of availability')
-    options.add_argument('-e', '--ext', type=str, default=None, choices=('nii','tif','png'),
+    options.add_argument('-e', '--ext', type=str, default=None, choices=('nii','tif','png','jpg'),
                          help='extension of training/validation images [Default=None (.nii and .nii.gz)]')
     options.add_argument('-mp', '--fp16', action='store_true', default=False,
                          help='enable mixed precision training')
@@ -159,9 +159,10 @@ def arg_parser():
                                  help='penalties for lrsd [Default=None]')
 
     ordnet_options = parser.add_argument_group('OrdNet/HotNet Options')
+    ordnet_options.add_argument('-ed', '--edge', action='store_true', default=False, help='use edge map [Default=False]')
+    ordnet_options.add_argument('-lp', '--laplacian', action='store_true', default=False, help='use laplacian [Default=False]')
     ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
                                 help='ordinal regression params (start, stop, n_bins) [Default=None]')
-    ordnet_options.add_argument('-ed', '--edge', action='store_true', default=False, help='use edge map [Default=False]')
 
     vae_options = parser.add_argument_group('VAE Options')
     vae_options.add_argument('-id', '--img-dim', type=int, nargs='+', default=None,

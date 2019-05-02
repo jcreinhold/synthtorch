@@ -90,6 +90,7 @@ class ExperimentConfig(dict):
         self.lrsd_weights       = None
         # Ord/HotNet Options
         self.edge               = False
+        self.laplacian          = False
         self.ord_params         = None
         self.temperature_map    = False
         # VAE Options
@@ -263,6 +264,7 @@ def _get_arg_dict(args):
         },
         "Ord/HotNet Options": {
             "edge": args.edge if hasattr(args,'edge') else None,
+            "laplacian": args.laplacian if hasattr(args,'laplacian') else None,
             "ord_params": args.ord_params if hasattr(args,'ord_params') else None,
             "temperature_map": args.temperature_map if hasattr(args,'temperature_map') else False
         },

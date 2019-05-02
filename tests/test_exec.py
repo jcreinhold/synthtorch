@@ -674,6 +674,17 @@ class TestHotNet(TestCLI):
         self.assertEqual(retval, 0)
 
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_hot_2d_lap_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ns -ed -lp').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_hot_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -e tif '
