@@ -99,6 +99,7 @@ class Unet(torch.nn.Module):
         self.separable = separable
         self.inplace = inplace
         self.softmax = softmax
+        self.dropout_last = self.__class__.__name__ == 'Unet' or self.__class__.__name__ == 'OrdNet'
         nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
@@ -138,7 +139,7 @@ class Unet(torch.nn.Module):
             if self.use_attention: d = self.attn[i-1](d)
             x = torch.cat((x, d), dim=1)
             x = self._add_noise(ul[0](x))
-            x = self._add_noise(ul[1](x), i == self.n_layers-1)  # no dropout before 1x1
+            x = self._add_noise(ul[1](x), (i == self.n_layers-1) and self.dropout_last)  # no dropout before 1x1
             x = self._up(x, dout[-i-1].shape[2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
         if self.softmax: F.softmax(x, dim=1)
@@ -163,7 +164,7 @@ class Unet(torch.nn.Module):
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
             if self.use_attention: x = self.attn[i-1](x)
             x = self._add_noise(ul[0](x))
-            x = self._add_noise(ul[1](x), i == self.n_layers-1)  # no dropout before 1x1
+            x = self._add_noise(ul[1](x), (i == self.n_layers-1) and self.dropout_last)  # no dropout before 1x1
             x = self._up(x, sz[-i-1][2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
         if self.softmax: F.softmax(x, dim=1)
