@@ -60,7 +60,7 @@ class Learner:
         if isinstance(config,str):
             config = ExperimentConfig.load_json(config)
         device, use_cuda = get_device(config.disable_cuda)
-        model = get_model(config, True, device, False)
+        model = get_model(config, True, False)
         logger.debug(model)
         logger.info(f'Number of trainable parameters in model: {get_num_params(model)}')
         if os.path.isfile(config.trained_model):
@@ -95,7 +95,7 @@ class Learner:
             config = ExperimentConfig.load_json(config)
         device, use_cuda = get_device(config.disable_cuda)
         nsyn = config.monte_carlo or 1
-        model = get_model(config, nsyn > 1 and config.dropout_prob > 0, device, True)
+        model = get_model(config, nsyn > 1 and config.dropout_prob > 0, True)
         logger.debug(model)
         model, _ = load_model(model, config.trained_model, device)
         if use_cuda: model.cuda(device=device)
@@ -226,14 +226,13 @@ class Learner:
         torch.save(state, fn)
 
 
-def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional[torch.device]=None, inplace:bool=False):
+def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=False):
     """
     instantiate a model based on an ExperimentConfig class instance
 
     Args:
         config (ExperimentConfig): instance of the ExperimentConfig class
         enable_dropout (bool): enable dropout in the model (usually for training)
-        device (torch.device): device to put the torch tensors on
 
     Returns:
         model: instance of one of the available models in the synthnn package
@@ -259,7 +258,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, device:Optional
             from annom.models import OrdNet
         except (ImportError, ModuleNotFoundError):
             raise SynthNNError('Cannot use the OrdNet without the annom toolbox.')
-        model = OrdNet(enable_dropout=enable_dropout, inplace=inplace, device=device, **config)
+        model = OrdNet(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'lrsdnet':
         try:
             from annom.models import LRSDNet
