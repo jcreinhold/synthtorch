@@ -5,7 +5,7 @@ Neural Network Trainer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. argparse::
-   :module: synthnn.exec.nn_train
+   :module: synthtorch.exec.nn_train
    :func: arg_parser
    :prog: nn-train
 

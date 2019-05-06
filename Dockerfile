@@ -16,4 +16,4 @@ RUN /bin/bash -c "source ./create_env.sh" && \
     python setup.py install && \
     echo "backend: agg" > matplotlibrc && \
     sed -i '/conda activate base/d' ~/.bashrc && \
-    echo "conda activate synthnn" >> ~/.bashrc
+    echo "conda activate synthtorch" >> ~/.bashrc

@@ -1,10 +1,10 @@
-synthnn
+synthtorch
 =======================
 
-[![Build Status](https://travis-ci.org/jcreinhold/synthnn.svg?branch=master)](https://travis-ci.org/jcreinhold/synthnn)
-[![Coverage Status](https://coveralls.io/repos/github/jcreinhold/synthnn/badge.svg?branch=master)](https://coveralls.io/github/jcreinhold/synthnn?branch=master)
-[![Documentation Status](https://readthedocs.org/projects/synthnn/badge/?version=latest)](http://synthnn.readthedocs.io/en/latest/)
-[![Docker Automated Build](https://img.shields.io/docker/build/jcreinhold/synthnn.svg)](https://hub.docker.com/r/jcreinhold/synthnn/)
+[![Build Status](https://travis-ci.org/jcreinhold/synthtorch.svg?branch=master)](https://travis-ci.org/jcreinhold/synthtorch)
+[![Coverage Status](https://coveralls.io/repos/github/jcreinhold/synthtorch/badge.svg?branch=master)](https://coveralls.io/github/jcreinhold/synthtorch?branch=master)
+[![Documentation Status](https://readthedocs.org/projects/synthtorch/badge/?version=latest)](http://synthtorch.readthedocs.io/en/latest/)
+[![Docker Automated Build](https://img.shields.io/docker/build/jcreinhold/synthtorch.svg)](https://hub.docker.com/r/jcreinhold/synthtorch/)
 [![Python Versions](https://img.shields.io/badge/python-3.6%20%7C%203.7-blue.svg)](https://www.python.org/downloads/release/python-360/)
 [![DOI](https://zenodo.org/badge/155944524.svg)](https://zenodo.org/badge/latestdoi/155944524)
 
@@ -24,7 +24,7 @@ There is also a seperate package to gather quality metrics of the synthesis resu
 This package was developed by [Jacob Reinhold](https://jcreinhold.github.io) and the other students and researchers of the 
 [Image Analysis and Communication Lab (IACL)](http://iacl.ece.jhu.edu/index.php/Main_Page).
 
-[Link to main Gitlab Repository](https://gitlab.com/jcreinhold/synthnn)
+[Link to main Gitlab Repository](https://gitlab.com/jcreinhold/synthtorch)
 
 Requirements
 ------------
@@ -40,23 +40,23 @@ Requirements
 Installation
 ------------
 
-    pip install git+git://github.com/jcreinhold/synthnn.git
+    pip install git+git://github.com/jcreinhold/synthtorch.git
 
 Tutorial
 --------
 
-[5 minute Overview](https://github.com/jcreinhold/synthnn/blob/master/tutorials/5min_tutorial.md)
+[5 minute Overview](https://github.com/jcreinhold/synthtorch/blob/master/tutorials/5min_tutorial.md)
 
-[Jupyter Notebook example](https://nbviewer.jupyter.org/github/jcreinhold/synthnn/blob/master/tutorials/tutorial.ipynb)
+[Jupyter Notebook example](https://nbviewer.jupyter.org/github/jcreinhold/synthtorch/blob/master/tutorials/tutorial.ipynb)
 
-In addition to the above small tutorial and example notebook, there is consolidated documentation [here](https://synthnn.readthedocs.io/en/latest/).
+In addition to the above small tutorial and example notebook, there is consolidated documentation [here](https://synthtorch.readthedocs.io/en/latest/).
 
 Singularity
 -----------
 
 You can build a singularity image from the docker image hosted on dockerhub via the following command:
 
-    singularity pull shub://jcreinhold/synthnn:latest
+    singularity pull shub://jcreinhold/synthtorch:latest
 
 Test Package
 ------------
@@ -68,11 +68,11 @@ Unit tests can be run from the main directory as follows:
 Citation
 --------
 
-If you use the `synthnn` package in an academic paper, please use the following citation:
+If you use the `synthtorch` package in an academic paper, please use the following citation:
 
     @misc{reinhold2019,
         author       = {Jacob Reinhold},
-        title        = {{synthnn}},
+        title        = {{synthtorch}},
         year         = 2019,
         doi          = {10.5281/zenodo.2556299},
         version      = {0.1.4},

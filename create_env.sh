@@ -1,4 +1,5 @@
 #!/bin/bash
+# Creates a conda environment for the synthtorch package
 # use the following command to run this script: . ./create_env.sh
 # Created on: Nov 8, 2018
 # Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
@@ -56,14 +57,14 @@ conda_forge_packages=(
 # create the environment and switch to that environment
 
 if $FASTAI; then
-    echo "conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes"
-    conda create --name synthnn --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes
+    echo "conda create --name synthtorch --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes"
+    conda create --name synthtorch --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes
 else
-    echo "conda create --name synthnn --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes"
-    conda create --name synthnn --override-channels -c pytorch -c defaults python=3.7 ${packages[@]} ${pytorch_packages[@]} --yes
+    echo "conda create --name synthtorch --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes"
+    conda create --name synthtorch --override-channels -c pytorch -c defaults python=3.7 ${packages[@]} ${pytorch_packages[@]} --yes
 fi
 
-source activate synthnn
+source activate synthtorch
 # add a few other packages
 conda install -c conda-forge ${conda_forge_packages[@]} --yes 
 pip install git+git://github.com/jcreinhold/niftidataset.git
@@ -73,4 +74,4 @@ pip install git+git://github.com/NVIDIA/apex.git
 # install this package
 python setup.py develop
 
-echo "synthnn conda env script finished (verify yourself if everything installed correctly)"
+echo "synthtorch conda env script finished (verify yourself if everything installed correctly)"

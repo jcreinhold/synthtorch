@@ -4,5 +4,5 @@ Utilities
 Helper Tools
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.util.helper
+.. automodule:: synthtorch.util.helper
    :members:

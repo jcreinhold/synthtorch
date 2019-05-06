@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.learn.optim
+synthtorch.learn.optim
 
 define optimizer auxillary functions for neural network training
 

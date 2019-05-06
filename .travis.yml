@@ -28,6 +28,6 @@ before_script: # configure a headless display to test plot generation
   - "sh -e /etc/init.d/xvfb start"
   - sleep 3 # give xvfb some time to start
 script:
-  - nosetests -v --with-coverage --cover-tests --cover-package=synthnn tests
+  - nosetests -v --with-coverage --cover-tests --cover-package=synthtorch tests
 after_success:
   - coveralls

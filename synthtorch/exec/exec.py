@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.util.exec
+synthtorch.util.exec
 
 helper functions for executables
 
@@ -18,7 +18,7 @@ import logging
 import sys
 
 from niftidataset import glob_imgs
-from synthnn import SynthNNError, ExperimentConfig
+from synthtorch import SynthNNError, ExperimentConfig
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.learn.loss
+synthtorch.learn.loss
 
 define loss functions for neural network training
 
@@ -13,7 +13,6 @@ Created on: Feb 20, 2018
 __all__ = ['CosineProximityLoss',
            'SegAELoss',
            'VAELoss']
-
 
 import numpy as np
 import torch

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.exec.nn_predict
+synthtorch.exec.nn_predict
 
 command line interface to synthesize an MR (brain) image
 with a trained pytorch NN (see nn_train)
@@ -22,7 +22,7 @@ with warnings.catch_warnings():
     import numpy as np
     import torch
     from niftidataset import glob_imgs, split_filename
-    from synthnn import Learner, SynthNNError
+    from synthtorch import Learner, SynthNNError
     from .exec import get_args, setup_log, determine_ext
 
 

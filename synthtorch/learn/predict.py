@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.learn.predict
+synthtorch.learn.predict
 
 routines specific to prediction
 

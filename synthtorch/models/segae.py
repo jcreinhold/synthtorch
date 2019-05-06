@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.models.segae
+synthtorch.models.segae
 
 implements a segmentation autoencoder as per [1]
 with numerous modifications which were empirically found
@@ -26,7 +26,7 @@ import torch
 from torch import nn
 
 from .unet import Unet
-from synthnn.learn.loss import SegAELoss
+from synthtorch.learn.loss import SegAELoss
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.learn.learner
+synthtorch.learn.learner
 
-train functions for synthnn neural networks
+train functions for synthtorch neural networks
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
@@ -17,7 +17,7 @@ __all__ = ['get_data_augmentation',
            'Learner']
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 import logging
 import os
@@ -235,7 +235,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
         enable_dropout (bool): enable dropout in the model (usually for training)
 
     Returns:
-        model: instance of one of the available models in the synthnn package
+        model: instance of one of the available models in the synthtorch package
     """
     if config.nn_arch == 'nconv':
         from ..models.nconvnet import SimpleConvNet
@@ -369,7 +369,7 @@ def load_model(model, fn, device):
     load a model's weights
 
     Args:
-        model (torch.nn.Module): instance of a synthnn model
+        model (torch.nn.Module): instance of a synthtorch model
         fn (str): filename associated with model weights
         device (torch.device): device to put the model on
 

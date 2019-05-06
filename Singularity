@@ -37,7 +37,7 @@ From: continuumio/miniconda3
     /opt/conda/bin/pip install git+git://github.com/jcreinhold/niftidataset.git
     /opt/conda/bin/pip install git+git://github.com/jcreinhold/synthqc.git
     /opt/conda/bin/pip install git+git://github.com/NVIDIA/apex.git
-    /opt/conda/bin/pip install git+git://github.com/jcreinhold/synthnn.git
+    /opt/conda/bin/pip install git+git://github.com/jcreinhold/synthtorch.git
 
 %runscript
     exec python $@

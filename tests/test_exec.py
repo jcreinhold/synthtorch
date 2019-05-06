@@ -3,7 +3,7 @@
 """
 tests.test_exec
 
-test the synthnn command line interfaces for runtime errors
+test the synthtorch command line interfaces for runtime errors
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
@@ -16,8 +16,8 @@ import shutil
 import tempfile
 import unittest
 
-from synthnn.exec.nn_train import main as nn_train
-from synthnn.exec.nn_predict import main as nn_predict
+from synthtorch.exec.nn_train import main as nn_train
+from synthtorch.exec.nn_predict import main as nn_predict
 from niftidataset import glob_imgs, split_filename
 
 try:
@@ -395,6 +395,15 @@ class TestUnet(TestCLI):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
+    def test_unet_spectral_ks1_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 -bs 2 -3d '
+                                  f'-ocf {self.jsonfn} -nm spectral -ks 1').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
     def test_unet_weight_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 -bs 2 -3d '
                                   f'-ocf {self.jsonfn} -nm weight').split()
@@ -643,7 +652,7 @@ class TestHotNet(TestCLI):
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_hot_2d_png_cli(self):
         train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
-        args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -e png '
+        args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 2 -cbp 1 -ps 32 -bs 4 -e png '
                              f'-ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)

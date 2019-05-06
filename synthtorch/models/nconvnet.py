@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.models.nconvnet
+synthtorch.models.nconvnet
 
 define the class for a N layer CNN with
 no max pool, increase in channels, or any of that

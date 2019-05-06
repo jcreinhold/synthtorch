@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.errors
+synthtorch.errors
 
 This module holds project defined errors
 

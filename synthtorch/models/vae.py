@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.models.vae
+synthtorch.models.vae
 
 construct a variational autoencoder
 
@@ -21,7 +21,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from .unet import Unet
-from synthnn.learn.loss import VAELoss
+from synthtorch.learn.loss import VAELoss
 
 logger = logging.getLogger(__name__)
 

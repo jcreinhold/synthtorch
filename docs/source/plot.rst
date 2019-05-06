@@ -4,5 +4,5 @@ Plot
 Neural Network Visualization Tools
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.plot.loss
+.. automodule:: synthtorch.plot.loss
    :members:

@@ -4,29 +4,29 @@ Models
 U-net
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.models.unet
+.. automodule:: synthtorch.models.unet
    :members:
 
 Variational Autoencoder
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.models.vae
+.. automodule:: synthtorch.models.vae
    :members:
 
 N-layer CNN
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.models.nconvnet
+.. automodule:: synthtorch.models.nconvnet
    :members:
 
 SegAE
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.models.segae
+.. automodule:: synthtorch.models.segae
    :members:
 
 DenseNet
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.models.densenet
+.. automodule:: synthtorch.models.densenet
    :members:

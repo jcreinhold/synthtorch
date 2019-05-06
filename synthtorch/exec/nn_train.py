@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.exec.nn_train
+synthtorch.exec.nn_train
 
 command line interface to train a deep convolutional neural network for
 synthesis of MR (brain) images
@@ -23,7 +23,7 @@ with warnings.catch_warnings():
     matplotlib.use('agg')  # do not pull in GUI
     import numpy as np
     import torch
-    from synthnn import Learner
+    from synthtorch import Learner
     from .exec import get_args, setup_log
 
 

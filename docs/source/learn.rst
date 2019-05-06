@@ -4,29 +4,29 @@ Learn
 Layers
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.learn.layers
+.. automodule:: synthtorch.learn.layers
    :members:
 
 Learner
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.learn.learner
+.. automodule:: synthtorch.learn.learner
    :members:
 
 Loss Functions
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.learn.loss
+.. automodule:: synthtorch.learn.loss
    :members:
 
 Optimizers
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.learn.optim
+.. automodule:: synthtorch.learn.optim
    :members:
 
 Prediction
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: synthnn.learn.predict
+.. automodule:: synthtorch.learn.predict
    :members:

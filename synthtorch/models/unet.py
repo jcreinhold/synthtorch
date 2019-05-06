@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.models.unet
+synthtorch.models.unet
 
-holds the architecture for a 2d or 3d unet [1]
+holds the architecture for a 2d or 3d unet [1,2,3]
 
 References:
-    [1] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
+    [1] Ronneberger, Olaf, Philipp Fischer, and Thomas Brox.
+        "U-net: Convolutional networks for biomedical image segmentation."
+        International Conference on Medical image computing and computer-assisted intervention. Springer, Cham, 2015.
+    [2] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
         “3D U-Net: Learning Dense Volumetric Segmentation from Sparse Annotation,”
         in Medical Image Computing and Computer-Assisted Intervention (MICCAI), 2016, pp. 424–432.
+    [3] C. Zhao, A. Carass, J. Lee, Y. He, and J. L. Prince, “Whole Brain Segmentation and Labeling
+        from CT Using Synthetic MR Images,” MLMI, vol. 10541, pp. 291–298, 2017.
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
@@ -32,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 class Unet(torch.nn.Module):
     """
-    defines a 2d or 3d unet [1] in pytorch
+    defines a 2d or 3d unet [1,2,3] in pytorch
 
     Args:
         n_layers (int): number of layers (to go down and up)
@@ -63,12 +68,14 @@ class Unet(torch.nn.Module):
         softmax (bool): use a softmax before the final layer
 
     References:
-        [1] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
+        [1] Ronneberger, Olaf, Philipp Fischer, and Thomas Brox.
+            "U-net: Convolutional networks for biomedical image segmentation."
+            International Conference on Medical image computing and computer-assisted intervention. Springer, Cham, 2015.
+        [2] O. Cicek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger,
             “3D U-Net: Learning Dense Volumetric Segmentation from Sparse Annotation,”
             in Medical Image Computing and Computer-Assisted Intervention (MICCAI), 2016, pp. 424–432.
-        [2] C. Zhao, A. Carass, J. Lee, Y. He, and J. L. Prince, “Whole Brain Segmentation and Labeling
+        [3] C. Zhao, A. Carass, J. Lee, Y. He, and J. L. Prince, “Whole Brain Segmentation and Labeling
             from CT Using Synthetic MR Images,” MLMI, vol. 10541, pp. 291–298, 2017.
-
     """
     def __init__(self, n_layers:int, kernel_size:int=3, dropout_p:float=0, channel_base_power:int=5,
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu',
@@ -187,7 +194,7 @@ class Unet(torch.nn.Module):
             x = x + (torch.randn_like(x.detach()) * self.noise_lvl)
         return x
 
-    def _conv(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None, bias:bool=False) -> nn.Sequential:
+    def _conv(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None, bias:bool=False, seq:bool=True):
         ksz = self.kernel_sz if kernel_sz is None else kernel_sz
         bias = False if self.norm != 'none' and not bias else True
         if not self.separable or ksz == 1:
@@ -198,22 +205,27 @@ class Unet(torch.nn.Module):
                      [SeparableConv2d(in_c, out_c, ksz, bias=bias)]
         if ksz > 1: layers = [nn.ReplicationPad3d(ksz // 2)] + layers if self.is_3d else \
                              [nn.ReflectionPad2d(ksz // 2)] + layers
-        c = nn.Sequential(*layers) if len(layers) > 1 else layers[0]
+        if seq and len(layers) > 1:
+            c = nn.Sequential(*layers)
+        else:
+            c = layers if len(layers) > 1 else layers[0]
         return c
 
     def _conv_act(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None,
                   act:Optional[str]=None, norm:Optional[str]=None) -> nn.Sequential:
         ksz = kernel_sz or self.kernel_sz
         activation = get_act(act) if act is not None else get_act('relu')
-        layers = [self._conv(in_c, out_c, ksz)]
+        c = self._conv(in_c, out_c, ksz, seq=False)
+        i = 1 if isinstance(c, list) else 0
+        layers = [*c] if i == 1 else [c]
         if norm in [None, 'instance', 'batch', 'layer']:
              normalization = get_norm3d(norm, out_c) if norm is not None and self.is_3d else \
                              get_norm3d('instance', out_c) if self.is_3d else \
                              get_norm2d(norm, out_c) if norm is not None and not self.is_3d else \
                              get_norm2d('instance', out_c)
              if normalization is not None: layers.append(normalization)
-        elif norm == 'weight':   layers[0][1] = nn.utils.weight_norm(layers[0][1])
-        elif norm == 'spectral': layers[0][1] = nn.utils.spectral_norm(layers[0][1])
+        elif norm == 'weight':   layers[i] = nn.utils.weight_norm(layers[i])
+        elif norm == 'spectral': layers[i] = nn.utils.spectral_norm(layers[i])
         layers.append(activation)
         ca = nn.Sequential(*layers)
         return ca

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.util.helper
+synthtorch.util.helper
 
 define helper function for defining neural networks in pytorch
 

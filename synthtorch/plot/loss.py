@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.plot.loss
+synthtorch.plot.loss
 
 loss visualization plotting tools
 

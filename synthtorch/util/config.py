@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.util.config
+synthtorch.util.config
 
-create class for experiment configuration in the synthnn package
+create class for experiment configuration in the synthtorch package
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 

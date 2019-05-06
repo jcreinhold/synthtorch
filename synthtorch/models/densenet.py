@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-synthnn.models.densenet
+synthtorch.models.densenet
 
 holds the architecture for a 2d densenet [1]
 this model is pulled (and modified) from the pytorch repo:

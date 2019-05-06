@@ -4,14 +4,14 @@
 
 The easiest way to install the package is with the following command:
 
-    pip install git+git://github.com/jcreinhold/synthnn.git
+    pip install git+git://github.com/jcreinhold/synthtorch.git
     
 You can also download the package through git, i.e.,
 
-    git clone https://github.com/jcreinhold/synthnn.git
+    git clone https://github.com/jcreinhold/synthtorch.git
 
 then you can install the package via the setup.py script, i.e.,
-inside the `synthnn` directory, run the following command:
+inside the `synthtorch` directory, run the following command:
 
     python setup.py install
 
@@ -21,11 +21,11 @@ or
     
 If you prefer Docker or Singularity, use one of the following commands:
 
-    docker pull jcreinhold/synthnn
+    docker pull jcreinhold/synthtorch
 
 or 
 
-    singularity pull shub://jcreinhold/synthnn:latest
+    singularity pull shub://jcreinhold/synthtorch:latest
 
 
 ## Deep Neural Network-based Synthesis
@@ -71,7 +71,7 @@ directories used. Also use brackets around your directory/directories that you i
 
 ## Example training/validation directory setup
 
-Below is an example of a training/validation directory to be used with synthnn. 
+Below is an example of a training/validation directory to be used with synthtorch. 
 
 ```none
 ├── flair
@@ -160,7 +160,7 @@ The reason for making this explicit will be motivated in the 2D synthesis sectio
 
 ## _n_-to-_m_ Multi-modal Synthesis
 
-As alluded to in the previous section, it is worth specifically noting that the synthnn package (specifically 
+As alluded to in the previous section, it is worth specifically noting that the synthtorch package (specifically 
 `nn-train` and `nn-predict`) supports multi-modal image synthesis. This is done by simply adding additional 
 directories to the source or target arguments, e.g. for \{T1,T2\}-to-FLAIR synthesis, we have:
 

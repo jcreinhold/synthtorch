@@ -12,7 +12,7 @@ Created on: Sep 07, 2018
 
 import unittest
 
-from synthnn import plot_loss
+from synthtorch import plot_loss
 
 
 class TestPlot(unittest.TestCase):
