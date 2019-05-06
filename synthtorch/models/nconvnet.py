@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleConvNet(torch.nn.Module):
-    def __init__(self, n_layers:int, n_input:int=1, n_output:int=1, kernel_size:int=3, dropout_p:float=0, is_3d:bool=True, **kwargs):
+    def __init__(self, n_layers:int, n_input:int=1, n_output:int=1, kernel_size:int=3, dropout_prob:float=0, is_3d:bool=True, **kwargs):
         super(SimpleConvNet, self).__init__()
         self.n_layers = n_layers
         self.n_input = n_input
         self.n_output = n_output
         self.kernel_sz = kernel_size
-        self.dropout_p = dropout_p
+        self.dropout_prob = dropout_prob
         self.is_3d = is_3d
         self.criterion = nn.MSELoss()
         if isinstance(kernel_size, int):
@@ -42,7 +42,7 @@ class SimpleConvNet(torch.nn.Module):
             nn.Conv3d(n_input, n_output, ksz) if is_3d else nn.Conv2d(n_input, n_output, ksz),
             nn.ReLU(),
             nn.InstanceNorm3d(n_output, affine=True) if is_3d else nn.InstanceNorm2d(n_output, affine=True),
-            nn.Dropout3d(dropout_p) if is_3d else nn.Dropout2d(dropout_p)) for ksz in self.kernel_sz])
+            nn.Dropout3d(dropout_prob) if is_3d else nn.Dropout2d(dropout_prob)) for ksz in self.kernel_sz])
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         for l in self.layers:

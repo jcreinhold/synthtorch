@@ -653,7 +653,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_png_cli(self):
         train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 2 -cbp 1 -ps 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn}').split()
+                             f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -664,7 +664,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_noskip_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns').split()
+                             f'-ocf {self.jsonfn} -ns -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -675,7 +675,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_noskip_edge_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -ed').split()
+                             f'-ocf {self.jsonfn} -ns -ed -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -686,7 +686,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_lap_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -ed -lp').split()
+                             f'-ocf {self.jsonfn} -ns -ed -lp -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -697,7 +697,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn}').split()
+                             f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -708,7 +708,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_temp_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn}').split()
+                             f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, temperature_map=True)
@@ -718,7 +718,7 @@ class TestHotNet(TestCLI):
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_hot_3d_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -3d '
-                                  f'-ocf {self.jsonfn}').split()
+                                  f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -728,7 +728,7 @@ class TestHotNet(TestCLI):
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_hot_3d_temp_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 -bs 4 -3d '
-                                  f'-ocf {self.jsonfn}').split()
+                                  f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, temperature_map=True)

@@ -77,7 +77,7 @@ class Unet(torch.nn.Module):
         [3] C. Zhao, A. Carass, J. Lee, Y. He, and J. L. Prince, “Whole Brain Segmentation and Labeling
             from CT Using Synthetic MR Images,” MLMI, vol. 10541, pp. 291–298, 2017.
     """
-    def __init__(self, n_layers:int, kernel_size:int=3, dropout_p:float=0, channel_base_power:int=5,
+    def __init__(self, n_layers:int, kernel_size:int=3, dropout_prob:float=0, channel_base_power:int=5,
                  add_two_up:bool=False, normalization:str='instance', activation:str='relu',
                  output_activation:str='linear', is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
@@ -87,7 +87,7 @@ class Unet(torch.nn.Module):
         # setup and store instance parameters
         self.n_layers = n_layers
         self.kernel_sz = kernel_size
-        self.dropout_p = dropout_p
+        self.dropout_prob = dropout_prob
         self.channel_base_power = channel_base_power
         self.a2u = 2 if add_two_up else 0
         self.norm = nm = normalization
@@ -187,9 +187,9 @@ class Unet(torch.nn.Module):
 
     def _add_noise(self, x:torch.Tensor, skip:bool=False) -> torch.Tensor:
         if skip: return x
-        if self.dropout_p > 0:
-            x = F.dropout3d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace) if self.is_3d else \
-                F.dropout2d(x, self.dropout_p, training=self.enable_dropout, inplace=self.inplace)
+        if self.dropout_prob > 0:
+            x = F.dropout3d(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace) if self.is_3d else \
+                F.dropout2d(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace)
         if self.noise_lvl > 0:
             x = x + (torch.randn_like(x.detach()) * self.noise_lvl)
         return x
