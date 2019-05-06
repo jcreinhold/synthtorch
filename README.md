@@ -6,7 +6,7 @@ synthtorch
 [![Documentation Status](https://readthedocs.org/projects/synthtorch/badge/?version=latest)](http://synthtorch.readthedocs.io/en/latest/)
 [![Docker Automated Build](https://img.shields.io/docker/build/jcreinhold/synthtorch.svg)](https://hub.docker.com/r/jcreinhold/synthtorch/)
 [![Python Versions](https://img.shields.io/badge/python-3.6%20%7C%203.7-blue.svg)](https://www.python.org/downloads/release/python-360/)
-[![DOI](https://zenodo.org/badge/155944524.svg)](https://zenodo.org/badge/latestdoi/155944524)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2669612.svg)](https://doi.org/10.5281/zenodo.2669612)
 
 This package contains deep neural network-based (pytorch) modules to synthesize magnetic resonance (MR) and computed 
 tomography (CT) brain images. Synthesis is the procedure of learning the transformation that takes a specific contrast image to another estimate contrast.
@@ -74,10 +74,10 @@ If you use the `synthtorch` package in an academic paper, please use the followi
         author       = {Jacob Reinhold},
         title        = {{synthtorch}},
         year         = 2019,
-        doi          = {10.5281/zenodo.2556299},
-        version      = {0.1.4},
+        doi          = {10.5281/zenodo.2669612},
+        version      = {0.3.2},
         publisher    = {Zenodo},
-        url          = {https://doi.org/10.5281/zenodo.2556299}
+        url          = {https://doi.org/10.5281/zenodo.2669612}
     }
     
 Relevant Papers
