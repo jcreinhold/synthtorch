@@ -54,7 +54,7 @@ In addition to the above small tutorial and example notebook, there is consolida
 Singularity
 -----------
 
-You can build a singularity image from the docker image hosted on dockerhub via the following command:
+You can build a singularity image from the docker image hosted on [dockerhub](https://hub.docker.com/r/jcreinhold/synthtorch/) or through [singularity-hub](https://www.singularity-hub.org/collections/2909) via the following command:
 
     singularity pull shub://jcreinhold/synthtorch:latest
 
