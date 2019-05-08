@@ -20,7 +20,7 @@ with open('README.md') as f:
 with open('LICENSE') as f:
     license = f.read()
 
-version = '0.3.2'
+version = '0.3.3'
 
 args = dict(
     name='synthtorch',

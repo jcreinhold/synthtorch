@@ -147,12 +147,6 @@ def get_optim(name:str):
         optimizer = torch.optim.rmsprop
     elif name.lower() == 'adagrad':
         optimizer = torch.optim.adagrad
-    elif name.lower() == 'adabound':
-        from ..learn.optim import AdaBound
-        optimizer = AdaBound
-    elif name.lower() == 'amsbound':
-        from ..learn.optim import AMSBound
-        optimizer = AMSBound
     elif name.lower() == 'amsgrad':
         from ..learn.optim import AMSGrad
         optimizer = AMSGrad

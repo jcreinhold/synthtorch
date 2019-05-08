@@ -108,9 +108,9 @@ class TestNConv(TestCLI):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
-    def test_nconv_burn_cosine_cli(self):
+    def test_nconv_cyclic_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
-                                  f'-ocf {self.jsonfn} -bs 2 -lrs burncosine -v').split()
+                                  f'-ocf {self.jsonfn} -bs 2 -lrs cyclic -v -opt adamw').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -119,25 +119,7 @@ class TestNConv(TestCLI):
 
     def test_nconv_restarts_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
-                                  f'-ocf {self.jsonfn} -bs 2 -lrs cosinerestart -tm 1.2 -rp 5 -v').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    def test_nconv_adabound_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
-                                  f'-ocf {self.jsonfn} -bs 2 -v -opt adabound').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    def test_nconv_amsbound_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
-                                  f'-ocf {self.jsonfn} -bs 2 -v -opt amsbound').split()
+                                  f'-ocf {self.jsonfn} -bs 2 -lrs cosinerestarts -tm 2 -rp 2 -v').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)

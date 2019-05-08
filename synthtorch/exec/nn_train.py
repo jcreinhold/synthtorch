@@ -87,20 +87,28 @@ def arg_parser():
     opt_options.add_argument('-bt', '--betas', type=float, default=(0.9,0.99), nargs=2,
                              help='optimizer parameters (if using SGD, then the first element will be momentum '
                                   'and the second ignored) [Default=(0.9,0.99)]')
-    opt_options.add_argument('-lrs', '--lr-scheduler', type=str, default=None, choices=('burncosine', 'cosinerestart'),
-                             help='use a learning rate scheduler [Default=None]')
     opt_options.add_argument('-nlo', '--no-load-opt', action='store_true', default=False,
                              help='if loading a trained model, do not load the optimizer [Default=False]')
     opt_options.add_argument('-opt', '--optimizer', type=str, default='adam',
-                             choices=('adam','adamw','sgd','sgdw','nesterov','adagrad','amsgrad','rmsprop','adabound','amsbound'),
+                             choices=('adam','adamw','sgd','sgdw','nesterov','adagrad','amsgrad','rmsprop'),
                              help='Use this optimizer to train the network [Default=adam]')
-    opt_options.add_argument('-rp', '--restart-period', type=int, default=None,
-                             help='restart period for cosine annealing with restarts [Default=None]')
-    opt_options.add_argument('-tm', '--t-mult', type=float, default=None,
-                             help='multiplication factor for which the next restart period will extend or shrink '
-                                  '(for cosine annealing with restarts) [Default=None]')
     opt_options.add_argument('-wd', '--weight-decay', type=float, default=0,
                              help="weight decay parameter for optimizer [Default=0]")
+
+    sch_options = parser.add_argument_group('Scheduler Options')
+    sch_options.add_argument('-cm', '--cycle-mode', type=str, default='triangluar', choices=('triangular','triangular2','exp_range'),
+                             help='type of cycle for cyclic lr scheduler [Default=triangular]')
+    sch_options.add_argument('-lrs', '--lr-scheduler', type=str, default=None, choices=('cyclic', 'cosinerestarts'),
+                             help='use a learning rate scheduler [Default=None]')
+    sch_options.add_argument('-mr', '--momentum-range', type=float, nargs=2, default=(0.85,0.95),
+                             help='range over which to inversely cycle momentum (does not work w/ all optimizers) [Default=(0.85,0.95)]')
+    sch_options.add_argument('-nc', '--num-cycles', type=int, default=1,
+                             help='number of cycles for cyclic learning rate scheduler [Default=1]')
+    sch_options.add_argument('-rp', '--restart-period', type=int, default=None,
+                             help='restart period for cosine annealing with restarts [Default=None]')
+    sch_options.add_argument('-tm', '--t-mult', type=int, default=None,
+                             help='multiplication factor for which the next restart period will extend or shrink '
+                                  '(for cosine annealing with restarts) [Default=None]')
 
     nn_options = parser.add_argument_group('Neural Network Options')
     nn_options.add_argument('-ac', '--activation', type=str, default='relu',
@@ -225,8 +233,7 @@ def main(args=None):
 
         if args.fp16: learner.fp16()
         if args.multi_gpu: learner.multigpu()
-        if args.lr_scheduler is not None:
-            learner.lr_scheduler(args.n_epochs, args.lr_scheduler, args.restart_period, args.t_mult)
+        if args.lr_scheduler is not None: learner.lr_scheduler(**args)
 
         learner.fit(args.n_epochs, args.clip, args.checkpoint, args.trained_model)
 

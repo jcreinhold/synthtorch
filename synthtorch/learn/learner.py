@@ -27,15 +27,15 @@ import numpy as np
 from PIL import Image
 import torch
 from torch import nn
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, CyclicLR
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose
 from torch.utils.data.sampler import SubsetRandomSampler
+from torchvision.transforms import Compose
 
 from niftidataset import MultimodalNiftiDataset, MultimodalImageDataset, split_filename
 import niftidataset.transforms as niftitfms
 
 from ..errors import SynthNNError
-from .optim import BurnCosineLR, CosineLRWithRestarts
 from ..plot.loss import plot_loss
 from .predict import Predictor
 from ..util.config import ExperimentConfig
@@ -46,13 +46,15 @@ logger = logging.getLogger(__name__)
 
 class Learner:
 
-    def __init__(self, model, device=None, train_loader=None, valid_loader=None, optimizer=None, predictor=None):
+    def __init__(self, model, device=None, train_loader=None, valid_loader=None, optimizer=None,
+                 predictor=None, config=None):
         self.model = model
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.optimizer = optimizer
         self.device = device
         self.predictor = predictor
+        self.config = config
         self.record = None
 
     @classmethod
@@ -87,7 +89,7 @@ class Learner:
         segae_flag = config.n_seg if config.predict_seg else None
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
                               config.n_output, config.is_3d, config.mean, config.std, segae_flag)
-        return cls(model, device, train_loader, valid_loader, optimizer, predictor)
+        return cls(model, device, train_loader, valid_loader, optimizer, predictor, config)
 
     @classmethod
     def predict_setup(cls, config:Union[str,ExperimentConfig]):
@@ -103,22 +105,23 @@ class Learner:
         segae_flag = config.n_seg if config.predict_seg and config.nn_arch == 'segae' else None
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
                               config.n_output, config.is_3d, config.mean, config.std, segae_flag)
-        return cls(model, device, predictor=predictor)
+        return cls(model, device, predictor=predictor, config=config)
 
     def fit(self, n_epochs, clip:float=None, checkpoint:int=None, trained_model:str=None):
         """ training loop for neural network """
         self.model.train()
         use_valid = self.valid_loader is not None
         use_scheduler = hasattr(self, 'scheduler')
-        use_restarts = False if not use_scheduler else hasattr(self.scheduler, 'batch_step')
+        use_restarts = self.config.lr_scheduler == 'cosinerestarts'
         fp16 = hasattr(self, 'amp_handle')
         train_losses, valid_losses = [], []
+        n_batches = len(self.train_loader)
         for t in range(1, n_epochs + 1):
-            if use_scheduler: self.scheduler.step()
             # training
             t_losses = []
             if use_valid: self.model.train(True)
-            for src, tgt in self.train_loader:
+            for i, (src, tgt) in enumerate(self.train_loader):
+                if use_scheduler: self.scheduler.step(((t-1) + (i / n_batches)) if use_restarts else None)
                 src, tgt = src.to(self.device), tgt.to(self.device)
                 self.optimizer.zero_grad()
                 out = self.model(src)
@@ -131,7 +134,6 @@ class Learner:
                     loss.backward()
                 if clip is not None: nn.utils.clip_grad_norm_(self.model.parameters(), clip)
                 self.optimizer.step()
-                if use_restarts: self.scheduler.batch_step()
             train_losses.append(t_losses)
 
             if checkpoint is not None:
@@ -155,7 +157,7 @@ class Learner:
             if logger is not None:
                 log = f'Epoch: {t} - Training Loss: {np.mean(t_losses):.2e}'
                 if use_valid: log += f', Validation Loss: {np.mean(v_losses):.2e}'
-                if use_scheduler and not use_restarts: log += f', LR: {self.scheduler.get_lr()[0]:.2e}'
+                if use_scheduler: log += f', LR: {self.scheduler.get_lr()[0]:.2e}'
                 logger.info(log)
 
         self.record = Record(train_losses, valid_losses)
@@ -203,15 +205,21 @@ class Learner:
             logger.info(f'Enabling use of {n_gpus} gpus')
             self.model = torch.nn.DataParallel(self.model)
 
-    def lr_scheduler(self, n_epochs, type='burncosine', restart_period=None, t_mult=None):
-        if type == 'burncosine':
-            logger.info('Enabling burn-in cosine annealing LR scheduler')
-            self.scheduler = BurnCosineLR(self.optimizer, n_epochs)
-        elif type == 'cosinerestart':
+    def lr_scheduler(self, n_epochs, lr_scheduler='cyclic', restart_period=None, t_mult=None,
+                     num_cycles=1, mode='triangular', momentum_range=(0.85,0.95), div_factor=25, **kwargs):
+        if lr_scheduler == 'cyclic':
+            logger.info(f'Enabling cyclic LR scheduler with {num_cycles} cycle(s)')
+            lr = self.config.learning_rate
+            ssu = int((n_epochs * len(self.train_loader)) / (2 * num_cycles))
+            cycle_momentum = self.config.optimizer in ('adamw','sgd','sgdw','nesterov','rmsprop')
+            if cycle_momentum and momentum_range is not None:
+                logger.warning(f'{self.config.optimizer} not compatible with momentum cycling, disabling.')
+            self.scheduler = CyclicLR(self.optimizer, lr/div_factor, lr, step_size_up=ssu, mode=mode,
+                                      cycle_momentum=cycle_momentum,
+                                      base_momentum=momentum_range[0], max_momentum=momentum_range[1])
+        elif lr_scheduler == 'cosinerestarts':
             logger.info('Enabling cosine annealing with restarts LR scheduler')
-            self.scheduler = CosineLRWithRestarts(self.optimizer, self.train_loader.batch_size,
-                                                  len(self.train_loader.dataset),
-                                                  restart_period=restart_period, t_mult=t_mult)
+            self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, restart_period, T_mult=t_mult, eta_min=1e-7)
         else:
             raise SynthNNError(f'Invalid type {type} for scheduler.')
 

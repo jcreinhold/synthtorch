@@ -44,12 +44,16 @@ class ExperimentConfig(dict):
         # Optimizer Options
         self.betas              = (0.9, 0.99)
         self.learning_rate      = 0.001
-        self.lr_scheduler       = None
         self.no_load_opt        = True
         self.optimizer          = "adam"
+        self.weight_decay       = 0.01
+        # Scheduler Options
+        self.cycle_mode         = "triangular"
+        self.momentum_range     = (0.85, 0.95)
+        self.num_cycles         = 1
+        self.lr_scheduler       = None
         self.restart_period     = None
         self.t_mult             = None
-        self.weight_decay       = 0.01
         # Neural Network Options
         self.activation         = "relu"
         self.dropout_prob       = 0
@@ -213,12 +217,17 @@ def _get_arg_dict(args):
         "Optimizer Options": {
             "betas": args.betas,
             "learning_rate": args.learning_rate,
-            "lr_scheduler": args.lr_scheduler,
             "no_load_opt": args.no_load_opt,
             "optimizer": args.optimizer,
-            "restart_period": args.restart_period,
-            "t_mult": args.t_mult,
             "weight_decay": args.weight_decay
+        },
+        "Scheduler Options": {
+            "cycle_mode": args.cycle_mode,
+            "lr_scheduler": args.lr_scheduler,
+            "momentum_range": args.momentum_range,
+            "num_cycles": args.num_cycles,
+            "restart_period": args.restart_period,
+            "t_mult": args.t_mult
         },
         "Neural Network Options": {
             "activation": args.activation,
