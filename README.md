@@ -4,7 +4,7 @@ synthtorch
 [![Build Status](https://travis-ci.org/jcreinhold/synthtorch.svg?branch=master)](https://travis-ci.org/jcreinhold/synthtorch)
 [![Coverage Status](https://coveralls.io/repos/github/jcreinhold/synthtorch/badge.svg?branch=master)](https://coveralls.io/github/jcreinhold/synthtorch?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/synthtorch/badge/?version=latest)](http://synthtorch.readthedocs.io/en/latest/)
-[![Docker Automated Build](https://img.shields.io/docker/build/jcreinhold/synthtorch.svg)](https://hub.docker.com/r/jcreinhold/synthtorch/)
+[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/jcreinhold/synthtorch.svg)](https://hub.docker.com/r/jcreinhold/synthtorch/)
 [![Python Versions](https://img.shields.io/badge/python-3.6%20%7C%203.7-blue.svg)](https://www.python.org/downloads/release/python-360/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2669612.svg)](https://doi.org/10.5281/zenodo.2669612)
 
