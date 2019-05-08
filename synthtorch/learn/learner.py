@@ -212,7 +212,7 @@ class Learner:
             lr = self.config.learning_rate
             ssu = int((n_epochs * len(self.train_loader)) / (2 * num_cycles))
             cycle_momentum = self.config.optimizer in ('adamw','sgd','sgdw','nesterov','rmsprop')
-            if cycle_momentum and momentum_range is not None:
+            if not cycle_momentum and momentum_range is not None:
                 logger.warning(f'{self.config.optimizer} not compatible with momentum cycling, disabling.')
             self.scheduler = CyclicLR(self.optimizer, lr/div_factor, lr, step_size_up=ssu, mode=mode,
                                       cycle_momentum=cycle_momentum,
