@@ -66,6 +66,7 @@ class Unet(torch.nn.Module):
         inplace (bool): use inplace operations (for prediction)
         separable (bool): use separable convolutions instead of full convolutions
         softmax (bool): use a softmax before the final layer
+        input_connect (bool): use a skip connection from the input to near the end of the network
 
     References:
         [1] Ronneberger, Olaf, Philipp Fischer, and Thomas Brox.
@@ -82,7 +83,7 @@ class Unet(torch.nn.Module):
                  output_activation:str='linear', is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
                  loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False,
-                 softmax:bool=False, **kwargs):
+                 softmax:bool=False, input_connect:bool=True, **kwargs):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -106,6 +107,7 @@ class Unet(torch.nn.Module):
         self.separable = separable
         self.inplace = inplace
         self.softmax = softmax
+        self.input_connect = input_connect
         self.dropout_last = self.__class__.__name__ == 'Unet' or self.__class__.__name__ == 'OrdNet'
         nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
@@ -118,7 +120,7 @@ class Unet(torch.nn.Module):
                                                        lc(n), lc(n), (kernel_size+self.a2u, kernel_size),
                                                        act=(a, a), norm=(nm, nm))
                                         for n in reversed(range(1,nl+1))])
-        self.finish = self._final(lc(0) + n_input if not no_skip else lc(0), n_output, oa, bias=enable_bias)
+        self.finish = self._final(lc(0) + n_input if not no_skip and input_connect else lc(0), n_output, oa, bias=enable_bias)
         self.upsampconvs = nn.ModuleList([self._upsampconv(lc(n+1), lc(n)) for n in reversed(range(nl+1))])
         if self.use_attention: self.attn = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(1, nl+1))])
 
@@ -150,7 +152,7 @@ class Unet(torch.nn.Module):
             x = self._up(x, dout[-i-1].shape[2:])  # doesn't do anything on the last iteration
             x = self.upsampconvs[i](x)
         if self.softmax: F.softmax(x, dim=1)
-        x = torch.cat((x, dout[0]), dim=1)
+        if self.input_connect: x = torch.cat((x, dout[0]), dim=1)
         return x
 
     def _fwd_no_skip(self, x:torch.Tensor, **kwargs) -> torch.Tensor:

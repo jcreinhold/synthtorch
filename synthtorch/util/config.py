@@ -79,6 +79,7 @@ class ExperimentConfig(dict):
         self.attention          = False
         self.channel_base_power = 4
         self.enable_bias        = True
+        self.input_connect      = True
         self.interp_mode        = "nearest"
         self.no_skip            = False
         self.noise_lvl          = 0
@@ -252,6 +253,7 @@ def _get_arg_dict(args):
             "channel_base_power": args.channel_base_power,
             "enable_bias": args.enable_bias,
             "interp_mode": args.interp_mode,
+            "input_connect": args.input_connect,
             "no_skip": args.no_skip,
             "noise_lvl": args.noise_lvl,
             "normalization": args.normalization,
