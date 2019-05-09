@@ -98,6 +98,7 @@ def arg_parser():
     sch_options = parser.add_argument_group('Scheduler Options')
     sch_options.add_argument('-cm', '--cycle-mode', type=str, default='triangluar', choices=('triangular','triangular2','exp_range'),
                              help='type of cycle for cyclic lr scheduler [Default=triangular]')
+    sch_options.add_argument('-df', '--div-factor', type=float, default=25, help='divide LR by this amount for minimum LR [Default=25]')
     sch_options.add_argument('-lrs', '--lr-scheduler', type=str, default=None, choices=('cyclic', 'cosinerestarts'),
                              help='use a learning rate scheduler [Default=None]')
     sch_options.add_argument('-mr', '--momentum-range', type=float, nargs=2, default=(0.85,0.95),

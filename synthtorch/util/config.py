@@ -49,6 +49,7 @@ class ExperimentConfig(dict):
         self.weight_decay       = 0.01
         # Scheduler Options
         self.cycle_mode         = "triangular"
+        self.div_factor         = 25
         self.momentum_range     = (0.85, 0.95)
         self.num_cycles         = 1
         self.lr_scheduler       = None
@@ -223,6 +224,7 @@ def _get_arg_dict(args):
         },
         "Scheduler Options": {
             "cycle_mode": args.cycle_mode,
+            "div_factor": args.div_factor,
             "lr_scheduler": args.lr_scheduler,
             "momentum_range": args.momentum_range,
             "num_cycles": args.num_cycles,
