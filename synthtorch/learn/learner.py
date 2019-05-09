@@ -214,7 +214,6 @@ class Learner:
     def lr_scheduler(self, n_epochs, lr_scheduler='cyclic', restart_period=None, t_mult=None,
                      num_cycles=1, mode='triangular', momentum_range=(0.85,0.95), div_factor=25, **kwargs):
         lr = self.config.learning_rate
-        logger.debug(f'Max LR: {lr:.2e}, Min LR: {lr/div_factor:.2e}')
         if lr_scheduler == 'cyclic':
             logger.info(f'Enabling cyclic LR scheduler with {num_cycles} cycle(s)')
             ssu = int((n_epochs * len(self.train_loader)) / (2 * num_cycles))
@@ -229,6 +228,7 @@ class Learner:
             self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, restart_period, T_mult=t_mult, eta_min=lr/div_factor)
         else:
             raise SynthNNError(f'Invalid type {type} for scheduler.')
+        logger.info(f'Max LR: {lr:.2e}, Min LR: {lr/div_factor:.2e}')
 
     def load(self, fn):
         self.model, _ = load_model(self.model, fn, self.device)
