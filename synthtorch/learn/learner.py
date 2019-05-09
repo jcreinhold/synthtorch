@@ -73,7 +73,7 @@ class Learner:
             init_weights(model, config.init, config.init_gain)
         if use_cuda: model.cuda(device=device)
         train_loader, valid_loader = get_dataloader(config)
-        logger.info(('Max ' if config.lr_scheduler else '') + f'LR: {config.learning_rate:.5f}')
+        if config.lr_scheduler is None: logger.info(f'LR: {config.learning_rate:.2e}')
         def gopt(name, mp, **kwargs):
             return get_optim(name)(mp, lr=config.learning_rate, weight_decay=config.weight_decay, **kwargs)
         try:
@@ -214,6 +214,7 @@ class Learner:
     def lr_scheduler(self, n_epochs, lr_scheduler='cyclic', restart_period=None, t_mult=None,
                      num_cycles=1, mode='triangular', momentum_range=(0.85,0.95), div_factor=25, **kwargs):
         lr = self.config.learning_rate
+        logger.debug(f'Max LR: {lr:.2e}, Min LR: {lr/div_factor:.2e}')
         if lr_scheduler == 'cyclic':
             logger.info(f'Enabling cyclic LR scheduler with {num_cycles} cycle(s)')
             ssu = int((n_epochs * len(self.train_loader)) / (2 * num_cycles))
