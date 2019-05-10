@@ -134,7 +134,7 @@ class Unet(torch.nn.Module):
         return x
 
     def _fwd_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
-        dout = [x]
+        dout = [x] if self.input_connect else []
         x = self._add_noise(self.start[0](x))
         dout.append(self._add_noise(self.start[1](x)))
         x = self._down(dout[-1])
