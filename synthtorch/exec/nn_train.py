@@ -170,6 +170,7 @@ def arg_parser():
                                  help='penalties for lrsd [Default=None]')
 
     ordnet_options = parser.add_argument_group('OrdNet/HotNet Options')
+    ordnet_options.add_argument('-cd', '--coord', action='store_true', default=False, help='use coords [Default=False]')
     ordnet_options.add_argument('-ed', '--edge', action='store_true', default=False, help='use edge map [Default=False]')
     ordnet_options.add_argument('-lp', '--laplacian', action='store_true', default=False, help='use laplacian [Default=False]')
     ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
