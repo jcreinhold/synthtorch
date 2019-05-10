@@ -81,6 +81,7 @@ class ExperimentConfig(dict):
         self.monte_carlo        = None
         # UNet Options
         self.add_two_up         = False
+        self.all_conv           = False
         self.attention          = False
         self.channel_base_power = 4
         self.enable_bias        = True
@@ -261,6 +262,7 @@ def _get_arg_dict(args):
         },
         "UNet Options": {
             "add_two_up": args.add_two_up,
+            "all_conv": args.all_conv,
             "attention": args.attention,
             "channel_base_power": args.channel_base_power,
             "enable_bias": args.enable_bias,

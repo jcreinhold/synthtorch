@@ -32,7 +32,7 @@ class VAE(Unet):
                  n_input:int=1, n_output:int=1, latent_size=2048, **kwargs):
         super(VAE, self).__init__(n_layers, channel_base_power=channel_base_power, activation=activation,
                                   normalization='batch', is_3d=is_3d, enable_dropout=False, enable_bias=True,
-                                  n_input=n_input, n_output=n_output, no_skip=True)
+                                  n_input=n_input, n_output=n_output, no_skip=True, all_conv=False)
         del self.bridge
         self.sz = []
         self.latent_size = latent_size
