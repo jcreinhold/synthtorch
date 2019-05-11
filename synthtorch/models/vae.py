@@ -61,10 +61,10 @@ class VAE(Unet):
 
     def encode(self, x):
         for si in self.start: x = si(x)
-        x = self._down(x)
-        for dl in self.down_layers:
+        x = self._down(x, 0)
+        for i, dl in enumerate(self.down_layers,1):
             for dli in dl: x = dli(x)
-            x = self._down(x)
+            x = self._down(x, i)
         x = F.relu(self.fc_bn1(self.fc1(x.view(x.size(0), self.esz))))
         mu = self.fc21(x)
         logvar = self.fc22(x)
@@ -73,11 +73,11 @@ class VAE(Unet):
     def __test_encode(self, x):
         self.sz.append(x.shape)
         for si in self.start: x = si(x)
-        x = self._down(x)
-        for dl in self.down_layers:
+        x = self._down(x, 0)
+        for i, dl in enumerate(self.down_layers, 1):
             for dli in dl: x = dli(x)
             self.sz.append(x.shape)
-            x = self._down(x)
+            x = self._down(x, i)
         return x.shape
 
     def reparameterize(self, mu, logvar):
@@ -87,11 +87,10 @@ class VAE(Unet):
 
     def decode(self, z):
         z = F.relu(self.fc_bn3(self.fc3(z)))
-        z = self.upsampconvs[0](self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:]))
+        z = self.upsampconvs[0](self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:], 0))
         for i, ul in enumerate(self.up_layers, 1):
             for uli in ul: z = uli(z)
-            z = self._up(z, self.sz[-i-1][2:])
-            z = self.upsampconvs[i](z)
+            z = self._up(z, self.sz[-i-1][2:], i)
         z = self.finish(z)
         return z
 
