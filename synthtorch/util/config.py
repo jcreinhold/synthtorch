@@ -120,14 +120,14 @@ class ExperimentConfig(dict):
         self.n_input            = 1
         self.n_output           = 1
         # Data Augmentation Options
-        self.prob               = None
+        self.prob               = 0
         self.rotate             = 0
-        self.translate          = None
-        self.scale              = None
+        self.translate          = 0
+        self.scale              = 0
         self.hflip              = False
         self.vflip              = False
-        self.gamma              = None
-        self.gain               = None
+        self.gamma              = 0
+        self.gain               = 0
         self.block              = None
         self.noise_pwr          = 0
         self.mean               = None

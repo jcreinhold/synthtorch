@@ -367,15 +367,16 @@ def get_data_augmentation(config:ExperimentConfig):
         logger.info('Adding data augmentation transforms')
         train_tfms.extend(niftitfms.get_transforms(config.prob, config.tfm_x, config.tfm_y, config.rotate, config.translate,
                                                    config.scale, config.vflip, config.hflip, config.gamma, config.gain,
-                                                   config.noise_pwr, config.block, config.mean, config.std, config.threshold,
-                                                   config.is_3d))
-        valid_tfms.extend(niftitfms.get_transforms(0, config.tfm_x, config.tfm_y, 0, None, None, False, False,
-                                                   None, None, 0, None, config.mean, config.std))
+                                                   config.noise_pwr, config.block, config.threshold, config.is_3d,
+                                                   config.mean, config.std))
+        if config.mean is not None and config.std is not None:
+            valid_tfms.append(niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y))
     else:
         logger.info('No data augmentation will be used (except random cropping if patch_size > 0)')
         train_tfms.append(niftitfms.ToTensor())
         valid_tfms.append(niftitfms.ToTensor())
 
+    logger.debug(f'Training transforms: {train_tfms}')
     return train_tfms, valid_tfms
 
 
