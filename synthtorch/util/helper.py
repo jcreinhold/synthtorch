@@ -212,3 +212,18 @@ def init_weights(net, init_type='kaiming', init_gain=0.02):
             initial_values = torch.from_numpy(np.sort(np.random.rand(net.n_seg) * 2))
         net.finish[2].weight.data = (initial_values.type_as(net.finish[2].weight.data)
                                                    .view(net.finish[2].weight.data.size()))
+
+    if hasattr(net, 'all_conv'):  # handle ICNR initalization of upsample layers
+        if net.all_conv and not net.is_3d:
+            for m in net.upsampconvs: icnr(m[0].weight)
+
+
+def icnr(m, scale=2, init=nn.init.kaiming_normal_):
+    """ ICNR init of `x`, with `scale` and `init` function """
+    ni,nf,h,w = m.shape
+    ni2 = int(ni/(scale**2))
+    k = init(torch.zeros([ni2,nf,h,w])).transpose(0, 1)
+    k = k.contiguous().view(ni2, nf, -1)
+    k = k.repeat(1, 1, scale**2)
+    k = k.contiguous().view([nf,ni,h,w]).transpose(0, 1)
+    m.data.copy_(k)

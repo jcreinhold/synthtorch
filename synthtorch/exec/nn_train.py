@@ -162,6 +162,8 @@ def arg_parser():
                               help='do not use skip connections in unet [Default=False]')
     unet_options.add_argument('-nz', '--noise-lvl', type=float, default=0,
                               help='add this level of noise to model parameters [Default=0]')
+    unet_options.add_argument('-rb', '--resblock', action='store_true', default=False,
+                              help='use residual (addition) connections in unet blocks (all_conv must equal true to use) [Default=False]')
     unet_options.add_argument('-sp', '--separable', action='store_true', default=False,
                               help='use separable convolutions instead of full convolutions [Default=False]')
     unet_options.add_argument('-sx', '--softmax', action='store_true', default=False,
@@ -173,6 +175,7 @@ def arg_parser():
 
     ordnet_options = parser.add_argument_group('OrdNet/HotNet Options')
     ordnet_options.add_argument('-cd', '--coord', action='store_true', default=False, help='use coords [Default=False]')
+    ordnet_options.add_argument('-cx', '--cross', action='store_true', default=False, help='use cross connect [Default=False]')
     ordnet_options.add_argument('-ed', '--edge', action='store_true', default=False, help='use edge map [Default=False]')
     ordnet_options.add_argument('-lp', '--laplacian', action='store_true', default=False, help='use laplacian [Default=False]')
     ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
