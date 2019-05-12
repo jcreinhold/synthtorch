@@ -69,6 +69,8 @@ def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> activati
         act = nn.Tanh()
     elif name.lower() == 'sigmoid':
         act = nn.Sigmoid()
+    elif name.lower() == 'softmax':
+        act = nn.Softmax(dim=1)
     else:
         raise SynthNNError(f'Activation: "{name}" not a valid activation function or not supported.')
     return act

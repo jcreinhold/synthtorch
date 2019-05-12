@@ -591,6 +591,21 @@ class TestOrdNet(TestCLI):
         self.assertEqual(retval, 0)
 
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_ord_2d_softmax_cli(self):
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+            valid = f'-vsd {self.train_dir}/tif/ -vtd {self.train_dir}/tif/'
+            args = train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -e tif '
+                                 f'-ocf {self.jsonfn} -ord 1 10 10 {valid} -dp 0.5 -ic -sx').split()
+            retval = nn_train(args)
+            self.assertEqual(retval, 0)
+            self._modify_ocf(self.jsonfn, mc=2)
+            retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_ord_3d_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -ps 16 -3d '
                                   f'-ocf {self.jsonfn} -ord 1 10 2 -vs 0.5 -ns -dp 0.5').split()
@@ -664,6 +679,17 @@ class TestHotNet(TestCLI):
         train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 2 -cbp 1 -ps 32 -bs 4 -e png '
                              f'-ocf {self.jsonfn} -dp 0.5 -ic').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
+    def test_hot_2d_softmax_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 2 -cbp 1 -ps 32 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -dp 0.5 -ic -sx').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
