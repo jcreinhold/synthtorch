@@ -142,9 +142,12 @@ def get_optim(name:str):
     elif name.lower() == 'sgdw':
         from ..learn.optim import SGDW
         optimizer = SGDW
-    elif name.lower() == 'nesterov':
+    elif name.lower() == 'nsgd':
         from ..learn.optim import NesterovSGD
         optimizer = NesterovSGD
+    elif name.lower() == 'nsgdw':
+        from ..learn.optim import NesterovSGDW
+        optimizer = NesterovSGDW
     elif name.lower() == 'rmsprop':
         optimizer = torch.optim.rmsprop
     elif name.lower() == 'adagrad':

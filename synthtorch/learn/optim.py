@@ -13,7 +13,8 @@ Created on: Feb 4, 2018
 __all__ = ['AdamW',
            'SGDW',
            'AMSGrad',
-           'NesterovSGD']
+           'NesterovSGD',
+           'NesterovSGDW']
 
 import logging
 import math
@@ -37,7 +38,7 @@ class SGDW(Optimizer):
     """
 
     def __init__(self, params, lr=0.01, momentum=0.9, dampening=0,
-                 weight_decay=0, nesterov=True):
+                 weight_decay=0, nesterov=False):
         if lr <= 0.0:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if momentum < 0.0:
@@ -195,5 +196,10 @@ class AMSGrad(Adam):
 
 
 class NesterovSGD(SGD):
+    def __init__(self, params, lr, momentum=0.9, dampening=0, weight_decay=0):
+        super().__init__(params, lr, momentum, dampening, weight_decay, True)
+
+
+class NesterovSGDW(SGDW):
     def __init__(self, params, lr, momentum=0.9, dampening=0, weight_decay=0):
         super().__init__(params, lr, momentum, dampening, weight_decay, True)

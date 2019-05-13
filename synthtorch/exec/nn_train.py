@@ -90,7 +90,7 @@ def arg_parser():
     opt_options.add_argument('-nlo', '--no-load-opt', action='store_true', default=False,
                              help='if loading a trained model, do not load the optimizer [Default=False]')
     opt_options.add_argument('-opt', '--optimizer', type=str, default='adam',
-                             choices=('adam','adamw','sgd','sgdw','nesterov','adagrad','amsgrad','rmsprop'),
+                             choices=('adam','adamw','sgd','sgdw','nsgd','nsgdw','adagrad','amsgrad','rmsprop'),
                              help='Use this optimizer to train the network [Default=adam]')
     opt_options.add_argument('-wd', '--weight-decay', type=float, default=0,
                              help="weight decay parameter for optimizer [Default=0]")

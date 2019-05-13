@@ -137,7 +137,16 @@ class TestNConv(TestCLI):
 
     def test_nconv_nesterov_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
-                                  f'-ocf {self.jsonfn} -bs 2 -v -opt nesterov').split()
+                                  f'-ocf {self.jsonfn} -bs 2 -v -opt nsgd').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_nconv_nesterovw_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 3 -nl 1 -ps 16 '
+                                  f'-ocf {self.jsonfn} -bs 2 -v -opt nsgdw').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
