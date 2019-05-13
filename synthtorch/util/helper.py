@@ -73,7 +73,7 @@ def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> activati
     elif name.lower() == 'softmax':
         act = nn.Softmax(dim=1)
     elif name.lower() == 'swish':
-        act = Swish(inplace)
+        act = Swish(inplace=inplace)
     else:
         raise SynthNNError(f'Activation: "{name}" not a valid activation function or not supported.')
     return act

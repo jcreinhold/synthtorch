@@ -67,9 +67,9 @@ class Swish(nn.Module):
 
     def forward(self, x):
         if self.inplace:
-            x.mul_(F.sigmoid(x))
+            x.mul_(torch.sigmoid(x))
             return x
         else:
-            return x * F.sigmoid(x)
+            return x * torch.sigmoid(x)
 
 
