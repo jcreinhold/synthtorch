@@ -27,6 +27,7 @@ from torch import nn
 
 from ..errors import SynthNNError
 from ..learn.loss import CosineProximityLoss
+from ..learn.layers import Swish
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,8 @@ def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> activati
         act = nn.Sigmoid()
     elif name.lower() == 'softmax':
         act = nn.Softmax(dim=1)
+    elif name.lower() == 'swish':
+        act = Swish(inplace)
     else:
         raise SynthNNError(f'Activation: "{name}" not a valid activation function or not supported.')
     return act

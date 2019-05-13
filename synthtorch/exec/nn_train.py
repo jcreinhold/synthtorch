@@ -113,7 +113,7 @@ def arg_parser():
 
     nn_options = parser.add_argument_group('Neural Network Options')
     nn_options.add_argument('-ac', '--activation', type=str, default='relu',
-                            choices=('relu', 'lrelu','prelu','elu','celu','selu','tanh','sigmoid'),
+                            choices=('relu', 'lrelu','prelu','elu','celu','selu','tanh','sigmoid','swish'),
                             help='type of activation to use throughout network except output [Default=relu]')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
                             help='dropout probability per conv block [Default=0]')

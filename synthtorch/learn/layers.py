@@ -12,7 +12,8 @@ Created on: Feb 21, 2018
 
 __all__ = ['SelfAttention',
            'SeparableConv2d',
-           'SeparableConv3d']
+           'SeparableConv3d',
+           'Swish']
 
 import torch
 from torch import nn
@@ -57,3 +58,18 @@ class SeparableConv3d(nn.Module):
 
     def forward(self, x):
         return self.sep_conv(x)
+
+
+class Swish(nn.Module):
+    def __init__(self, inplace=False):
+        super().__init__()
+        self.inplace = inplace
+
+    def forward(self, x):
+        if self.inplace:
+            x.mul_(F.sigmoid(x))
+            return x
+        else:
+            return x * F.sigmoid(x)
+
+
