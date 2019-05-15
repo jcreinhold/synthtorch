@@ -63,8 +63,9 @@ def arg_parser():
     options.add_argument('-ocf', '--out-config-file', type=str, default=None,
                          help='output a config file for the options used in this experiment '
                               '(saves them as a json file with the name as input in this argument)')
-    options.add_argument('-ps', '--patch-size', type=int, default=0,
-                         help='patch size extracted from image [Default=0, i.e., whole slice or whole image]')
+    options.add_argument('-ps', '--patch-size', type=int, nargs='+', default=None,
+                         help='patch size extracted from image, 2 numbers if 2d, 3 numbers if 3d '
+                              '[Default=None, i.e., whole slice or whole image]')
     options.add_argument('-pm','--pin-memory', action='store_true', default=False, help='pin memory in dataloader [Default=False]')
     options.add_argument('-pl', '--plot-loss', type=str, default=None,
                             help='plot the loss vs epoch and save at the filename provided here [Default=None]')

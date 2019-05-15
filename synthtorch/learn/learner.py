@@ -350,14 +350,14 @@ def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
 def get_data_augmentation(config:ExperimentConfig):
     """ get all data augmentation transforms for training """
     # control random cropping patch size (or if used at all)
-    if config.ext is None:
+    if config.ext is None and config.patch_size is not None:
         cropper = niftitfms.RandomCrop3D(config.patch_size) if config.is_3d else \
                   niftitfms.RandomCrop2D(config.patch_size, config.sample_axis)
-        tfms = [cropper] if config.patch_size > 0 else \
+        tfms = [cropper] if config.patch_size is not None else \
                [] if config.is_3d else \
                [niftitfms.RandomSlice(config.sample_axis)]
     else:
-        tfms = [niftitfms.RandomCrop(config.patch_size)] if config.patch_size > 0 else []
+        tfms = [niftitfms.RandomCrop(config.patch_size)] if config.patch_size is not None else []
 
     train_tfms = tfms.copy()
     valid_tfms = tfms.copy()
@@ -372,7 +372,7 @@ def get_data_augmentation(config:ExperimentConfig):
         if config.mean is not None and config.std is not None:
             valid_tfms.append(niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y))
     else:
-        logger.info('No data augmentation will be used (except random cropping if patch_size > 0)')
+        logger.info('No data augmentation will be used (except random cropping if patch_size not None)')
         train_tfms.append(niftitfms.ToTensor())
         valid_tfms.append(niftitfms.ToTensor())
 

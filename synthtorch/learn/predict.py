@@ -45,7 +45,7 @@ class Predictor:
         if self.mean is not None and self.std is not None:
             for i, (m, s) in enumerate(zip(self.mean, self.std)):
                 img[i] = (img[i] - m) / s
-        if self.patch_size > 0 and self.is_3d:
+        if self.patch_size is not None and self.is_3d:
             out_img = self.patch_3d_predict(img, nsyn, temperature_map, calc_var)
         elif self.is_3d:
             out_img = self.whole_3d_predict(img, nsyn, temperature_map, calc_var)
@@ -148,11 +148,11 @@ class Predictor:
     def _get_overlapping_3d_idxs(psz, img):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            stride = psz // 2
+            stride = psz[0] // 2
             indices = [torch.from_numpy(idxs) for idxs in np.indices(img.shape[1:])]
             for i in range(3):  # create blocks from imgs (and indices)
-                indices = [idxs.unfold(i, psz, stride) for idxs in indices]
-            x, y, z = [idxs.contiguous().view(-1, psz, psz, psz) for idxs in indices]
+                indices = [idxs.unfold(i, psz[0], stride) for idxs in indices]
+            x, y, z = [idxs.contiguous().view(-1, psz[0], psz[1], psz[2]) for idxs in indices]
         return x, y, z
 
     def _batch2d(self, img, out_img, i, nsyn, temperature_map, bs=None):
