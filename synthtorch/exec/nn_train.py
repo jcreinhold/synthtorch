@@ -178,6 +178,7 @@ def arg_parser():
     ordnet_options.add_argument('-cd', '--coord', action='store_true', default=False, help='use coords [Default=False]')
     ordnet_options.add_argument('-cx', '--cross', action='store_true', default=False, help='use cross connect [Default=False]')
     ordnet_options.add_argument('-ed', '--edge', action='store_true', default=False, help='use edge map [Default=False]')
+    ordnet_options.add_argument('-ni', '--net-init', action='store_true', default=False, help='initialize network w/ init loss [Default=False]')
     ordnet_options.add_argument('-lp', '--laplacian', action='store_true', default=False, help='use laplacian [Default=False]')
     ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
                                 help='ordinal regression params (start, stop, n_bins) [Default=None]')
