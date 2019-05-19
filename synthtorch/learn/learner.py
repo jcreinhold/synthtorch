@@ -212,16 +212,18 @@ class Learner:
             self.model = torch.nn.DataParallel(self.model)
 
     def lr_scheduler(self, n_epochs, lr_scheduler='cyclic', restart_period=None, t_mult=None,
-                     num_cycles=1, mode='triangular', momentum_range=(0.85,0.95), div_factor=25, **kwargs):
+                     num_cycles=1, mode='triangular', momentum_range=(0.85,0.95), div_factor=25, pct_start=0.3, **kwargs):
         lr = self.config.learning_rate
         if lr_scheduler == 'cyclic':
             logger.info(f'Enabling cyclic LR scheduler with {num_cycles} cycle(s)')
-            ssu = int((n_epochs * len(self.train_loader)) / (2 * num_cycles))
+            ss = int((n_epochs * len(self.train_loader)) / num_cycles)
+            ssu = int(pct_start * ss)
+            ssd = ss - ssu
             cycle_momentum = self.config.optimizer in ('adamw','sgd','sgdw','nesterov','rmsprop')
             if not cycle_momentum and momentum_range is not None:
                 logger.warning(f'{self.config.optimizer} not compatible with momentum cycling, disabling.')
-            self.scheduler = CyclicLR(self.optimizer, lr/div_factor, lr, step_size_up=ssu, mode=mode,
-                                      cycle_momentum=cycle_momentum,
+            self.scheduler = CyclicLR(self.optimizer, lr/div_factor, lr, step_size_up=ssu, step_size_down=ssd,
+                                      mode=mode, cycle_momentum=cycle_momentum,
                                       base_momentum=momentum_range[0], max_momentum=momentum_range[1])
         elif lr_scheduler == 'cosinerestarts':
             logger.info('Enabling cosine annealing with restarts LR scheduler')

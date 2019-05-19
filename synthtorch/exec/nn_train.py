@@ -106,6 +106,8 @@ def arg_parser():
                              help='range over which to inversely cycle momentum (does not work w/ all optimizers) [Default=(0.85,0.95)]')
     sch_options.add_argument('-nc', '--num-cycles', type=int, default=1,
                              help='number of cycles for cyclic learning rate scheduler [Default=1]')
+    sch_options.add_argument('-pst', '--pct-start', type=float, default=0.3,
+                             help='percent of cycle dedicated to raising LR for cyclic [Default=0.3]')
     sch_options.add_argument('-rp', '--restart-period', type=int, default=None,
                              help='restart period for cosine annealing with restarts [Default=None]')
     sch_options.add_argument('-tm', '--t-mult', type=int, default=None,

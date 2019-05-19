@@ -50,9 +50,10 @@ class ExperimentConfig(dict):
         # Scheduler Options
         self.cycle_mode         = "triangular"
         self.div_factor         = 25
+        self.lr_scheduler       = None
         self.momentum_range     = (0.85, 0.95)
         self.num_cycles         = 1
-        self.lr_scheduler       = None
+        self.pct_start          = 0.3
         self.restart_period     = None
         self.t_mult             = None
         # Neural Network Options
@@ -233,6 +234,7 @@ def _get_arg_dict(args):
             "lr_scheduler": args.lr_scheduler,
             "momentum_range": args.momentum_range,
             "num_cycles": args.num_cycles,
+            "pct_start": args.pct_start,
             "restart_period": args.restart_period,
             "t_mult": args.t_mult
         },
