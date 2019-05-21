@@ -67,6 +67,7 @@ class Unet(torch.nn.Module):
         input_connect (bool): use a skip connection from the input to near the end of the network
         all_conv (bool): use strided conv to downsample instead of max-pool and use pixelshuffle to upsample
         resblock (bool): use residual (addition) connections on unet blocks (only works if all_conv true)
+            note: this is an activation-before-addition type residual connection (see Fig 4(c) in [4])
 
     References:
         [1] Ronneberger, Olaf, Philipp Fischer, and Thomas Brox.
@@ -77,6 +78,8 @@ class Unet(torch.nn.Module):
             in Medical Image Computing and Computer-Assisted Intervention (MICCAI), 2016, pp. 424–432.
         [3] C. Zhao, A. Carass, J. Lee, Y. He, and J. L. Prince, “Whole Brain Segmentation and Labeling
             from CT Using Synthetic MR Images,” MLMI, vol. 10541, pp. 291–298, 2017.
+        [4] He, Kaiming, et al. "Identity mappings in deep residual networks." European conference on computer vision.
+            Springer, Cham, 2016.
     """
     def __init__(self, n_layers:int, kernel_size:int=3, dropout_prob:float=0, channel_base_power:int=5,
                  normalization:str='instance', activation:str='relu', output_activation:str='linear',
