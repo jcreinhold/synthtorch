@@ -81,7 +81,6 @@ class ExperimentConfig(dict):
         self.calc_var           = False
         self.monte_carlo        = None
         # UNet Options
-        self.add_two_up         = False
         self.all_conv           = False
         self.attention          = False
         self.channel_base_power = 4
@@ -266,7 +265,6 @@ def _get_arg_dict(args):
             "monte_carlo": args.monte_carlo if hasattr(args,'monte_carlo') else None,
         },
         "UNet Options": {
-            "add_two_up": args.add_two_up,
             "all_conv": args.all_conv,
             "attention": args.attention,
             "channel_base_power": args.channel_base_power,

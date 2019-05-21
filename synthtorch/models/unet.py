@@ -46,8 +46,6 @@ class Unet(torch.nn.Module):
         channel_base_power (int): 2 ** channel_base_power is the number of channels in the first layer
             and increases in each proceeding layer such that in the n-th layer there are
             2 ** channel_base_power + n channels (this follows the convention in [1])
-        add_two_up (bool): flag to add two to the kernel size on the upsampling following
-            the paper [2]
         normalization_layer (str): type of normalization layer to use (batch or [instance])
         activation (str): type of activation to use throughout network except final ([relu], lrelu, linear, sigmoid, tanh)
         output_activation (str): final activation in network (relu, lrelu, [linear], sigmoid, tanh)
@@ -81,8 +79,8 @@ class Unet(torch.nn.Module):
             from CT Using Synthetic MR Images,” MLMI, vol. 10541, pp. 291–298, 2017.
     """
     def __init__(self, n_layers:int, kernel_size:int=3, dropout_prob:float=0, channel_base_power:int=5,
-                 add_two_up:bool=False, normalization:str='instance', activation:str='relu',
-                 output_activation:str='linear', is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
+                 normalization:str='instance', activation:str='relu', output_activation:str='linear',
+                 is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
                  loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False,
                  softmax:bool=False, input_connect:bool=True, all_conv:bool=False, resblock:bool=False, **kwargs):
@@ -92,7 +90,6 @@ class Unet(torch.nn.Module):
         self.kernel_sz = kernel_size
         self.dropout_prob = dropout_prob
         self.channel_base_power = channel_base_power
-        self.a2u = 2 if add_two_up else 0
         self.norm = nm = normalization
         self.act = a = activation
         self.out_act = oa = output_activation
@@ -122,7 +119,7 @@ class Unet(torch.nn.Module):
                                           for n in range(nl)])
         self.bridge = self._unet_blk(lc(nl + 1 if all_conv else nl), lc(nl+1), lc(nl+1), act=(a, a), norm=(nm, nm))
         self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n) if not no_skip else lc(n),
-                                                       lc(n), lc(n), (kernel_size+self.a2u, kernel_size),
+                                                       lc(n), lc(n), (kernel_size, kernel_size),
                                                        act=(a, a), norm=(nm, nm))
                                         for n in reversed(range(1,nl+1))])
         self.finish = self._final(lc(0) + n_input if not no_skip and input_connect else lc(0), n_output, oa, bias=enable_bias)
@@ -149,15 +146,16 @@ class Unet(torch.nn.Module):
             for dli in dl: x = self._add_noise(dli(x))
             dout.append((x + xr) if self.resblock else x)
             x = self._down(dout[-1], i)
+            if self.all_conv: x = self._add_noise(x)
         x = self._add_noise(self.bridge[0](x))
-        x = self._add_noise(self._up(self.bridge[1](x), dout[-1].shape[2:], 0))
+        x = self._up(self._add_noise(self.bridge[1](x)), dout[-1].shape[2:], 0)
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
             if self.use_attention: d = self.attn[i-1](d)
             if self.resblock: xr = x
             x = torch.cat((x, d), dim=1)
-            x = self._add_noise(ul[0](x))
-            x = self._add_noise(ul[1](x), (i == self.n_layers-1) and self.is_unet)  # no dropout before 1x1
+            for uli in ul: x = self._add_noise(uli(x))
             x = self._up((x + xr) if self.resblock else x, dout[-i-1].shape[2:], i)  # doesn't do anything on the last iteration
+            if self.all_conv: x = self._add_noise(x)
         if self.softmax and self.is_unet: F.softmax(x, dim=1)
         if self.input_connect: x = torch.cat((x, dout[0]), dim=1)
         return x
@@ -176,14 +174,15 @@ class Unet(torch.nn.Module):
             for dli in dl: x = self._add_noise(dli(x))
             sz.append(x.shape)
             x = self._down((x + xr) if self.resblock else x, i)
+            if self.all_conv: x = self._add_noise(x)
         x = self._add_noise(self.bridge[0](x))
-        x = self._add_noise(self._up(self.bridge[1](x), sz[-1][2:], 0))
+        x = self._up(self._add_noise(self.bridge[1](x)), sz[-1][2:], 0)
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
             if self.use_attention: x = self.attn[i-1](x)
             if self.resblock: xr = x
-            x = self._add_noise(ul[0](x))
-            x = self._add_noise(ul[1](x), (i == self.n_layers-1) and self.is_unet)  # no dropout before 1x1
+            for uli in ul: x = self._add_noise(uli(x))
             x = self._up((x + xr) if self.resblock else x, sz[-i-1][2:], i)  # doesn't do anything on the last iteration
+            if self.all_conv: x = self._add_noise(x)
         if self.softmax and self.is_unet: F.softmax(x, dim=1)
         return x
 
@@ -197,8 +196,7 @@ class Unet(torch.nn.Module):
         if self.all_conv and not self.is_3d and x.shape[2:] != sz: x = F.interpolate(x, sz, mode=self.interp_mode)
         return x
 
-    def _add_noise(self, x:torch.Tensor, skip:bool=False) -> torch.Tensor:
-        if skip: return x
+    def _add_noise(self, x:torch.Tensor) -> torch.Tensor:
         if self.dropout_prob > 0:
             x = F.dropout3d(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace) if self.is_3d else \
                 F.dropout2d(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace)
@@ -224,10 +222,10 @@ class Unet(torch.nn.Module):
         return c
 
     def _conv_act(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None,
-                  act:Optional[str]=None, norm:Optional[str]=None) -> nn.Sequential:
+                  act:Optional[str]=None, norm:Optional[str]=None, seq:bool=True, stride:int=1) -> nn.Sequential:
         ksz = kernel_sz or self.kernel_sz
         activation = get_act(act) if act is not None else get_act('relu')
-        c = self._conv(in_c, out_c, ksz, seq=False)
+        c = self._conv(in_c, out_c, ksz, seq=False, stride=stride)
         i = 1 if isinstance(c, list) else 0
         layers = [*c] if i == 1 else [c]
         if norm in [None, 'instance', 'batch', 'layer']:
@@ -239,7 +237,7 @@ class Unet(torch.nn.Module):
         elif norm == 'weight':   layers[i] = nn.utils.weight_norm(layers[i])
         elif norm == 'spectral': layers[i] = nn.utils.spectral_norm(layers[i])
         layers.append(activation)
-        ca = nn.Sequential(*layers)
+        ca = nn.Sequential(*layers) if seq else layers
         return ca
 
     def _unet_blk(self, in_c:int, mid_c:int, out_c:int,
@@ -252,14 +250,13 @@ class Unet(torch.nn.Module):
         return dca
 
     def _upsampconv(self, in_c:int, out_c:int, scale:int=2):
-        usc = self._conv(in_c, out_c, 3, bias=self.enable_bias) if not self.all_conv or self.is_3d else \
-              nn.Sequential(nn.utils.weight_norm(self._conv(in_c, out_c*(scale**2), 1, bias=self.enable_bias)),
+        usc = self._conv(in_c, out_c, 5, bias=self.enable_bias) if not self.all_conv or self.is_3d else \
+              nn.Sequential(*self._conv_act(in_c, out_c*(scale**2), 1, self.act, self.norm, seq=False),
                             nn.PixelShuffle(scale))
         return usc
 
     def _downsampconv(self, in_c:int, out_c:int):
-        dsc = self._conv(in_c, out_c, 3, bias=self.enable_bias, stride=2)
-        dsc[1] = nn.utils.weight_norm(dsc[1])
+        dsc = self._conv_act(in_c, out_c, 3, self.act, self.norm, stride=2)
         return dsc
 
     def _final(self, in_c:int, out_c:int, out_act:Optional[str]=None, bias:bool=False):

@@ -146,9 +146,6 @@ def arg_parser():
                             help='type of activation to use in network on output [Default=linear]')
 
     unet_options = parser.add_argument_group('UNet Options')
-    unet_options.add_argument('-atu', '--add-two-up', action='store_true', default=False,
-                              help='Add two to the kernel size on the upsampling in the U-Net as '
-                                   'per Zhao, et al. 2017 [Default=False]')
     unet_options.add_argument('-acv', '--all-conv', action='store_true', default=False,
                               help='only use conv layers in unet (max pooling -> strided, upsamp -> shuffle) [Default=False]')
     unet_options.add_argument('-at', '--attention', action='store_true', default=False,
