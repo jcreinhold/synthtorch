@@ -359,7 +359,7 @@ def get_data_augmentation(config:ExperimentConfig):
                [] if config.is_3d else \
                [niftitfms.RandomSlice(config.sample_axis)]
     else:
-        tfms = [niftitfms.RandomCrop(config.patch_size)] if config.patch_size is not None else []
+        tfms = [niftitfms.RandomCrop(config.patch_size, config.threshold)] if config.patch_size is not None else []
 
     train_tfms = tfms.copy()
     valid_tfms = tfms.copy()

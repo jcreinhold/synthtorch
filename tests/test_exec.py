@@ -298,7 +298,7 @@ class TestNConv(TestCLI):
     def test_nconv_multimodal_tiff_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 '
-                             f'-ocf {self.jsonfn} -bs 2 -e tif').split()
+                             f'-ocf {self.jsonfn} -bs 2 -e tif -th 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
