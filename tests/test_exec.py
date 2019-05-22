@@ -728,7 +728,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.5 -ic').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -739,7 +739,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.5 -ic -sx').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -750,7 +750,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.5 -cx').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -761,7 +761,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.5 -cx -ni').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -772,7 +772,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.5 -cx -acv -rb').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -783,7 +783,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.5 -ic -cd').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -794,7 +794,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -ns -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -805,7 +805,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -ns -ed -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -816,7 +816,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -ns -ed -lp -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -827,7 +827,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -838,7 +838,7 @@ class TestHotNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn, temperature_map=True)
+        self._modify_ocf(self.jsonfn, temperature_map=True, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -848,7 +848,7 @@ class TestHotNet(TestCLI):
                                   f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -858,7 +858,7 @@ class TestHotNet(TestCLI):
                                   f'-ocf {self.jsonfn} -dp 0.5 -cd').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -868,7 +868,7 @@ class TestHotNet(TestCLI):
                                   f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn, temperature_map=True)
+        self._modify_ocf(self.jsonfn, temperature_map=True, mc=2)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 

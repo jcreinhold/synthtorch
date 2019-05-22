@@ -43,7 +43,7 @@ def main(args=None):
         learner = Learner.predict_setup(args)
 
         # determine how many samples we will use in prediction
-        nsyn = args.monte_carlo or 1
+        nsyn = (args.monte_carlo or 1) if args.nn_arch != 'hotnet' else 1
 
         # get relevant prediction directories and determine extension
         predict_dir = args.predict_dir or args.valid_source_dir
