@@ -117,17 +117,20 @@ class Unet(torch.nn.Module):
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
         self.start = self._unet_blk(n_input, lc(0), lc(0), act=(a, a), norm=(nm, nm))
-        self.down_layers = nn.ModuleList([self._unet_blk(lc(n + 1 if all_conv else n), lc(n+1), lc(n+1),
+        self.down_layers = nn.ModuleList([self._unet_blk(lc(n+1) if all_conv else lc(n), lc(n+1), lc(n+1),
                                                          act=(a, a), norm=(nm, nm))
                                           for n in range(nl)])
         self.bridge = self._unet_blk(lc(nl + 1 if all_conv else nl), lc(nl+1), lc(nl+1), act=(a, a), norm=(nm, nm))
-        self.up_layers = nn.ModuleList([self._unet_blk(lc(n) + lc(n) if not no_skip else lc(n),
+        self.up_layers = nn.ModuleList([self._unet_blk(lc(n+1) if not no_skip else lc(n),
                                                        lc(n), lc(n), (kernel_size, kernel_size),
                                                        act=(a, a), norm=(nm, nm))
                                         for n in reversed(range(1,nl+1))])
-        self.finish = self._final(lc(0) + n_input if not no_skip and input_connect else lc(0), n_output, oa, bias=enable_bias)
+        self.end = self._unet_blk(lc(1) if not no_skip else lc(0), lc(0), lc(0),
+                                  act=(a, 'softmax' if softmax else a), norm=(nm, nm))
+        self.finish = self._final(lc(0) + n_input if not no_skip and input_connect else lc(0), n_output,
+                                  oa, bias=enable_bias)
         self.upsampconvs = nn.ModuleList([self._upsampconv(lc(n+1), lc(n)) for n in reversed(range(nl+1))])
-        if self.use_attention: self.attn = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(1, nl+1))])
+        if self.use_attention: self.attn = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(nl+1))])
         if self.all_conv: self.downsampconvs = nn.ModuleList([self._downsampconv(lc(n), lc(n+1)) for n in range(nl+1)])
 
     def forward(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
@@ -140,7 +143,7 @@ class Unet(torch.nn.Module):
         return x
 
     def _fwd_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
-        dout = [x] if self.input_connect else []
+        dout = [x] if self.input_connect else [None]
         x = self._add_noise(self.start[0](x))
         dout.append(self._add_noise(self.start[1](x)))
         x = self._down(dout[-1], 0)
@@ -157,9 +160,13 @@ class Unet(torch.nn.Module):
             if self.resblock: xr = x
             x = torch.cat((x, d), dim=1)
             for uli in ul: x = self._add_noise(uli(x))
-            x = self._up((x + xr) if self.resblock else x, dout[-i-1].shape[2:], i)  # doesn't do anything on the last iteration
+            x = self._up((x + xr) if self.resblock else x, dout[-i-1].shape[2:], i)
             if self.all_conv: x = self._add_noise(x)
-        if self.softmax and self.is_unet: F.softmax(x, dim=1)
+        if self.use_attention: dout[1] = self.attn[-1](dout[1])
+        if self.resblock: xr = x
+        x = torch.cat((x, dout[1]), dim=1)
+        for eli in self.end: x = self._add_noise(eli(x))
+        if self.resblock: x = x + xr
         if self.input_connect: x = torch.cat((x, dout[0]), dim=1)
         return x
 
@@ -184,9 +191,12 @@ class Unet(torch.nn.Module):
             if self.use_attention: x = self.attn[i-1](x)
             if self.resblock: xr = x
             for uli in ul: x = self._add_noise(uli(x))
-            x = self._up((x + xr) if self.resblock else x, sz[-i-1][2:], i)  # doesn't do anything on the last iteration
+            x = self._up((x + xr) if self.resblock else x, sz[-i-1][2:], i)
             if self.all_conv: x = self._add_noise(x)
-        if self.softmax and self.is_unet: F.softmax(x, dim=1)
+        if self.use_attention: x = self.attn[-1](x)
+        if self.resblock: xr = x
+        for eli in self.end: x = self._add_noise(eli(x))
+        if self.resblock: x = x + xr
         return x
 
     def _down(self, x:torch.Tensor, i:int) -> torch.Tensor:
