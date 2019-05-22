@@ -104,6 +104,7 @@ class ExperimentConfig(dict):
         self.laplacian          = False
         self.ord_params         = None
         self.temperature_map    = False
+        self.uncertainty        = None
         # VAE Options
         self.img_dim            = None
         self.latent_size        = None
@@ -289,7 +290,8 @@ def _get_arg_dict(args):
             "net_init": args.net_init if hasattr(args,'net_init') else None,
             "laplacian": args.laplacian if hasattr(args,'laplacian') else None,
             "ord_params": args.ord_params if hasattr(args,'ord_params') else None,
-            "temperature_map": args.temperature_map if hasattr(args,'temperature_map') else False
+            "temperature_map": args.temperature_map if hasattr(args,'temperature_map') else False,
+            "uncertainty": args.uncertainty if hasattr(args,'uncertainty') else None
         },
         "VAE Options": {
             "img_dim": args.img_dim if hasattr(args,'img_dim') and args.nn_arch =='vae' else None,

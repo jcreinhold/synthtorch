@@ -97,7 +97,7 @@ def arg_parser():
                              help="weight decay parameter for optimizer [Default=0]")
 
     sch_options = parser.add_argument_group('Scheduler Options')
-    sch_options.add_argument('-cm', '--cycle-mode', type=str, default='triangluar', choices=('triangular','triangular2','exp_range'),
+    sch_options.add_argument('-cm', '--cycle-mode', type=str, default='triangular', choices=('triangular','triangular2','exp_range'),
                              help='type of cycle for cyclic lr scheduler [Default=triangular]')
     sch_options.add_argument('-df', '--div-factor', type=float, default=25, help='divide LR by this amount for minimum LR [Default=25]')
     sch_options.add_argument('-lrs', '--lr-scheduler', type=str, default=None, choices=('cyclic', 'cosinerestarts'),
@@ -181,6 +181,7 @@ def arg_parser():
     ordnet_options.add_argument('-lp', '--laplacian', action='store_true', default=False, help='use laplacian [Default=False]')
     ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
                                 help='ordinal regression params (start, stop, n_bins) [Default=None]')
+    ordnet_options.add_argument('-uc', '--uncertainty', type=str, default=None, help='type of uncertainty [Default=None]')
 
     vae_options = parser.add_argument_group('VAE Options')
     vae_options.add_argument('-id', '--img-dim', type=int, nargs='+', default=None,
