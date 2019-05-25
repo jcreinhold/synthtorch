@@ -93,7 +93,7 @@ class Predictor:
                 batch_idxs = [(xx, yy, zz)]
                 batch[j, ...] = img[:, xx, yy, zz]
                 j += 1
-            elif j != self.batch_size:
+            elif j < self.batch_size:
                 batch_idxs.append((xx, yy, zz))
                 batch[j, ...] = img[:, xx, yy, zz]
                 j += 1
@@ -157,12 +157,9 @@ class Predictor:
 
     @staticmethod
     def _get_overlapping_3d_idxs(psz, img):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            indices = [torch.from_numpy(idxs) for idxs in np.indices(img.shape[1:])]
-            for i in range(3):  # create blocks from imgs (and indices)
-                indices = [idxs.unfold(i, psz[i], psz[i]//2) for idxs in indices]
-            x, y, z = [idxs.contiguous().view(-1, psz[0], psz[1], psz[2]) for idxs in indices]
+        indices = [torch.from_numpy(idxs).unfold(0, psz[0], psz[0]//2).unfold(1, psz[1], psz[1]//2).unfold(2, psz[2], psz[2]//2)
+                   for idxs in np.indices(img.shape[1:])]
+        x, y, z = [np.asarray(idxs.contiguous().view(-1, psz[0], psz[1], psz[2])) for idxs in indices]
         return x, y, z
 
     def _batch2d(self, img, out_img, i, nsyn, temperature_map, bs=None):
