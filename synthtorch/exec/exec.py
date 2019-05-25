@@ -18,7 +18,7 @@ import logging
 import sys
 
 from niftidataset import glob_imgs
-from synthtorch import SynthNNError, ExperimentConfig
+from synthtorch import SynthtorchError, ExperimentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def get_args(args, arg_parser=None):
     else:
         no_config_file = not sys.argv[1].endswith('.json') if args is None else not args[0].endswith('json')
     if no_config_file and arg_parser is None:
-        raise SynthNNError('Only configuration files are supported with nn-predict! Create one with nn-train (see -ocf option).')
+        raise SynthtorchError('Only configuration files are supported with nn-predict! Create one with nn-train (see -ocf option).')
     elif no_config_file and arg_parser is not None:
         args = ExperimentConfig.from_argparse(arg_parser().parse_args(args))
     else:
@@ -55,9 +55,9 @@ def determine_ext(d):
     exts = ('*.nii*', '*.tif*', '*.png')
     contains = [len(glob_imgs(d, ext)) > 0 for ext in exts]
     if sum(contains) == 0:
-        raise SynthNNError(f'Directory {d} contains no supported images.')
+        raise SynthtorchError(f'Directory {d} contains no supported images.')
     if sum(contains) > 1:
-        raise SynthNNError(f'Directory {d} contains more than two types of supported images, '
+        raise SynthtorchError(f'Directory {d} contains more than two types of supported images, '
                            f'remove unwanted images from directory')
     ext = [e for c, e in zip(contains, exts) if c][0]
     return ext

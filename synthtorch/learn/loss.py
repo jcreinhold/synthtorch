@@ -19,7 +19,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ..errors import SynthNNError
+from ..errors import SynthtorchError
 
 
 class CosineProximityLoss(nn.Module):
@@ -53,7 +53,7 @@ class SegAELoss(nn.Module):
             from scipy.ndimage.morphology import binary_fill_holes, binary_erosion
             from sklearn.mixture import GaussianMixture
         except (ImportError, ModuleNotFoundError):
-            raise SynthNNError('SegAE requires scipy and scikit-learn')
+            raise SynthtorchError('SegAE requires scipy and scikit-learn')
         self.fill_holes = binary_fill_holes
         self.erode = binary_erosion
         self.gmm = GaussianMixture

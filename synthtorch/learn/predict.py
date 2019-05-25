@@ -20,13 +20,16 @@ import warnings
 
 import numpy as np
 import torch
+import torch.nn.functional as F
+
+from ..errors import SynthtorchError
 
 logger = logging.getLogger(__name__)
 
 
 class Predictor:
 
-    def __init__(self, model:torch.nn.Module, patch_size:int, batch_size:int, device:torch.device,
+    def __init__(self, model:torch.nn.Module, patch_size:Tuple[int], batch_size:int, device:torch.device,
                  axis:int=0, n_output:int=1, is_3d:bool=False, mean:Tuple[float]=None, std:Tuple[float]=None,
                  n_seg:int=None):
         self.model = model
@@ -66,10 +69,15 @@ class Predictor:
     def patch_3d_predict(self, img:np.ndarray, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False) -> np.ndarray:
         """ 3d patch-by-patch based prediction """
         if img.ndim == 3: img = img[np.newaxis, ...]
+        # pad image to get full image coverage in patch-based processing
+        sz = img.shape
+        pad = [int((psz // 2) * np.ceil(sz[i]/(psz // 2)) - sz[i]) for i, psz in enumerate(self.patch_size, 1)]
+        img = np.asarray(F.pad(torch.from_numpy(img[np.newaxis,...]),
+                               (0, pad[2], 0, pad[1], 0, pad[0]), mode='circular')[0])
         out_img = np.zeros((self.n_output,) + img.shape[1:])
         count_mtx = np.zeros(img.shape[1:])
         x, y, z = self._get_overlapping_3d_idxs(self.patch_size, img)
-        dec_idxs = np.floor(np.percentile(np.arange(x.shape[0]), np.arange(0, 101, 5)))
+        dec_idxs = np.floor(np.percentile(np.arange(x.shape[0]), np.arange(0, 101, 10)))
         pct_complete = 0
         j = 0
         # The below for-loop handles collecting overlapping patches and putting
@@ -78,7 +86,7 @@ class Predictor:
         for i, (xx, yy, zz) in enumerate(zip(x, y, z)):
             if i in dec_idxs:
                 logger.info(f'{pct_complete}% Complete')
-                pct_complete += 5
+                pct_complete += 10
             count_mtx[xx, yy, zz] = count_mtx[xx, yy, zz] + 1
             if j == 0:
                 batch = np.zeros((self.batch_size,) + img[:, xx, yy, zz].shape, dtype=np.float32)
@@ -97,8 +105,11 @@ class Predictor:
                 for ii, (bx, by, bz) in enumerate(batch_idxs):
                     out_img[:, bx, by, bz] = out_img[:, bx, by, bz] + predicted[ii, ...]
                 j = 0
-        count_mtx[count_mtx == 0] = 1  # avoid division by zero
+        if np.any(count_mtx == 0):
+            logger.warning(f'Part of the synthesized image not covered ({np.sum(count_mtx == 0)} voxels)')
+            count_mtx[count_mtx == 0] = 1  # avoid division by zero
         out_img /= count_mtx
+        out_img = out_img[:,:sz[1],:sz[2],:sz[3]]
         return out_img
 
     def slice_predict(self, img:np.ndarray, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False) -> np.ndarray:
@@ -148,10 +159,9 @@ class Predictor:
     def _get_overlapping_3d_idxs(psz, img):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            stride = psz[0] // 2
             indices = [torch.from_numpy(idxs) for idxs in np.indices(img.shape[1:])]
             for i in range(3):  # create blocks from imgs (and indices)
-                indices = [idxs.unfold(i, psz[0], stride) for idxs in indices]
+                indices = [idxs.unfold(i, psz[i], psz[i]//2) for idxs in indices]
             x, y, z = [idxs.contiguous().view(-1, psz[0], psz[1], psz[2]) for idxs in indices]
         return x, y, z
 

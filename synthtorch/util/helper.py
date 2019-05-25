@@ -25,7 +25,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from ..errors import SynthNNError
+from ..errors import SynthtorchError
 from ..learn.loss import CosineProximityLoss
 from ..learn.layers import Swish
 
@@ -75,7 +75,7 @@ def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> activati
     elif name.lower() == 'swish':
         act = Swish(inplace=inplace)
     else:
-        raise SynthNNError(f'Activation: "{name}" not a valid activation function or not supported.')
+        raise SynthtorchError(f'Activation: "{name}" not a valid activation function or not supported.')
     return act
 
 
@@ -102,7 +102,7 @@ def get_norm2d(name:str, num_features:int, params:Optional[dict]=None) -> normal
     elif name.lower() == 'none':
         norm = None
     else:
-        raise SynthNNError(f'Normalization: "{name}" not a valid normalization routine or not supported.')
+        raise SynthtorchError(f'Normalization: "{name}" not a valid normalization routine or not supported.')
     return norm
 
 
@@ -129,7 +129,7 @@ def get_norm3d(name:str, num_features:int, params:Optional[dict]=None) -> normal
     elif name.lower() == 'none':
         norm = None
     else:
-        raise SynthNNError(f'Normalization: "{name}" not a valid normalization routine or not supported.')
+        raise SynthtorchError(f'Normalization: "{name}" not a valid normalization routine or not supported.')
     return norm
 
 
@@ -159,7 +159,7 @@ def get_optim(name:str):
         from ..learn.optim import AMSGrad
         optimizer = AMSGrad
     else:
-        raise SynthNNError(f'Optimizer: "{name}" not a valid optimizer routine or not supported.')
+        raise SynthtorchError(f'Optimizer: "{name}" not a valid optimizer routine or not supported.')
     return optimizer
 
 

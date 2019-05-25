@@ -22,7 +22,7 @@ with warnings.catch_warnings():
     import numpy as np
     import torch
     from niftidataset import glob_imgs, split_filename
-    from synthtorch import Learner, SynthNNError
+    from synthtorch import Learner, SynthtorchError
     from .exec import get_args, setup_log, determine_ext
 
 
@@ -55,15 +55,15 @@ def main(args=None):
         if axis < 0 or axis > 2 and not isinstance(axis,int):
             raise ValueError('sample_axis must be an integer between 0 and 2 inclusive')
         n_imgs = len(glob_imgs(predict_dir[0], ext))
-        if n_imgs == 0: raise SynthNNError('Prediction directory does not contain valid images.')
+        if n_imgs == 0: raise SynthtorchError('Prediction directory does not contain valid images.')
         if any([len(glob_imgs(pd, ext)) != n_imgs for pd in predict_dir]):
-            raise SynthNNError('Number of images in prediction directories must have an equal number of images in each '
+            raise SynthtorchError('Number of images in prediction directories must have an equal number of images in each '
                                'directory (e.g., so that img_t1_1 aligns with img_t2_1 etc. for multimodal synth)')
         predict_fns = zip(*[glob_imgs(pd, ext) for pd in predict_dir])
         png_temp_flag = not (args.temperature_map and 'png' in ext)  # force tif output in this case
 
         if args.is_3d and args.patch_size is not None and args.calc_var:
-            raise SynthNNError('Patch-based 3D variance calculation not currently supported.')
+            raise SynthtorchError('Patch-based 3D variance calculation not currently supported.')
 
         for k, fn in enumerate(predict_fns):
             _, base, ext = split_filename(fn[0])

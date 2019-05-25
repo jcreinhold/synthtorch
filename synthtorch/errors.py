@@ -11,5 +11,5 @@ Created on: Nov 2, 2018
 """
 
 
-class SynthNNError(Exception):
+class SynthtorchError(Exception):
     pass

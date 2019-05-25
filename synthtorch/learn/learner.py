@@ -35,7 +35,7 @@ from torchvision.transforms import Compose
 from niftidataset import MultimodalNiftiDataset, MultimodalImageDataset, split_filename
 import niftidataset.transforms as niftitfms
 
-from ..errors import SynthNNError
+from ..errors import SynthtorchError
 from ..plot.loss import plot_loss
 from .predict import Predictor
 from ..util.config import ExperimentConfig
@@ -159,7 +159,7 @@ class Learner:
                     v_losses.append(loss.item())
                 valid_losses.append(v_losses)
 
-            if not np.all(np.isfinite(t_losses)): raise SynthNNError('NaN or Inf in training loss, cannot recover. Exiting.')
+            if not np.all(np.isfinite(t_losses)): raise SynthtorchError('NaN or Inf in training loss, cannot recover. Exiting.')
             if logger is not None:
                 log = f'Epoch: {t} - Training Loss: {np.mean(t_losses):.2e}'
                 if use_valid: log += f', Validation Loss: {np.mean(v_losses):.2e}'
@@ -186,7 +186,7 @@ class Learner:
             out = self.predictor.png_predict(img, nsyn, tmap, calc_var)
             out_img = [Image.fromarray(out)]
         else:
-            raise SynthNNError(f'File: {fn[0]}, not supported.')
+            raise SynthtorchError(f'File: {fn[0]}, not supported.')
         return out_img
 
     def _criterion(self, out, tgt):
@@ -229,7 +229,7 @@ class Learner:
             logger.info('Enabling cosine annealing with restarts LR scheduler')
             self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, restart_period, T_mult=t_mult, eta_min=lr/div_factor)
         else:
-            raise SynthNNError(f'Invalid type {type} for scheduler.')
+            raise SynthtorchError(f'Invalid type {type} for scheduler.')
         logger.info(f'Max LR: {lr:.2e}, Min LR: {lr/div_factor:.2e}')
 
     def load(self, fn):
@@ -274,22 +274,22 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
         try:
             from annom.models import OrdNet
         except (ImportError, ModuleNotFoundError):
-            raise SynthNNError('Cannot use the OrdNet without the annom toolbox.')
+            raise SynthtorchError('Cannot use the OrdNet without the annom toolbox.')
         model = OrdNet(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'lrsdnet':
         try:
             from annom.models import LRSDNet
         except (ImportError, ModuleNotFoundError):
-            raise SynthNNError('Cannot use the LRSDNet without the annom toolbox.')
+            raise SynthtorchError('Cannot use the LRSDNet without the annom toolbox.')
         model = LRSDNet(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'hotnet':
         try:
             from annom.models import HotNet
         except (ImportError, ModuleNotFoundError):
-            raise SynthNNError('Cannot use the HotNet without the annom toolbox.')
+            raise SynthtorchError('Cannot use the HotNet without the annom toolbox.')
         model = HotNet(inplace=inplace, **config)
     else:
-        raise SynthNNError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet}} are the only supported options.')
+        raise SynthtorchError(f'Invalid NN type: {config.nn_arch}. {{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet}} are the only supported options.')
     return model
 
 
