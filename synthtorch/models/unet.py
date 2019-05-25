@@ -263,7 +263,8 @@ class Unet(torch.nn.Module):
         return dca
 
     def _upsampconv(self, in_c:int, out_c:int, scale:int=2):
-        usc = self._conv(in_c, out_c, 5, bias=self.enable_bias) if not self.all_conv or self.is_3d else \
+        usc = self._conv(in_c, out_c, 5, bias=self.enable_bias) if not self.all_conv else \
+              self._conv_act(in_c, out_c, 5, self.act, self.norm) if self.all_conv and self.is_3d else \
               nn.Sequential(*self._conv_act(in_c, out_c*(scale**2), 1, self.act, self.norm, seq=False),
                             nn.PixelShuffle(scale))
         return usc
