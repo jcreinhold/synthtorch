@@ -57,7 +57,7 @@ class VAE(Unet):
         self.fc_bn4 = nn.BatchNorm1d(self.esz)
 
         # replace first upsampconv to not reduce channels
-        self.upsampconvs[0] = self._conv(lc(n_layers-1), lc(n_layers-1), 3, bias=True)
+        self.upsampconvs[0] = self._conv(lc(n_layers-1), lc(n_layers-1), self.kernel_sz, bias=True)
 
     def encode(self, x):
         for si in self.start: x = si(x)

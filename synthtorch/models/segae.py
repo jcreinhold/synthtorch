@@ -55,10 +55,11 @@ class SegAE(Unet):
 
 
     def _final(self, in_c:int, out_c:int, *args, **kwargs):
-        f0 = self._conv_act(in_c, in_c//2, 1, act=self.act, norm=self.norm)
-        f1 = [self._conv(in_c//2, self.n_seg, 1), nn.Softmax(1)]
+        ksz = tuple([1 for _ in self.kernel_sz])
+        f0 = self._conv_act(in_c, in_c//2, ksz, act=self.act, norm=self.norm)
+        f1 = [self._conv(in_c//2, self.n_seg, ksz), nn.Softmax(1)]
         if self.seg_min > 0: f1.append(nn.Threshold(self.seg_min, 0))
-        f2 = self._conv(self.n_seg, out_c, 1, bias=False)  # force no bias on last layer
+        f2 = self._conv(self.n_seg, out_c, ksz, bias=False)  # force no bias on last layer
         return nn.ModuleList([f0, nn.Sequential(*f1), f2])
 
     def forward(self, x:torch.Tensor, **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:

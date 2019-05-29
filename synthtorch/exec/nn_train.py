@@ -126,8 +126,8 @@ def arg_parser():
                             help='use this type of initialization for the network [Default=kaiming]')
     nn_options.add_argument('-ing', '--init-gain', type=float, default=0.2,
                             help='use this initialization gain for initialization [Default=0.2]')
-    nn_options.add_argument('-ks', '--kernel-size', type=int, default=3,
-                            help='convolutional kernel size (squared or cubed) [Default=3]')
+    nn_options.add_argument('-ks', '--kernel-size', type=int, default=3, nargs='+',
+                            help='convolutional kernel size (squared or cubed) [Default=(3,3) or (3,3,3) depending on --is-3d]')
     nn_options.add_argument('-lr', '--learning-rate', type=float, default=1e-3,
                             help='learning rate for the optimizer [Default=1e-3]')
     nn_options.add_argument('-ne', '--n-epochs', type=int, default=100,

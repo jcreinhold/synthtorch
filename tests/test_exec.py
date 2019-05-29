@@ -406,7 +406,34 @@ class TestUnet(TestCLI):
 
     def test_unet_spectral_ks1_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
-                                  f'-ocf {self.jsonfn} -nm spectral -ks 1').split()
+                                  f'-ocf {self.jsonfn} -nm spectral -ks 1 1 1').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_ks331_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+                                  f'-ocf {self.jsonfn} -ks 3 3 1 -ic').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_ks331_acv_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+                                  f'-ocf {self.jsonfn} -ks 3 3 1 -ic -acv').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unet_ks331_ns_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+                                  f'-ocf {self.jsonfn} -ks 3 3 1 -ns -ic').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)

@@ -61,6 +61,8 @@ class Learner:
     def train_setup(cls, config:Union[str,ExperimentConfig]):
         if isinstance(config,str):
             config = ExperimentConfig.load_json(config)
+        if isinstance(config.kernel_size, int):
+            config.kernel_size = tuple([config.kernel_size for _ in range(3 if config.is_3d else 2)])
         device, use_cuda = get_device(config.disable_cuda)
         model = get_model(config, True, False)
         logger.debug(model)
@@ -98,6 +100,8 @@ class Learner:
     def predict_setup(cls, config:Union[str,ExperimentConfig]):
         if isinstance(config,str):
             config = ExperimentConfig.load_json(config)
+        if isinstance(config.kernel_size, int):
+            config.kernel_size = tuple([config.kernel_size for _ in range(3 if config.is_3d else 2)])
         device, use_cuda = get_device(config.disable_cuda)
         nsyn = config.monte_carlo or 1
         model = get_model(config, nsyn > 1 and config.dropout_prob > 0, True)

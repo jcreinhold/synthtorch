@@ -41,7 +41,7 @@ class Unet(torch.nn.Module):
 
     Args:
         n_layers (int): number of layers (to go down and up)
-        kernel_size (int): size of kernel (symmetric)
+        kernel_size (tuple): size of kernel
         dropout_p (float): dropout probability for each layer
         channel_base_power (int): 2 ** channel_base_power is the number of channels in the first layer
             and increases in each proceeding layer such that in the n-th layer there are
@@ -81,7 +81,7 @@ class Unet(torch.nn.Module):
         [4] He, Kaiming, et al. "Identity mappings in deep residual networks." European conference on computer vision.
             Springer, Cham, 2016.
     """
-    def __init__(self, n_layers:int, kernel_size:int=3, dropout_prob:float=0, channel_base_power:int=5,
+    def __init__(self, n_layers:int, kernel_size:Tuple[int]=3, dropout_prob:float=0, channel_base_power:int=5,
                  normalization:str='instance', activation:str='relu', output_activation:str='linear',
                  is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
@@ -90,7 +90,8 @@ class Unet(torch.nn.Module):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
-        self.kernel_sz = kernel_size
+        self.kernel_sz = tuple(kernel_size) if isinstance(kernel_size,(tuple,list)) else \
+                         tuple([kernel_size for _ in range(3 if is_3d else 2)])
         self.dropout_prob = dropout_prob
         self.channel_base_power = channel_base_power
         self.norm = nm = normalization
@@ -122,7 +123,7 @@ class Unet(torch.nn.Module):
                                           for n in range(nl)])
         self.bridge = self._unet_blk(lc(nl + 1 if all_conv else nl), lc(nl+1), lc(nl+1), act=(a, a), norm=(nm, nm))
         self.up_layers = nn.ModuleList([self._unet_blk(lc(n+1) if not no_skip else lc(n),
-                                                       lc(n), lc(n), (kernel_size, kernel_size),
+                                                       lc(n), lc(n), (self.kernel_sz, self.kernel_sz),
                                                        act=(a, a), norm=(nm, nm))
                                         for n in reversed(range(1,nl+1))])
         self.end = self._unet_blk(lc(1) if not no_skip else lc(0), lc(0), lc(0),
@@ -200,8 +201,11 @@ class Unet(torch.nn.Module):
         return x
 
     def _down(self, x:torch.Tensor, i:int) -> torch.Tensor:
-        return (F.max_pool3d(x, (2,2,2)) if self.is_3d else F.max_pool2d(x, (2,2))) if not self.all_conv else \
-                self.downsampconvs[i](x)
+        if not self.all_conv:
+            ksz = [(2 if ks != 1 else 1) for ks in self.kernel_sz]
+            return F.max_pool3d(x, ksz) if self.is_3d else F.max_pool2d(x, ksz)
+        else:
+            return self.downsampconvs[i](x)
 
     def _up(self, x:torch.Tensor, sz:Union[Tuple[int,int,int], Tuple[int,int]], i:int) -> torch.Tensor:
         if not self.all_conv or self.is_3d: x = F.interpolate(x, size=sz, mode=self.interp_mode)
@@ -217,36 +221,36 @@ class Unet(torch.nn.Module):
             x = x + (torch.randn_like(x.detach()) * self.noise_lvl)
         return x
 
-    def _conv(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None, bias:bool=False, seq:bool=True, stride:int=1):
-        ksz = self.kernel_sz if kernel_sz is None else kernel_sz
+    def _conv(self, in_c:int, out_c:int, kernel_sz:Optional[Tuple[int]]=None, bias:bool=False,
+              seq:bool=True, stride:Tuple[int]=None):
+        ksz = kernel_sz or self.kernel_sz
         bias = False if self.norm != 'none' and not bias else True
-        if not self.separable or ksz == 1:
+        stride = stride or tuple([1 for _ in ksz])
+        if not self.separable or all([ks == 1 for ks in ksz]):
             layers = [nn.Conv3d(in_c, out_c, ksz, bias=bias, stride=stride)] if self.is_3d else \
                      [nn.Conv2d(in_c, out_c, ksz, bias=bias, stride=stride)]
         else:
             layers = [SeparableConv3d(in_c, out_c, ksz, bias=bias, stride=stride)] if self.is_3d else \
                      [SeparableConv2d(in_c, out_c, ksz, bias=bias, stride=stride)]
-        if ksz > 1: layers = [nn.ReplicationPad3d(ksz // 2)] + layers if self.is_3d else \
-                             [nn.ReflectionPad2d(ksz // 2)] + layers
+        if any([ks > 1 for ks in ksz]):
+            rp = tuple([ks//2 for p in zip(reversed(ksz),reversed(ksz)) for ks in p])
+            layers = [nn.ReplicationPad3d(rp)] + layers if self.is_3d else \
+                     [nn.ReflectionPad2d(rp)] + layers
         if seq and len(layers) > 1:
             c = nn.Sequential(*layers)
         else:
             c = layers if len(layers) > 1 else layers[0]
         return c
 
-    def _conv_act(self, in_c:int, out_c:int, kernel_sz:Optional[int]=None,
-                  act:Optional[str]=None, norm:Optional[str]=None, seq:bool=True, stride:int=1) -> nn.Sequential:
+    def _conv_act(self, in_c:int, out_c:int, kernel_sz:Optional[Tuple[int]]=None,
+                  act:str='relu', norm:str='instance', seq:bool=True, stride:Tuple[int]=None) -> nn.Sequential:
         ksz = kernel_sz or self.kernel_sz
-        activation = get_act(act) if act is not None else get_act('relu')
+        activation = get_act(act)
         c = self._conv(in_c, out_c, ksz, seq=False, stride=stride)
         i = 1 if isinstance(c, list) else 0
         layers = [*c] if i == 1 else [c]
-        if norm in [None, 'instance', 'batch', 'layer']:
-             normalization = get_norm3d(norm, out_c) if norm is not None and self.is_3d else \
-                             get_norm3d('instance', out_c) if self.is_3d else \
-                             get_norm2d(norm, out_c) if norm is not None and not self.is_3d else \
-                             get_norm2d('instance', out_c)
-             if normalization is not None: layers.append(normalization)
+        if norm in ['instance', 'batch', 'layer']:
+            layers.append(get_norm3d(norm, out_c) if self.is_3d else get_norm2d(norm, out_c))
         elif norm == 'weight':   layers[i] = nn.utils.weight_norm(layers[i])
         elif norm == 'spectral': layers[i] = nn.utils.spectral_norm(layers[i])
         layers.append(activation)
@@ -254,7 +258,7 @@ class Unet(torch.nn.Module):
         return ca
 
     def _unet_blk(self, in_c:int, mid_c:int, out_c:int,
-                  kernel_sz:Tuple[Optional[int],Optional[int]]=(None,None),
+                  kernel_sz:Tuple[Optional[Tuple[int]],Optional[Tuple[int]]]=(None,None),
                   act:Tuple[Optional[str],Optional[str]]=(None,None),
                   norm:Tuple[Optional[str],Optional[str]]=(None,None)) -> nn.Sequential:
         layers = [self._conv_act(in_c,  mid_c, kernel_sz[0], act[0], norm[0]),
@@ -263,18 +267,21 @@ class Unet(torch.nn.Module):
         return dca
 
     def _upsampconv(self, in_c:int, out_c:int, scale:int=2):
-        usc = self._conv(in_c, out_c, 5, bias=self.enable_bias) if not self.all_conv else \
-              self._conv_act(in_c, out_c, 5, self.act, self.norm) if self.all_conv and self.is_3d else \
-              nn.Sequential(*self._conv_act(in_c, out_c*(scale**2), 1, self.act, self.norm, seq=False),
+        ksz = tuple([(5 if ks != 1 else 1) for ks in self.kernel_sz])
+        usc = self._conv(in_c, out_c, ksz, bias=self.enable_bias) if not self.all_conv else \
+              self._conv_act(in_c, out_c, ksz, self.act, self.norm) if self.all_conv and self.is_3d else \
+              nn.Sequential(*self._conv_act(in_c, out_c*(scale**2), (1,1), self.act, self.norm, seq=False),
                             nn.PixelShuffle(scale))
         return usc
 
     def _downsampconv(self, in_c:int, out_c:int):
-        dsc = self._conv_act(in_c, out_c, 3, self.act, self.norm, stride=2)
+        stride = tuple([(2 if ks != 1 else 1) for ks in self.kernel_sz])
+        dsc = self._conv_act(in_c, out_c, self.kernel_sz, self.act, self.norm, stride=stride)
         return dsc
 
     def _final(self, in_c:int, out_c:int, out_act:Optional[str]=None, bias:bool=False):
-        c = self._conv(in_c, out_c, 1, bias=bias)
+        ksz = tuple([1 for _ in self.kernel_sz])
+        c = self._conv(in_c, out_c, ksz, bias=bias)
         fc = nn.Sequential(c, get_act(out_act)) if out_act != 'linear' else c
         return fc
 
