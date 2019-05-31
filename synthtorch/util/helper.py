@@ -203,10 +203,12 @@ def init_weights(net, init_type='kaiming', init_gain=0.02):
             elif init_type == 'orthogonal':
                 nn.init.orthogonal_(m.weight.data, gain=init_gain)
             else:
-                raise NotImplementedError('initialization method [%s] is not implemented' % init_type)
+                raise NotImplementedError(f'initialization method [{init_type}] is not implemented')
             if hasattr(m, 'bias') and m.bias is not None:
                 nn.init.constant_(m.bias.data, 0.0)
-        elif classname.find('BatchNorm2d') != -1:  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
+        elif (classname.find('BatchNorm') != -1 or
+              classname.find('InstanceNorm') != -1 or
+              classname.find('GroupNorm') != -1):  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
             nn.init.normal_(m.weight.data, 1.0, init_gain)
             nn.init.constant_(m.bias.data, 0.0)
 
