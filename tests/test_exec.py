@@ -771,43 +771,10 @@ class TestHotNet(TestCLI):
         self.assertEqual(retval, 0)
 
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
-    def test_hot_2d_cross_cli(self):
-        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
-        args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn} -dp 0.5 -cx').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn, mc=2)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
-    def test_hot_2d_init_cli(self):
-        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
-        args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn} -dp 0.5 -cx -ni').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn, mc=2)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_hot_2d_resblock_cli(self):
         train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn} -dp 0.5 -cx -acv -rb').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn, mc=2)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
-    def test_hot_2d_coord_cli(self):
-        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
-        args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn} -dp 0.5 -ic -cd').split()
+                             f'-ocf {self.jsonfn} -dp 0.5 -acv -rb').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, mc=2)
@@ -829,7 +796,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_noskip_edge_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -ed -dp 0.5').split()
+                             f'-ocf {self.jsonfn} -ns -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, mc=2)
@@ -840,7 +807,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_lap_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -ed -lp -dp 0.5').split()
+                             f'-ocf {self.jsonfn} -ns -lp -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, mc=2)
@@ -873,16 +840,6 @@ class TestHotNet(TestCLI):
     def test_hot_3d_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -3d '
                                   f'-ocf {self.jsonfn} -dp 0.5').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn, mc=2)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
-    def test_hot_3d_coord_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -3d '
-                                  f'-ocf {self.jsonfn} -dp 0.5 -cd').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, mc=2)

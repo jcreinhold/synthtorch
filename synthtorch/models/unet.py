@@ -140,7 +140,7 @@ class Unet(torch.nn.Module):
 
     def _fwd_skip(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
         x = self._fwd_skip_nf(x)
-        x = self.finish(x)
+        x = self._finish(x)
         return x
 
     def _fwd_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
@@ -173,7 +173,7 @@ class Unet(torch.nn.Module):
 
     def _fwd_no_skip(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
         x = self._fwd_no_skip_nf(x)
-        x = self.finish(x)
+        x = self._finish(x)
         return x
 
     def _fwd_no_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
@@ -199,6 +199,9 @@ class Unet(torch.nn.Module):
         for eli in self.end: x = self._add_noise(eli(x))
         if self.resblock: x = x + xr
         return x
+
+    def _finish(self, x:torch.Tensor):
+        return self.finish(x)
 
     def _down(self, x:torch.Tensor, i:int) -> torch.Tensor:
         if not self.all_conv:

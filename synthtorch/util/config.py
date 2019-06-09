@@ -97,10 +97,6 @@ class ExperimentConfig(dict):
         # LRSDNet Options
         self.lrsd_weights       = None
         # Ord/HotNet Options
-        self.coord              = False
-        self.cross              = False
-        self.edge               = False
-        self.net_init           = False
         self.laplacian          = False
         self.ord_params         = None
         self.temperature_map    = False
@@ -284,10 +280,6 @@ def _get_arg_dict(args):
             "lrsd_weights": args.lrsd_weights if hasattr(args,'lrsd_weights') else None
         },
         "Ord/HotNet Options": {
-            "coord": args.coord if hasattr(args,'coord') else None,
-            "cross": args.cross if hasattr(args,'cross') else None,
-            "edge": args.edge if hasattr(args,'edge') else None,
-            "net_init": args.net_init if hasattr(args,'net_init') else None,
             "laplacian": args.laplacian if hasattr(args,'laplacian') else None,
             "ord_params": args.ord_params if hasattr(args,'ord_params') else None,
             "temperature_map": args.temperature_map if hasattr(args,'temperature_map') else False,

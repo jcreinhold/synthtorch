@@ -73,9 +73,9 @@ class Predictor:
         sz, psz = img.shape, self.patch_size
         pad = [int((ps // 2) * np.ceil(sz[i]/(ps // 2)) - sz[i]) for i, ps in enumerate(psz, 1)]
         img = np.asarray(F.pad(torch.from_numpy(img[np.newaxis,...]),
-                               (0, pad[2] if psz[2] != sz[3] else 0,
+                               [0, pad[2] if psz[2] != sz[3] else 0,
                                 0, pad[1] if psz[1] != sz[2] else 0,
-                                0, pad[0] if psz[0] != sz[1] else 0), mode='circular')[0])
+                                0, pad[0] if psz[0] != sz[1] else 0], mode='circular')[0])
         out_img = np.zeros((self.n_output,) + img.shape[1:])
         count_mtx = np.zeros(img.shape[1:])
         x, y, z = self._get_overlapping_3d_idxs(self.patch_size, img)
