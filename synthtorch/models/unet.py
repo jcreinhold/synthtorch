@@ -148,6 +148,7 @@ class Unet(torch.nn.Module):
         x = self._add_noise(self.start[0](x))
         dout.append(self._add_noise(self.start[1](x)))
         x = self._down(dout[-1], 0)
+        if self.all_conv: x = self._add_noise(x)
         for i, dl in enumerate(self.down_layers, 1):
             if self.resblock: xr = x
             for dli in dl: x = self._add_noise(dli(x))
@@ -156,6 +157,7 @@ class Unet(torch.nn.Module):
             if self.all_conv: x = self._add_noise(x)
         x = self._add_noise(self.bridge[0](x))
         x = self._up(self._add_noise(self.bridge[1](x)), dout[-1].shape[2:], 0)
+        if self.all_conv: x = self._add_noise(x)
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
             if self.use_attention: d = self.attn[i-1](d)
             if self.resblock: xr = x
@@ -180,6 +182,7 @@ class Unet(torch.nn.Module):
         sz = [x.shape]
         for si in self.start: x = self._add_noise(si(x))
         x = self._down(x, 0)
+        if self.all_conv: x = self._add_noise(x)
         for i, dl in enumerate(self.down_layers, 1):
             if self.resblock: xr = x
             for dli in dl: x = self._add_noise(dli(x))
@@ -188,6 +191,7 @@ class Unet(torch.nn.Module):
             if self.all_conv: x = self._add_noise(x)
         x = self._add_noise(self.bridge[0](x))
         x = self._up(self._add_noise(self.bridge[1](x)), sz[-1][2:], 0)
+        if self.all_conv: x = self._add_noise(x)
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
             if self.use_attention: x = self.attn[i-1](x)
             if self.resblock: xr = x

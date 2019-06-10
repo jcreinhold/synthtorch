@@ -589,7 +589,7 @@ class TestSegAE(TestCLI):
     def test_segae_2d_mse_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 3 -cbp 2 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} --use-mse -is 0 -sm 0.1 --clip 1 -ic').split()
+                             f'-ocf {self.jsonfn} --use-mse -is 0 --clip 1 -ic').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
@@ -629,7 +629,7 @@ class TestSegAE(TestCLI):
     def test_segae_3d_cli(self):
         train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir}'.split()
         args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -3d '
-                             f'-ocf {self.jsonfn} -is 0 -sm 0.01').split()
+                             f'-ocf {self.jsonfn} -is 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
@@ -639,7 +639,7 @@ class TestSegAE(TestCLI):
     def test_segae_3d_predict_seg_cli(self):
         train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir}'.split()
         args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 1 -cbp 1 -bs 4 -3d '
-                             f'-ocf {self.jsonfn} -is 0 -sm 0.01').split()
+                             f'-ocf {self.jsonfn} -is 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2, predict_seg=True)

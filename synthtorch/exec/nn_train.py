@@ -195,7 +195,6 @@ def arg_parser():
                                help='initial numbers for last layer [Default=None]')
     segae_options.add_argument('-np', '--norm-penalty', type=float, default=1, help='weight for the norm penalty [Default=1]')
     segae_options.add_argument('-op', '--ortho-penalty', type=float, default=1, help='weight for the orthogonality penalty [Default=1]')
-    segae_options.add_argument('-sm', '--seg-min', type=float, default=0, help='minimum prob in segmentation [Default=0]')
     segae_options.add_argument('-mse', '--use-mse', action='store_true', default=False,
                                help='use mse instead of cosine proximity in loss function [Default=False]')
     segae_options.add_argument('-mask', '--use-mask', action='store_true', default=False,

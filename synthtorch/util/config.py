@@ -112,7 +112,6 @@ class ExperimentConfig(dict):
         self.norm_penalty       = None
         self.ortho_penalty      = None
         self.predict_seg        = None
-        self.seg_min            = 0
         self.use_mask           = None
         self.use_mse            = None
         # Internal
@@ -296,7 +295,6 @@ def _get_arg_dict(args):
             "n_seg": args.n_seg if hasattr(args,'n_seg') else None,
             "norm_penalty": args.norm_penalty if hasattr(args,'norm_penalty') else None,
             "ortho_penalty": args.ortho_penalty if hasattr(args,'ortho_penalty') else None,
-            "seg_min": args.seg_min if hasattr(args,'seg_min') else 0,
             "use_mse": args.use_mse if hasattr(args,'use_mse') else None,
             "use_mask": args.use_mask if hasattr(args,'use_mask') else None,
             "predict_seg": args.predict_seg if hasattr(args,'predict_seg') else False

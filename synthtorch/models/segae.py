@@ -36,14 +36,12 @@ class SegAE(Unet):
     def __init__(self, n_layers:int=2, dropout_prob:float=0, channel_base_power:int=5, activation:str= 'lrelu',
                  is_3d:bool=True, enable_dropout:bool=True, n_input:int=1, n_output:int=1, inplace:bool=False,
                  n_seg:int=5, ortho_penalty:float=1, norm_penalty:float=1, use_mse:bool=False, no_skip:bool=True,
-                 use_mask:bool=True, initialize:int=0, seg_min:float=0, freeze_last:bool=False,
-                 last_init:List[float]=None, **kwargs):
+                 use_mask:bool=True, initialize:int=0, freeze_last:bool=False, last_init:List[float]=None, **kwargs):
         """ Implements heavily modified version of SegAE [1] """
         self.n_seg = n_seg
         self.ortho_penalty = ortho_penalty
         self.norm_penalty = norm_penalty
         self.use_mask = use_mask
-        self.seg_min = seg_min
         self.freeze_last = freeze_last
         self.last_init = last_init
         super(SegAE, self).__init__(n_layers, dropout_prob=dropout_prob, channel_base_power=channel_base_power,
@@ -58,7 +56,6 @@ class SegAE(Unet):
         ksz = tuple([1 for _ in self.kernel_sz])
         f0 = self._conv_act(in_c, in_c//2, ksz, act=self.act, norm=self.norm)
         f1 = [self._conv(in_c//2, self.n_seg, ksz), nn.Softmax(1)]
-        if self.seg_min > 0: f1.append(nn.Threshold(self.seg_min, 0))
         f2 = self._conv(self.n_seg, out_c, ksz, bias=False)  # force no bias on last layer
         return nn.ModuleList([f0, nn.Sequential(*f1), f2])
 
