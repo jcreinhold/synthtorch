@@ -86,7 +86,8 @@ class Unet(torch.nn.Module):
                  is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
                  loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False,
-                 softmax:bool=False, input_connect:bool=True, all_conv:bool=False, resblock:bool=False, **kwargs):
+                 softmax:bool=False, input_connect:bool=True, all_conv:bool=False, resblock:bool=False,
+                 init_3d:bool=False, **kwargs):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -114,25 +115,27 @@ class Unet(torch.nn.Module):
         self.all_conv = all_conv
         self.resblock = resblock and all_conv
         self.is_unet = self.__class__.__name__ == 'Unet'
+        self.init_3d = init_3d and is_3d
         nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
-        self.start = self._unet_blk(n_input, lc(0), lc(0), act=(a, a), norm=(nm, nm))
+        self.start = self._unet_blk(n_input if not self.init_3d else lc(0), lc(0), lc(0), act=(a, a), norm=(nm, nm))
         self.down_layers = nn.ModuleList([self._unet_blk(lc(n+1) if all_conv else lc(n), lc(n+1), lc(n+1),
                                                          act=(a, a), norm=(nm, nm))
                                           for n in range(nl)])
-        self.bridge = self._unet_blk(lc(nl + 1 if all_conv else nl), lc(nl+1), lc(nl+1), act=(a, a), norm=(nm, nm))
+        self.bridge = self._unet_blk(lc((nl+1) if all_conv else nl), lc(nl+1), lc(nl+1), act=(a, a), norm=(nm, nm))
         self.up_layers = nn.ModuleList([self._unet_blk(lc(n+1) if not no_skip else lc(n),
                                                        lc(n), lc(n), (self.kernel_sz, self.kernel_sz),
                                                        act=(a, a), norm=(nm, nm))
                                         for n in reversed(range(1,nl+1))])
         self.end = self._unet_blk(lc(1) if not no_skip else lc(0), lc(0), lc(0),
-                                  act=(a, 'softmax' if softmax else a), norm=(nm, nm))
+                                  act=(a, 'softmax' if softmax and self.is_unet else a), norm=(nm, nm))
         self.finish = self._final(lc(0) + n_input if not no_skip and input_connect else lc(0), n_output,
                                   oa, bias=enable_bias)
         self.upsampconvs = nn.ModuleList([self._upsampconv(lc(n+1), lc(n)) for n in reversed(range(nl+1))])
         if self.use_attention: self.attn = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(nl+1))])
         if self.all_conv: self.downsampconvs = nn.ModuleList([self._downsampconv(lc(n), lc(n+1)) for n in range(nl+1)])
+        if self.init_3d: self.conv3d = self._conv_act(n_input, lc(0), (3,3,3), a, nm)
 
     def forward(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
         x = self._fwd_skip(x, **kwargs) if not self.no_skip else self._fwd_no_skip(x, **kwargs)
@@ -145,6 +148,7 @@ class Unet(torch.nn.Module):
 
     def _fwd_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
         dout = [x] if self.input_connect else [None]
+        if self.init_3d: x = self._add_noise(self.conv3d(x))
         x = self._add_noise(self.start[0](x))
         dout.append(self._add_noise(self.start[1](x)))
         x = self._down(dout[-1], 0)
@@ -180,6 +184,7 @@ class Unet(torch.nn.Module):
 
     def _fwd_no_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
         sz = [x.shape]
+        if self.init_3d: x = self._add_noise(self.conv3d(x))
         for si in self.start: x = self._add_noise(si(x))
         x = self._down(x, 0)
         if self.all_conv: x = self._add_noise(x)
@@ -250,7 +255,7 @@ class Unet(torch.nn.Module):
         return c
 
     def _conv_act(self, in_c:int, out_c:int, kernel_sz:Optional[Tuple[int]]=None,
-                  act:str='relu', norm:str='instance', seq:bool=True, stride:Tuple[int]=None) -> nn.Sequential:
+                  act:str='relu', norm:str='instance', seq:bool=True, stride:Tuple[int]=None):
         ksz = kernel_sz or self.kernel_sz
         activation = get_act(act)
         c = self._conv(in_c, out_c, ksz, seq=False, stride=stride)
@@ -267,7 +272,7 @@ class Unet(torch.nn.Module):
     def _unet_blk(self, in_c:int, mid_c:int, out_c:int,
                   kernel_sz:Tuple[Optional[Tuple[int]],Optional[Tuple[int]]]=(None,None),
                   act:Tuple[Optional[str],Optional[str]]=(None,None),
-                  norm:Tuple[Optional[str],Optional[str]]=(None,None)) -> nn.Sequential:
+                  norm:Tuple[Optional[str],Optional[str]]=(None,None)) -> nn.ModuleList:
         layers = [self._conv_act(in_c,  mid_c, kernel_sz[0], act[0], norm[0]),
                   self._conv_act(mid_c, out_c, kernel_sz[1], act[1], norm[1])]
         dca = nn.ModuleList(layers)

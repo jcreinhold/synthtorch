@@ -422,6 +422,15 @@ class TestUnet(TestCLI):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
+    def test_unet_ks331_init3d_cli(self):
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+                                  f'-ocf {self.jsonfn} -ks 3 3 1 -ic -i3').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
     def test_unet_ks331_acv_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
                                   f'-ocf {self.jsonfn} -ks 3 3 1 -ic -acv').split()

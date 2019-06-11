@@ -154,6 +154,8 @@ def arg_parser():
                               help='2 ** channel_base_power is the number of channels in the first layer '
                                    'and increases in each proceeding layer such that in the n-th layer there are '
                                    '2 ** (channel_base_power + n) channels [Default=5]')
+    unet_options.add_argument('-i3', '--init-3d', action='store_true', default=False,
+                              help='if using 3d with oblong kernel, first use a isotropic 3d conv layer in network [Default=False]')
     unet_options.add_argument('-ic', '--input-connect', action='store_true', default=False,
                               help='connect the input to the final layers via a concat skip connection [Default=False]')
     unet_options.add_argument('-im', '--interp-mode', type=str, default='nearest', choices=('nearest','bilinear','trilinear'),
