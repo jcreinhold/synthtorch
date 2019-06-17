@@ -37,7 +37,7 @@ class Predictor:
         self.batch_size = batch_size
         self.device = device
         self.axis = axis
-        self.n_output = n_output
+        self.n_output = n_output if model.__class__.__name__ != 'HotNet' else n_output + 2
         self.is_3d = is_3d
         self.mean = mean
         self.std = std
