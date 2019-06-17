@@ -1,3 +1,6 @@
+dist: xenial
+services:
+  - xvfb
 cache: apt
 language: python
 sudo: false
@@ -23,10 +26,6 @@ install:
   - pip --version
   # coveralls requires coverage==4.0.3, recent versions of pytest-cov require coverage>=4.4
   - travis_retry pip install coverage==4.0.3 nose pytest-pep8 pytest-cov==2.5.1 python-coveralls
-before_script: # configure a headless display to test plot generation
-  - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start"
-  - sleep 3 # give xvfb some time to start
 script:
   - nosetests -v --with-coverage --cover-tests --cover-package=synthtorch tests
 after_success:
