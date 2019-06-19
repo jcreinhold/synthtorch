@@ -16,13 +16,10 @@ from typing import Tuple
 
 import logging
 import math
-import warnings
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-
-from ..errors import SynthtorchError
 
 logger = logging.getLogger(__name__)
 
@@ -30,43 +27,41 @@ logger = logging.getLogger(__name__)
 class Predictor:
 
     def __init__(self, model:torch.nn.Module, patch_size:Tuple[int], batch_size:int, device:torch.device,
-                 axis:int=0, n_output:int=1, is_3d:bool=False, mean:Tuple[float]=None, std:Tuple[float]=None,
-                 n_seg:int=None):
+                 axis:int=0, is_3d:bool=False, mean:Tuple[float]=None, std:Tuple[float]=None):
         self.model = model
         self.patch_size = patch_size
         self.batch_size = batch_size
         self.device = device
         self.axis = axis
-        self.n_output = n_output if model.__class__.__name__ != 'HotNet' else n_output + 2
+        self.n_output = model.n_output
         self.is_3d = is_3d
         self.mean = mean
         self.std = std
-        self.n_seg = n_seg  # for segae, to get segmentation results
 
-    def predict(self, img:np.ndarray, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False) -> np.ndarray:
+    def predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
         """ picks and runs the correct prediction routine based on input info """
         if self.mean is not None and self.std is not None:
             for i, (m, s) in enumerate(zip(self.mean, self.std)):
                 img[i] = (img[i] - m) / s
         if self.patch_size is not None and self.is_3d:
-            out_img = self.patch_3d_predict(img, nsyn, temperature_map, calc_var)
+            out_img = self.patch_3d_predict(img, nsyn, calc_var)
         elif self.is_3d:
-            out_img = self.whole_3d_predict(img, nsyn, temperature_map, calc_var)
+            out_img = self.whole_3d_predict(img, nsyn, calc_var)
         else:
-            out_img = self.slice_predict(img, nsyn, temperature_map, calc_var)
+            out_img = self.slice_predict(img, nsyn, calc_var)
         return out_img
 
-    def whole_3d_predict(self, img:np.ndarray, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False) -> np.ndarray:
+    def whole_3d_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
         """ 3d whole-image-based prediction """
         if img.ndim == 3: img = img[np.newaxis, ...]
-        out_img = np.zeros((nsyn, self.n_seg or self.n_output) + img.shape[1:])  # n_seg for segae
+        out_img = np.zeros((nsyn, self.n_output) + img.shape[1:])
         test_img = torch.from_numpy(img).to(self.device)[None, ...]  # add empty batch dimension
         for j in range(nsyn):
-            out_img[j] = self._fwd(test_img, temperature_map)[0]  # remove empty batch dimension
+            out_img[j] = self._fwd(test_img)[0]  # remove empty batch dimension
         out_img = np.mean(out_img, axis=0) if not calc_var else np.var(out_img, axis=0)
         return out_img
 
-    def patch_3d_predict(self, img:np.ndarray, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False) -> np.ndarray:
+    def patch_3d_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
         """ 3d patch-by-patch based prediction """
         if img.ndim == 3: img = img[np.newaxis, ...]
         # pad image to get full image coverage in patch-based processing
@@ -90,12 +85,12 @@ class Predictor:
                 batch.append(img[:, xx, yy, zz])
                 j += 1
             else:
-                self.__batch_3d_proc(batch, idxs, nsyn, temperature_map, out_img, count_mtx)
+                self.__batch_3d_proc(batch, idxs, nsyn, out_img, count_mtx)
                 # restart new batch
                 batch, idxs = [img[:, xx, yy, zz]], [(xx, yy, zz)]
                 j = 1
         if np.any(count_mtx == 0):
-            self.__batch_3d_proc(batch, idxs, nsyn, temperature_map, out_img, count_mtx)
+            self.__batch_3d_proc(batch, idxs, nsyn, out_img, count_mtx)
         if np.any(count_mtx == 0):
             logger.warning(f'Part of the synthesized image not covered ({np.sum(count_mtx == 0)} voxels)')
             count_mtx[count_mtx == 0] = 1  # avoid division by zero
@@ -103,20 +98,20 @@ class Predictor:
         out_img = out_img[:,:sz[1],:sz[2],:sz[3]]
         return out_img
 
-    def __batch_3d_proc(self, batch, idxs, nsyn, temperature_map, out_img, count_mtx):
+    def __batch_3d_proc(self, batch, idxs, nsyn, out_img, count_mtx):
         bs = len(batch)
         batch = torch.from_numpy(np.stack(batch)).to(self.device)
         predicted = np.zeros((bs,self.n_output,) + batch.shape[2:])
         for _ in range(nsyn):
-            predicted += self._fwd(batch, temperature_map) / nsyn
+            predicted += self._fwd(batch) / nsyn
         for ii, (bx, by, bz) in enumerate(idxs):
             out_img[:, bx, by, bz] += predicted[ii, ...]
             count_mtx[bx, by, bz] += 1
 
-    def slice_predict(self, img:np.ndarray, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False) -> np.ndarray:
+    def slice_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
         """ slice-by-slice based prediction """
         if img.ndim == 3: img = img[np.newaxis, ...]  # add batch dimension if empty
-        out_img = np.zeros((nsyn, self.n_seg or self.n_output) + img.shape[1:])
+        out_img = np.zeros((nsyn, self.n_output) + img.shape[1:])
         num_batches = math.floor(img.shape[self.axis + 1] / self.batch_size)  # add one to axis to ignore channel dim
         if img.shape[self.axis + 1] / self.batch_size != num_batches:
             lbi = int(num_batches * self.batch_size)  # last batch index
@@ -126,34 +121,34 @@ class Predictor:
             lbi = None
         for i in range(num_batches if lbi is None else num_batches - 1):
             logger.info(f'Starting batch ({i + 1}/{num_batches})')
-            self._batch2d(img, out_img, i * self.batch_size, nsyn, temperature_map)
+            self._batch2d(img, out_img, i * self.batch_size, nsyn)
         if lbi is not None:
             logger.info(f'Starting batch ({num_batches}/{num_batches})')
-            self._batch2d(img, out_img, lbi, nsyn, temperature_map, lbs)
+            self._batch2d(img, out_img, lbi, nsyn, lbs)
         out_img = np.mean(out_img, axis=0) if not calc_var else np.var(out_img, axis=0)
         return out_img
 
-    def img_predict(self, img:np.ndarray, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False) -> np.ndarray:
+    def img_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
         if img.ndim == 3: img = img[np.newaxis, ...]
         out_img = np.zeros((nsyn, self.n_output) + img.shape[1:])
         for i in range(nsyn):
-            out_img[i, ...] = self._fwd(torch.from_numpy(img).to(self.device), temperature_map)
+            out_img[i, ...] = self._fwd(torch.from_numpy(img).to(self.device))
         out_img = np.mean(out_img, axis=0) if not calc_var else np.var(out_img, axis=0)
         return out_img.squeeze()
 
-    def png_predict(self, img:np.ndarray, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False,
+    def png_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False,
                     scale:bool=False) -> np.ndarray:
-        out = self.img_predict(img, nsyn, temperature_map, calc_var)
+        out = self.img_predict(img, nsyn, calc_var)
         if scale:
             a = (img.max() - img.min()) / (out.max() - out.min() + np.finfo(np.float32).eps)
             b = img.min() - (a * out.min())
             out = a * out + b
-        out_img = np.asarray(np.around(out), dtype=np.uint8) if not temperature_map else out
+        out_img = np.asarray(np.around(out), dtype=np.uint8)
         return out_img
 
-    def _fwd(self, img, temperature_map):
+    def _fwd(self, img):
         with torch.no_grad():
-            out = self.model.predict(img, temperature_map).cpu().detach().numpy()
+            out = self.model.predict(img).cpu().detach().numpy()
         return out
 
     def _get_overlapping_3d_idxs(self, psz, img):
@@ -166,14 +161,14 @@ class Predictor:
                    .unfold(1, psz[1], psz[1]//(2 if psz[1] != img.shape[2] else 1))\
                    .unfold(2, psz[2], psz[2]//(2 if psz[2] != img.shape[3] else 1))
 
-    def _batch2d(self, img, out_img, i, nsyn, temperature_map, bs=None):
+    def _batch2d(self, img, out_img, i, nsyn, bs=None):
         bs = bs or self.batch_size
         s = np.transpose(img[:,i:i+bs,:,:],[1,0,2,3]) if self.axis == 0 else \
             np.transpose(img[:,:,i:i+bs,:],[2,0,1,3]) if self.axis == 1 else \
             np.transpose(img[:,:,:,i:i+bs],[3,0,1,2])
         img_b = torch.from_numpy(s).to(self.device)
         for j in range(nsyn):
-            x = self._fwd(img_b, temperature_map)
+            x = self._fwd(img_b)
             if self.axis == 0:
                 out_img[j,:,i:i+bs,:,:] = np.transpose(x, [1,0,2,3])
             elif self.axis == 1:

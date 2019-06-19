@@ -100,8 +100,6 @@ class ExperimentConfig(dict):
         # Ord/HotNet Options
         self.laplacian          = False
         self.ord_params         = None
-        self.temperature_map    = False
-        self.uncertainty        = None
         # VAE Options
         self.img_dim            = None
         self.latent_size        = None
@@ -160,10 +158,6 @@ class ExperimentConfig(dict):
                 self.rotate, self.translate, self.scale = 0, None, None
                 self.hflip, self.vflip = False, False
                 self.mean, self.std = None, None
-
-        if (self.nn_arch.lower() != 'ordnet' and self.nn_arch.lower() != 'hotnet') and self.temperature_map:
-            logger.warning('temperature_map is only a valid option when using OrdNet or HotNet.')
-            self.temperature_map = False
 
         if self.loss == 'lrds' and not self.is_3d:
             raise SynthtorchError('low-rank and sparse decomposition is only supported for 3d')
@@ -282,9 +276,7 @@ def _get_arg_dict(args):
         },
         "Ord/HotNet Options": {
             "laplacian": args.laplacian if hasattr(args,'laplacian') else None,
-            "ord_params": args.ord_params if hasattr(args,'ord_params') else None,
-            "temperature_map": args.temperature_map if hasattr(args,'temperature_map') else False,
-            "uncertainty": args.uncertainty if hasattr(args,'uncertainty') else None
+            "ord_params": args.ord_params if hasattr(args,'ord_params') else None
         },
         "VAE Options": {
             "img_dim": args.img_dim if hasattr(args,'img_dim') and args.nn_arch =='vae' else None,

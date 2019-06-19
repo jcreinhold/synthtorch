@@ -88,12 +88,8 @@ class Learner:
         if os.path.isfile(config.trained_model) and not config.no_load_opt:
             optimizer = load_opt(optimizer, config.trained_model)
         model.train()
-        try:
-            segae_flag = config.n_seg if config.predict_seg else None
-        except AttributeError:
-            segae_flag = None
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
-                              config.n_output, config.is_3d, config.mean, config.std, segae_flag)
+                              config.is_3d, config.mean, config.std)
         return cls(model, device, train_loader, valid_loader, optimizer, predictor, config)
 
     @classmethod
@@ -109,12 +105,8 @@ class Learner:
         model, _ = load_model(model, config.trained_model, device)
         if use_cuda: model.cuda(device=device)
         model.eval()
-        try:
-            segae_flag = config.n_seg if config.predict_seg and config.nn_arch == 'segae' else None
-        except AttributeError:
-            segae_flag = None
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
-                              config.n_output, config.is_3d, config.mean, config.std, segae_flag)
+                              config.is_3d, config.mean, config.std)
         return cls(model, device, predictor=predictor, config=config)
 
     def fit(self, n_epochs, clip:float=None, checkpoint:int=None, trained_model:str=None):
@@ -172,22 +164,21 @@ class Learner:
 
         self.record = Record(train_losses, valid_losses)
 
-    def predict(self, fn:str, nsyn:int=1, temperature_map:bool=False, calc_var:bool=False):
+    def predict(self, fn:str, nsyn:int=1, calc_var:bool=False):
         self.model.eval()
         f = fn[0].lower()
-        tmap = temperature_map if self.predictor.n_seg is None else True  # hack to produce segmentations w/ segae
         if f.endswith('.nii') or f.endswith('.nii.gz'):
             img_nib = nib.load(fn[0])
             img = np.stack([np.asarray(nib.load(f).get_data(), dtype=np.float32) for f in fn])
-            out = self.predictor.predict(img, nsyn, tmap, calc_var)
+            out = self.predictor.predict(img, nsyn, calc_var)
             out_img = [nib.Nifti1Image(o, img_nib.affine, img_nib.header) for o in out]
         elif f.endswith('.tif') or f.endswith('.tiff'):
             img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
-            out = self.predictor.img_predict(img, nsyn, tmap, calc_var)
+            out = self.predictor.img_predict(img, nsyn, calc_var)
             out_img = [Image.fromarray(out)]
         elif f.endswith('.png') or f.endswith('.jpg') or f.endswith('.jpeg'):
             img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
-            out = self.predictor.png_predict(img, nsyn, tmap, calc_var)
+            out = self.predictor.png_predict(img, nsyn, calc_var)
             out_img = [Image.fromarray(out)]
         else:
             raise SynthtorchError(f'File: {fn[0]}, not supported.')

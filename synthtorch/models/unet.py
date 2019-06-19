@@ -135,13 +135,13 @@ class Unet(torch.nn.Module):
         self.upsampconvs = nn.ModuleList([self._upsampconv(lc(n+1), lc(n)) for n in reversed(range(nl+1))])
         if self.use_attention: self.attn = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(nl+1))])
         if self.all_conv: self.downsampconvs = nn.ModuleList([self._downsampconv(lc(n), lc(n+1)) for n in range(nl+1)])
-        if self.init_3d: self.init_conv = self._conv_act(n_input, lc(0), (3, 3, 3), a, nm)
+        if self.init_3d: self.init_conv = self._conv_act(n_input, lc(0), (3,3,3), a, nm)
 
-    def forward(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
+    def forward(self, x:torch.Tensor, **kwargs):
         x = self._fwd_skip(x, **kwargs) if not self.no_skip else self._fwd_no_skip(x, **kwargs)
         return x
 
-    def _fwd_skip(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
+    def _fwd_skip(self, x:torch.Tensor, **kwargs):
         x = self._fwd_skip_nf(x)
         x = self._finish(x)
         return x
@@ -177,7 +177,7 @@ class Unet(torch.nn.Module):
         if self.input_connect: x = torch.cat((x, dout[0]), dim=1)
         return x
 
-    def _fwd_no_skip(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
+    def _fwd_no_skip(self, x:torch.Tensor, **kwargs):
         x = self._fwd_no_skip_nf(x)
         x = self._finish(x)
         return x

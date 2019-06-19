@@ -87,6 +87,7 @@ class DenseNet(nn.Module):
                  loss:Optional[str]=None, **kwargs):
 
         super(DenseNet, self).__init__()
+        self.n_input, self.n_output = n_input, n_output
         self.criterion = get_loss(loss)
 
         # First convolution

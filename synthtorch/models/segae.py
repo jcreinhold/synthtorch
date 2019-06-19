@@ -50,6 +50,7 @@ class SegAE(Unet):
                                     no_skip=no_skip, inplace=inplace)
         self.criterion = SegAELoss(ortho_penalty, norm_penalty, use_mse, initialize, n_seg)
         self.finish[2].weight.requires_grad = not freeze_last
+        self.n_output += n_seg
 
 
     def _final(self, in_c:int, out_c:int, *args, **kwargs):
@@ -88,7 +89,7 @@ class SegAE(Unet):
         x = self.finish[2](seg) * mask
         return x, seg
 
-    def predict(self, x:torch.Tensor, return_seg:bool=False, **kwargs) -> torch.Tensor:
+    def predict(self, x:torch.Tensor, **kwargs) -> torch.Tensor:
         """ predict from a sample `x` """
         yhat, seg = self.forward(x)
-        return yhat if not return_seg else seg
+        return torch.cat((yhat, seg), dim=1)
