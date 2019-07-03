@@ -98,6 +98,7 @@ class ExperimentConfig(dict):
         # LRSDNet Options
         self.lrsd_weights       = None
         # Ord/HotNet Options
+        self.beta               = 1.
         self.laplacian          = False
         self.ord_params         = None
         # VAE Options
@@ -275,6 +276,7 @@ def _get_arg_dict(args):
             "lrsd_weights": args.lrsd_weights if hasattr(args,'lrsd_weights') else None
         },
         "Ord/HotNet Options": {
+            "beta": args.beta if hasattr(args,'beta') else None,
             "laplacian": args.laplacian if hasattr(args,'laplacian') else None,
             "ord_params": args.ord_params if hasattr(args,'ord_params') else None
         },
