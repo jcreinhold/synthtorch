@@ -68,6 +68,8 @@ class Unet(torch.nn.Module):
         all_conv (bool): use strided conv to downsample instead of max-pool and use pixelshuffle to upsample
         resblock (bool): use residual (addition) connections on unet blocks (only works if all_conv true)
             note: this is an activation-before-addition type residual connection (see Fig 4(c) in [4])
+        resblock (bool): use residual (addition) connections on unet blocks (only works if all_conv true)
+            note: this is an activation-before-addition type residual connection (see Fig 4(c) in [4])
 
     References:
         [1] Ronneberger, Olaf, Philipp Fischer, and Thomas Brox.
@@ -87,7 +89,7 @@ class Unet(torch.nn.Module):
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
                  loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False,
                  softmax:bool=False, input_connect:bool=True, all_conv:bool=False, resblock:bool=False,
-                 init_3d:bool=False, **kwargs):
+                 semi_3d:int=0, **kwargs):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -115,11 +117,11 @@ class Unet(torch.nn.Module):
         self.all_conv = all_conv
         self.resblock = resblock and all_conv
         self.is_unet = self.__class__.__name__ == 'Unet'
-        self.init_3d = init_3d and is_3d
+        self.semi_3d = semi_3d if is_3d else 0
         nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
-        self.start = self._unet_blk(n_input if not self.init_3d else lc(0), lc(0), lc(0), act=(a, a), norm=(nm, nm))
+        self.start = self._unet_blk(n_input if not self.semi_3d else lc(0), lc(0), lc(0), act=(a, a), norm=(nm, nm))
         self.down_layers = nn.ModuleList([self._unet_blk(lc(n+1) if all_conv else lc(n), lc(n+1), lc(n+1),
                                                          act=(a, a), norm=(nm, nm))
                                           for n in range(nl)])
@@ -135,7 +137,7 @@ class Unet(torch.nn.Module):
         self.upsampconvs = nn.ModuleList([self._upsampconv(lc(n+1), lc(n)) for n in reversed(range(nl+1))])
         if self.use_attention: self.attn = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(nl+1))])
         if self.all_conv: self.downsampconvs = nn.ModuleList([self._downsampconv(lc(n), lc(n+1)) for n in range(nl+1)])
-        if self.init_3d: self.init_conv = self._conv_act(n_input, lc(0), (3,3,3), a, nm)
+        if self.semi_3d > 0: self.init_conv = self._conv_act(n_input, lc(0), (3, 3, 3), a, nm)
 
     def forward(self, x:torch.Tensor, **kwargs):
         x = self._fwd_skip(x, **kwargs) if not self.no_skip else self._fwd_no_skip(x, **kwargs)
@@ -148,7 +150,7 @@ class Unet(torch.nn.Module):
 
     def _fwd_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
         dout = [x] if self.input_connect else [None]
-        if self.init_3d: x = self._add_noise(self.init_conv(x))
+        if self.semi_3d: x = self._add_noise(self.init_conv(x))
         x = self._add_noise(self.start[0](x))
         dout.append(self._add_noise(self.start[1](x)))
         x = self._down(dout[-1], 0)
@@ -184,7 +186,7 @@ class Unet(torch.nn.Module):
 
     def _fwd_no_skip_nf(self, x:torch.Tensor) -> torch.Tensor:
         sz = [x.shape]
-        if self.init_3d: x = self._add_noise(self.init_conv(x))
+        if self.semi_3d: x = self._add_noise(self.init_conv(x))
         for si in self.start: x = self._add_noise(si(x))
         x = self._down(x, 0)
         if self.all_conv: x = self._add_noise(x)
@@ -294,6 +296,7 @@ class Unet(torch.nn.Module):
     def _final(self, in_c:int, out_c:int, out_act:Optional[str]=None, bias:bool=False):
         ksz = tuple([1 for _ in self.kernel_sz])
         c = self._conv(in_c, out_c, ksz, bias=bias)
+        if self.semi_3d == 2: c = nn.Sequential(self._conv_act(in_c, in_c, (3,3,3), self.act, self.norm), c)
         fc = nn.Sequential(c, get_act(out_act)) if out_act != 'linear' else c
         return fc
 

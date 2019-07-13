@@ -85,7 +85,6 @@ class ExperimentConfig(dict):
         self.attention          = False
         self.channel_base_power = 4
         self.enable_bias        = True
-        self.init_3d            = False
         self.input_connect      = True
         self.interp_mode        = "nearest"
         self.no_skip            = False
@@ -93,6 +92,7 @@ class ExperimentConfig(dict):
         self.normalization      = "batch"
         self.out_activation     = "linear"
         self.resblock           = False
+        self.semi_3d            = 0
         self.separable          = False
         self.softmax            = False
         # LRSDNet Options
@@ -261,7 +261,6 @@ def _get_arg_dict(args):
             "attention": args.attention,
             "channel_base_power": args.channel_base_power,
             "enable_bias": args.enable_bias,
-            "init_3d": args.init_3d,
             "interp_mode": args.interp_mode,
             "input_connect": args.input_connect,
             "no_skip": args.no_skip,
@@ -269,6 +268,7 @@ def _get_arg_dict(args):
             "normalization": args.normalization,
             "out_activation": args.out_activation,
             "resblock": args.resblock,
+            "semi_3d": args.semi_3d,
             "separable": args.separable,
             "softmax": args.softmax
         },
