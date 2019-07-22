@@ -356,7 +356,8 @@ def get_data_augmentation(config:ExperimentConfig):
                                                    config.noise_pwr, config.block, config.threshold, config.is_3d,
                                                    config.mean, config.std))
         if config.mean is not None and config.std is not None:
-            valid_tfms.append(niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y))
+            valid_tfms.extend([niftitfms.ToTensor(),
+                               niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y, config.is_3d)])
     else:
         logger.info('No data augmentation will be used')
         train_tfms.append(niftitfms.ToTensor())

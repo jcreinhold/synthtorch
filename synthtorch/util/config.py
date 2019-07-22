@@ -158,7 +158,6 @@ class ExperimentConfig(dict):
                 self.prob[0], self.prob[1] = 0, 0
                 self.rotate, self.translate, self.scale = 0, None, None
                 self.hflip, self.vflip = False, False
-                self.mean, self.std = None, None
 
         if self.loss == 'lrds' and not self.is_3d:
             raise SynthtorchError('low-rank and sparse decomposition is only supported for 3d')
