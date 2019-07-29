@@ -55,6 +55,8 @@ def arg_parser():
                          help='extension of training/validation images [Default=None (.nii and .nii.gz)]')
     options.add_argument('-mp', '--fp16', action='store_true', default=False,
                          help='enable mixed precision training')
+    options.add_argument('-fr', '--freeze', action='store_true', default=False,
+                         help='freeze network in predefined way, e.g., U-Net is all but final')
     options.add_argument('-l', '--loss', type=str, default=None, choices=('mse','mae','cp','bce'),
                          help='Use this specified loss function [Default=None, MSE for Unet]')
     options.add_argument('-mg', '--multi-gpu', action='store_true', default=False, help='use multiple gpus [Default=False]')

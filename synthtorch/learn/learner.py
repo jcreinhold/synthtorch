@@ -88,6 +88,7 @@ class Learner:
         if os.path.isfile(config.trained_model) and not config.no_load_opt:
             optimizer = load_opt(optimizer, config.trained_model)
         model.train()
+        if config.freeze: model.freeze()
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
                               config.is_3d, config.mean, config.std)
         return cls(model, device, train_loader, valid_loader, optimizer, predictor, config)

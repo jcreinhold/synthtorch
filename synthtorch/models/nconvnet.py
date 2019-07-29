@@ -55,3 +55,6 @@ class SimpleConvNet(torch.nn.Module):
 
     def predict(self, x:torch.Tensor, *args, **kwargs) -> torch.Tensor:
         return self.forward(x)
+
+    def freeze(self):
+        raise NotImplementedError

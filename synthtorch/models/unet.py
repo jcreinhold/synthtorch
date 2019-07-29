@@ -68,8 +68,8 @@ class Unet(torch.nn.Module):
         all_conv (bool): use strided conv to downsample instead of max-pool and use pixelshuffle to upsample
         resblock (bool): use residual (addition) connections on unet blocks (only works if all_conv true)
             note: this is an activation-before-addition type residual connection (see Fig 4(c) in [4])
-        resblock (bool): use residual (addition) connections on unet blocks (only works if all_conv true)
-            note: this is an activation-before-addition type residual connection (see Fig 4(c) in [4])
+        semi_3d (int): use one or two (based on input, 1 or 2) 3d conv layers in an otherwise 2d network,
+            should specify an oblong kernel shape, e.g., (3,3,1)
 
     References:
         [1] Ronneberger, Olaf, Philipp Fischer, and Thomas Brox.
@@ -302,3 +302,18 @@ class Unet(torch.nn.Module):
 
     def predict(self, x:torch.Tensor, *args, **kwargs) -> torch.Tensor:
         return self.forward(x)
+
+    def freeze(self):
+        """ freeze all but final layer """
+        for p in self.start.parameters(): p.requires_grad = False
+        for p in self.down_layers.parameters(): p.requires_grad = False
+        for p in self.bridge.parameters(): p.requires_grad = False
+        for p in self.up_layers.parameters(): p.requires_grad = False
+        for p in self.end.parameters(): p.requires_grad = False
+        for p in self.upsampconvs.parameters(): p.requires_grad = False
+        if self.use_attention:
+            for p in self.attn.parameters(): p.requires_grad = False
+        if self.all_conv:
+            for p in self.downsampconvs.parameters(): p.requires_grad = False
+        if self.semi_3d > 0:
+            for p in self.init_conv.parameters(): p.requires_grad = False

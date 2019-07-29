@@ -69,6 +69,7 @@ class ExperimentConfig(dict):
         self.checkpoint         = None
         self.clip               = None
         self.fp16               = False
+        self.freeze             = False
         self.loss               = None
         self.n_epochs           = 100
         self.n_jobs             = 6
@@ -242,6 +243,7 @@ def _get_arg_dict(args):
             "checkpoint": args.checkpoint,
             "clip": args.clip,
             "fp16": args.fp16,
+            "freeze": args.freeze,
             "loss": args.loss,
             "n_epochs": args.n_epochs,
             "n_jobs": args.n_jobs,
