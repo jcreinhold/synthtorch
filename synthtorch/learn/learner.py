@@ -62,7 +62,7 @@ class Learner:
         if isinstance(config,str):
             config = ExperimentConfig.load_json(config)
         if isinstance(config.kernel_size, int):
-            config.kernel_size = tuple([config.kernel_size for _ in range(3 if config.is_3d else 2)])
+            config.kernel_size = tuple([config.kernel_size for _ in range(config.dim)])
         device, use_cuda = get_device(config.disable_cuda)
         model = get_model(config, True, False)
         logger.debug(model)
@@ -90,7 +90,7 @@ class Learner:
         model.train()
         if config.freeze: model.freeze()
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
-                              config.is_3d, config.mean, config.std)
+                              config.dim, config.mean, config.std)
         return cls(model, device, train_loader, valid_loader, optimizer, predictor, config)
 
     @classmethod
@@ -98,7 +98,7 @@ class Learner:
         if isinstance(config,str):
             config = ExperimentConfig.load_json(config)
         if isinstance(config.kernel_size, int):
-            config.kernel_size = tuple([config.kernel_size for _ in range(3 if config.is_3d else 2)])
+            config.kernel_size = tuple([config.kernel_size for _ in range(config.dim)])
         device, use_cuda = get_device(config.disable_cuda)
         nsyn = config.monte_carlo or 1
         model = get_model(config, nsyn > 1 and config.dropout_prob > 0, True)
@@ -107,7 +107,7 @@ class Learner:
         if use_cuda: model.cuda(device=device)
         model.eval()
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
-                              config.is_3d, config.mean, config.std)
+                              config.dim, config.mean, config.std)
         return cls(model, device, predictor=predictor, config=config)
 
     def fit(self, n_epochs, clip:float=None, checkpoint:int=None, trained_model:str=None):
@@ -301,46 +301,57 @@ def get_device(disable_cuda=False):
 
 def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
     """ get the dataloaders for training/validation """
-    # get data augmentation if not defined
-    train_tfms, valid_tfms = get_data_augmentation(config) if tfms is None else tfms
+    if config.dim > 1:
+        # get data augmentation if not defined
+        train_tfms, valid_tfms = get_data_augmentation(config) if tfms is None else tfms
 
-    # check number of jobs requested and CPUs available
-    num_cpus = os.cpu_count()
-    if num_cpus < config.n_jobs:
-        logger.warning(f'Requested more workers than available (n_jobs={config.n_jobs}, # cpus={num_cpus}). '
-                       f'Setting n_jobs={num_cpus}.')
-        config.n_jobs = num_cpus
+        # check number of jobs requested and CPUs available
+        num_cpus = os.cpu_count()
+        if num_cpus < config.n_jobs:
+            logger.warning(f'Requested more workers than available (n_jobs={config.n_jobs}, # cpus={num_cpus}). '
+                           f'Setting n_jobs={num_cpus}.')
+            config.n_jobs = num_cpus
 
-    # define dataset and split into training/validation set
-    use_nii_ds = config.ext is None or 'nii' in config.ext
-    dataset = MultimodalNiftiDataset(config.source_dir, config.target_dir, Compose(train_tfms)) if use_nii_ds else \
-              MultimodalImageDataset(config.source_dir, config.target_dir, Compose(train_tfms), ext='*.' + config.ext)
-    logger.info(f'Number of training images: {len(dataset)}')
+        # define dataset and split into training/validation set
+        use_nii_ds = config.ext is None or 'nii' in config.ext
+        dataset = MultimodalNiftiDataset(config.source_dir, config.target_dir, Compose(train_tfms)) if use_nii_ds else \
+                  MultimodalImageDataset(config.source_dir, config.target_dir, Compose(train_tfms), ext='*.' + config.ext)
+        logger.info(f'Number of training images: {len(dataset)}')
 
-    if config.valid_source_dir is not None and config.valid_target_dir is not None:
-        valid_dataset = MultimodalNiftiDataset(config.valid_source_dir, config.valid_target_dir,
-                                               Compose(valid_tfms)) if use_nii_ds else \
-                        MultimodalImageDataset(config.valid_source_dir, config.valid_target_dir,
-                                               Compose(valid_tfms), ext='*.' + config.ext)
-        logger.info(f'Number of validation images: {len(valid_dataset)}')
-        train_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=config.n_jobs, shuffle=True,
+        if config.valid_source_dir is not None and config.valid_target_dir is not None:
+            valid_dataset = MultimodalNiftiDataset(config.valid_source_dir, config.valid_target_dir,
+                                                   Compose(valid_tfms)) if use_nii_ds else \
+                            MultimodalImageDataset(config.valid_source_dir, config.valid_target_dir,
+                                                   Compose(valid_tfms), ext='*.' + config.ext)
+            logger.info(f'Number of validation images: {len(valid_dataset)}')
+            train_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=config.n_jobs, shuffle=True,
+                                      pin_memory=config.pin_memory)
+            valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size, num_workers=config.n_jobs,
+                                      pin_memory=config.pin_memory)
+        else:
+            # setup training and validation set
+            num_train = len(dataset)
+            indices = list(range(num_train))
+            split = int(config.valid_split * num_train)
+            valid_idx = np.random.choice(indices, size=split, replace=False)
+            train_idx = list(set(indices) - set(valid_idx))
+            train_sampler = SubsetRandomSampler(train_idx)
+            valid_sampler = SubsetRandomSampler(valid_idx)
+            # set up data loader for nifti images
+            train_loader = DataLoader(dataset, sampler=train_sampler, batch_size=config.batch_size,
+                                      num_workers=config.n_jobs, pin_memory=config.pin_memory)
+            valid_loader = DataLoader(dataset, sampler=valid_sampler, batch_size=config.batch_size,
+                                      num_workers=config.n_jobs, pin_memory=config.pin_memory)
+    else:
+        try:
+            from altdataset import CSVDataset
+        except (ImportError, ModuleNotFoundError):
+            raise SynthtorchError('Cannot use 1D ConvNet in CLI without the altdataset toolbox.')
+        train_dataset, valid_dataset = CSVDataset(config.source_dir[0]), CSVDataset(config.valid_source_dir[0])
+        train_loader = DataLoader(train_dataset, batch_size=config.batch_size, num_workers=config.n_jobs, shuffle=True,
                                   pin_memory=config.pin_memory)
         valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size, num_workers=config.n_jobs,
                                   pin_memory=config.pin_memory)
-    else:
-        # setup training and validation set
-        num_train = len(dataset)
-        indices = list(range(num_train))
-        split = int(config.valid_split * num_train)
-        valid_idx = np.random.choice(indices, size=split, replace=False)
-        train_idx = list(set(indices) - set(valid_idx))
-        train_sampler = SubsetRandomSampler(train_idx)
-        valid_sampler = SubsetRandomSampler(valid_idx)
-        # set up data loader for nifti images
-        train_loader = DataLoader(dataset, sampler=train_sampler, batch_size=config.batch_size,
-                                  num_workers=config.n_jobs, pin_memory=config.pin_memory)
-        valid_loader = DataLoader(dataset, sampler=valid_sampler, batch_size=config.batch_size,
-                                  num_workers=config.n_jobs, pin_memory=config.pin_memory)
 
     return train_loader, valid_loader
 
@@ -354,11 +365,11 @@ def get_data_augmentation(config:ExperimentConfig):
         logger.info('Adding data augmentation transforms')
         train_tfms.extend(niftitfms.get_transforms(config.prob, config.tfm_x, config.tfm_y, config.rotate, config.translate,
                                                    config.scale, config.vflip, config.hflip, config.gamma, config.gain,
-                                                   config.noise_pwr, config.block, config.threshold, config.is_3d,
+                                                   config.noise_pwr, config.block, config.threshold, config.dim == 3,
                                                    config.mean, config.std))
         if config.mean is not None and config.std is not None:
             valid_tfms.extend([niftitfms.ToTensor(),
-                               niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y, config.is_3d)])
+                               niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y, config.dim == 3)])
     else:
         logger.info('No data augmentation will be used')
         train_tfms.append(niftitfms.ToTensor())
@@ -366,11 +377,11 @@ def get_data_augmentation(config:ExperimentConfig):
 
     # control random cropping patch size (or if used at all)
     if config.ext is None and config.patch_size is not None:
-        cropper = niftitfms.RandomCrop3D(config.patch_size, config.threshold) if config.is_3d else \
+        cropper = niftitfms.RandomCrop3D(config.patch_size, config.threshold) if config.dim == 3 else \
                   niftitfms.RandomCrop2D(config.patch_size, config.sample_axis, config.threshold)
-        train_tfms.append(cropper if config.patch_size is not None and config.is_3d else \
+        train_tfms.append(cropper if config.patch_size is not None and config.dim == 3 else \
                           niftitfms.RandomSlice(config.sample_axis))
-        valid_tfms.append(cropper if config.patch_size is not None and config.is_3d else \
+        valid_tfms.append(cropper if config.patch_size is not None and config.dim == 3 else \
                           niftitfms.RandomSlice(config.sample_axis))
     else:
         if config.patch_size is not None:

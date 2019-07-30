@@ -11,6 +11,7 @@ Created on: Feb 21, 2018
 """
 
 __all__ = ['SelfAttention',
+           'SeparableConv1d',
            'SeparableConv2d',
            'SeparableConv3d',
            'Swish']
@@ -36,6 +37,17 @@ class SelfAttention(nn.Module):
         beta = F.softmax(torch.bmm(f.permute(0,2,1).contiguous(), g), dim=1)
         o = self.gamma * torch.bmm(h, beta) + x
         return o.view(*size).contiguous()
+
+
+class SeparableConv1d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, dilation=1, bias=True):
+        super(SeparableConv1d, self).__init__()
+        conv = nn.Conv1d(in_channels, in_channels, kernel_size, stride, padding, dilation, groups=in_channels, bias=bias)
+        pointwise = nn.Conv1d(in_channels, out_channels, 1, 1, 0, 1, 1, bias=bias)
+        self.sep_conv = nn.Sequential(conv, pointwise)
+
+    def forward(self, x):
+        return self.sep_conv(x)
 
 
 class SeparableConv2d(nn.Module):

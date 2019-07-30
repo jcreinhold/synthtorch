@@ -27,14 +27,14 @@ logger = logging.getLogger(__name__)
 class Predictor:
 
     def __init__(self, model:torch.nn.Module, patch_size:Tuple[int], batch_size:int, device:torch.device,
-                 axis:int=0, is_3d:bool=False, mean:Tuple[float]=None, std:Tuple[float]=None):
+                 axis:int=0, dim:int=3, mean:Tuple[float]=None, std:Tuple[float]=None):
         self.model = model
         self.patch_size = patch_size
         self.batch_size = batch_size
         self.device = device
         self.axis = axis
         self.n_output = model.n_output
-        self.is_3d = is_3d
+        self.dim = dim
         self.mean = mean
         self.std = std
 
@@ -43,9 +43,9 @@ class Predictor:
         if self.mean is not None and self.std is not None:
             for i, (m, s) in enumerate(zip(self.mean, self.std)):
                 img[i] = (img[i] - m) / s
-        if self.patch_size is not None and self.is_3d:
+        if self.patch_size is not None and self.dim == 3:
             out_img = self.patch_3d_predict(img, nsyn, calc_var)
-        elif self.is_3d:
+        elif self.dim == 3:
             out_img = self.whole_3d_predict(img, nsyn, calc_var)
         else:
             out_img = self.slice_predict(img, nsyn, calc_var)

@@ -63,7 +63,7 @@ class ExperimentConfig(dict):
         self.init_gain          = 0.02
         self.kernel_size        = 3
         self.n_layers           = 3
-        self.is_3d              = True
+        self.dim                = 3
         self.nn_arch            = "unet"
         # Training Options
         self.checkpoint         = None
@@ -145,22 +145,22 @@ class ExperimentConfig(dict):
         if self.ord_params is not None and self.n_output > 1:
             raise SynthtorchError('Ordinal regression does not support multiple outputs.')
 
-        if self.is_3d and not (self.ext is None or 'nii' in self.ext):
+        if self.dim == 3 and not (self.ext is None or 'nii' in self.ext):
             logger.warning(f'Cannot train a 3D network with {self.ext} images, creating a 2D network.')
-            self.is_3d = False
+            self.dim = 2
 
-        if self.attention and self.is_3d:
+        if self.attention and self.dim == 3:
             logger.warning('Cannot use attention with 3D networks, not using attention.')
             self.attention = False
 
         if self.prob is not None:
-            if (self.is_3d or self.n_input > 1 or self.n_output > 1) and (self.prob[0] > 0 or self.prob[1] > 0):
+            if (self.dim != 2 or self.n_input > 1 or self.n_output > 1) and (self.prob[0] > 0 or self.prob[1] > 0):
                 logger.warning('Cannot do affine, flipping or normalization data augmentation with multi-modal/3D networks.')
                 self.prob[0], self.prob[1] = 0, 0
                 self.rotate, self.translate, self.scale = 0, None, None
                 self.hflip, self.vflip = False, False
 
-        if self.loss == 'lrds' and not self.is_3d:
+        if self.loss == 'lrds' and not self.dim == 3:
             raise SynthtorchError('low-rank and sparse decomposition is only supported for 3d')
 
         if self.loss == 'lrds' and len(self.target_dir) > 1:
@@ -231,12 +231,12 @@ def _get_arg_dict(args):
         },
         "Neural Network Options": {
             "activation": args.activation,
+            "dim": args.dim,
             "dropout_prob": args.dropout_prob,
             "init": args.init,
             "init_gain": args.init_gain,
             "kernel_size": args.kernel_size,
             "n_layers": args.n_layers,
-            "is_3d": args.is_3d,
             "nn_arch": args.nn_arch,
         },
         "Training Options": {

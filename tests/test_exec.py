@@ -77,7 +77,7 @@ class TestCLI(unittest.TestCase):
 class TestNConv(TestCLI):
 
     def test_nconv_nopatch_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -bs 2 -dm 3 '
                                   f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} '
                                   f'-vsd {self.train_dir} -vtd {self.train_dir} -v').split()
         retval = nn_train(args)
@@ -209,7 +209,7 @@ class TestNConv(TestCLI):
 
     def test_nconv_data_aug_3d_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/nconv_nopatch.mdl -na nconv -ne 1 -nl 2 -bs 2 '
-                                  f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} -3d '
+                                  f'--plot-loss {self.out_dir}/loss.png -ocf {self.jsonfn} -dm 3 '
                                   f'-vsd {self.train_dir} -vtd {self.train_dir} -p 0 0 1 1 1 '
                                   f'-g 0.01 -gn 0 -pwr 1 -tx -ty -blk 5 10 -mean 1 -std 1').split()
         retval = nn_train(args)
@@ -228,7 +228,7 @@ class TestNConv(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_nconv_whole_img_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -dm 3 '
                                   f'-ocf {self.jsonfn} -bs 1').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -277,7 +277,7 @@ class TestNConv(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_nconv_3d_var_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -bs 1 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -bs 1 -dm 3 '
                                   f'-ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -322,7 +322,7 @@ class TestDenseNet(TestCLI):
 class TestUnet(TestCLI):
 
     def test_unet_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -331,7 +331,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_freeze_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -fr').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -340,7 +340,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_ic_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -ic').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -349,7 +349,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_sep3d_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -sp').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -368,7 +368,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_cp_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -l cp').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -378,7 +378,7 @@ class TestUnet(TestCLI):
 
     def test_unet_bce_cli(self):
         train_args = f'-s {self.train_dir} -t {self.train_dir}/mask/'.split()
-        args = train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                              f'-ocf {self.jsonfn} -l bce').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -387,7 +387,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_mae_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 1 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -l mae').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -396,7 +396,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_layernorm_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -nm layer').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -405,7 +405,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_spectral_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -nm spectral').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -414,7 +414,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_spectral_ks1_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -nm spectral -ks 1 1 1').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -423,7 +423,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_ks331_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -ks 3 3 1 -ic').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -432,7 +432,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_ks331_semi3d1_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -ks 3 3 1 -ic -s3 1').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -441,7 +441,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_ks331_semi3d2_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -ks 3 3 1 -ic -s3 2').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -450,7 +450,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_ks331_acv_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -ks 3 3 1 -ic -acv').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -459,7 +459,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_ks331_ns_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -ks 3 3 1 -ns -ic').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -468,7 +468,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_weight_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 2 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -nm weight').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -497,7 +497,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_noise_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 2 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 2 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -nz 1').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -506,7 +506,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_no_skip_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -3d --no-skip '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 --no-skip '
                                   f'-ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -525,7 +525,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_allconv_3d_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -acv').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -564,7 +564,7 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_resblock_3d_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 '
                                   f'-ocf {self.jsonfn} -acv -rb').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -592,7 +592,7 @@ class TestVAE(TestCLI):
         #TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
 
     def test_vae_3d_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 4 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 4 -dm 3 '
                                   f'--img-dim 16 16 16 --latent-size 10 -ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -655,7 +655,7 @@ class TestSegAE(TestCLI):
 
     def test_segae_3d_cli(self):
         train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir}'.split()
-        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -3d '
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -dm 3 '
                              f'-ocf {self.jsonfn} -is 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -665,7 +665,7 @@ class TestSegAE(TestCLI):
 
     def test_segae_3d_predict_seg_cli(self):
         train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir}'.split()
-        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 1 -cbp 1 -bs 4 -3d '
+        args = train_args + (f'-o {self.out_dir}/segae.mdl -na segae -ne 1 -nl 1 -cbp 1 -bs 4 -dm 3 '
                              f'-ocf {self.jsonfn} -is 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -708,7 +708,7 @@ class TestOrdNet(TestCLI):
 
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_ord_3d_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -ps 16 16 16 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -ps 16 16 16 -dm 3 '
                                   f'-ocf {self.jsonfn} -ord 1 10 2 -vs 0.5 -ns -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -751,7 +751,7 @@ class TestOrdNet(TestCLI):
 
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_ord_3d_temperature_map_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -ps 16 16 16 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/ordnet.mdl -na ordnet -ne 2 -nl 3 -cbp 1 -bs 4 -ps 16 16 16 -dm 3 '
                                   f'-ocf {self.jsonfn} -ord 1 10 5 -vs 0.5 -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -764,7 +764,7 @@ class TestLRSDNet(TestCLI):
 
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_lrsd_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/lrsdnet.mdl -na lrsdnet -ne 1 -nl 2 -cbp 2 -ps 32 32 32 -bs 4 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/lrsdnet.mdl -na lrsdnet -ne 1 -nl 2 -cbp 2 -ps 32 32 32 -bs 4 -dm 3 '
                                   f'-ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -909,7 +909,7 @@ class TestHotNet(TestCLI):
 
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_hot_3d_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -dm 3 '
                                   f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -919,7 +919,7 @@ class TestHotNet(TestCLI):
 
     @unittest.skipIf(annom is None, 'Skipping test since annom toolbox not available.')
     def test_hot_3d_temp_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -3d '
+        args = self.train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -dm 3 '
                                   f'-ocf {self.jsonfn} -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)

@@ -120,6 +120,8 @@ def arg_parser():
     nn_options.add_argument('-ac', '--activation', type=str, default='relu',
                             choices=('relu', 'lrelu','prelu','elu','celu','selu','tanh','sigmoid','swish'),
                             help='type of activation to use throughout network except output [Default=relu]')
+    nn_options.add_argument('-dm', '--dim', type=int, default=2, choices=(1,2,3),
+                            help='create a `dim` dimension network [Default=2]')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
                             help='dropout probability per conv block [Default=0]')
     nn_options.add_argument('-eb', '--enable-bias', action='store_true', default=False,
@@ -136,7 +138,6 @@ def arg_parser():
                             help='number of epochs [Default=100]')
     nn_options.add_argument('-nl', '--n-layers', type=int, default=3,
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
-    nn_options.add_argument('-3d', '--is-3d', action='store_true', default=False, help='create a 3d network instead of 2d [Default=False]')
     nn_options.add_argument('-na', '--nn-arch', type=str, default='unet',
                             choices=('unet','nconv','vae','segae','densenet','ordnet','lrsdnet','hotnet'),
                             help='specify neural network architecture to use')

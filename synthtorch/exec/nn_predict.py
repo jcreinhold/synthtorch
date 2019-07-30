@@ -62,7 +62,7 @@ def main(args=None):
         predict_fns = zip(*[glob_imgs(pd, ext) for pd in predict_dir])
         if 'png' in ext: ext = '.tif'  # force tif output in this case
 
-        if args.is_3d and args.patch_size is not None and args.calc_var:
+        if args.dim == 3 and args.patch_size is not None and args.calc_var:
             raise SynthtorchError('Patch-based 3D variance calculation not currently supported.')
 
         for k, fn in enumerate(predict_fns):

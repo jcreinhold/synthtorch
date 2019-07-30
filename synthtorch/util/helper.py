@@ -12,12 +12,13 @@ Created on: Nov 2, 2018
 
 __all__ = ['get_act',
            'get_loss',
+           'get_norm1d',
            'get_norm2d',
            'get_norm3d',
            'get_optim',
            'init_weights']
 
-from typing import Optional, Union
+from typing import Optional
 
 import logging
 
@@ -32,14 +33,7 @@ from ..learn.layers import Swish
 logger = logging.getLogger(__name__)
 
 
-activation = Union[nn.modules.activation.ReLU, nn.modules.activation.LeakyReLU,
-                   nn.modules.activation.Tanh, nn.modules.activation.Sigmoid]
-
-normalization_3d_layer = Union[nn.modules.instancenorm.InstanceNorm3d,
-                               nn.modules.batchnorm.BatchNorm3d]
-
-
-def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> activation:
+def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> nn.Module:
     """
     get activation module from pytorch
     must be one of: relu, lrelu, linear, tanh, sigmoid
@@ -79,7 +73,34 @@ def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> activati
     return act
 
 
-def get_norm2d(name:str, num_features:int, params:Optional[dict]=None) -> normalization_3d_layer:
+def get_norm1d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Module:
+    """
+    get a 1d normalization module from pytorch
+    must be one of: instance, batch, none
+
+    Args:
+        name (str): name of normalization function desired
+        num_features (int): number of channels in the normalization layer
+        params (dict): dictionary of optional other parameters for the normalization layer
+            as specified by the pytorch documentation
+
+    Returns:
+        norm: instance of normalization layer
+    """
+    if name.lower() == 'instance':
+        norm = nn.InstanceNorm1d(num_features, affine=True) if params is None else nn.InstanceNorm1d(num_features, **params)
+    elif name.lower() == 'batch':
+        norm = nn.BatchNorm1d(num_features) if params is None else nn.BatchNorm1d(num_features, **params)
+    elif name.lower() == 'layer':
+        norm = nn.GroupNorm(1, num_features)
+    elif name.lower() == 'none':
+        norm = None
+    else:
+        raise SynthtorchError(f'Normalization: "{name}" not a valid normalization routine or not supported.')
+    return norm
+
+
+def get_norm2d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Module:
     """
     get a 2d normalization module from pytorch
     must be one of: instance, batch, none
@@ -106,7 +127,7 @@ def get_norm2d(name:str, num_features:int, params:Optional[dict]=None) -> normal
     return norm
 
 
-def get_norm3d(name:str, num_features:int, params:Optional[dict]=None) -> normalization_3d_layer:
+def get_norm3d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Module:
     """
     get a 3d normalization module from pytorch
     must be one of: instance, batch, none
@@ -222,7 +243,7 @@ def init_weights(net, init_type='kaiming', init_gain=0.02):
                                                    .view(net.finish[2].weight.data.size()))
 
     if hasattr(net, 'all_conv'):  # handle ICNR initalization of upsample layers
-        if net.all_conv and not net.is_3d:
+        if net.all_conv and net.dim == 2:
             for m in net.upsampconvs: icnr(m[0].weight)
 
 

@@ -29,8 +29,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ..learn import SelfAttention, SeparableConv2d, SeparableConv3d
-from ..util import get_act, get_norm3d, get_norm2d, get_loss
+from ..learn import SelfAttention, SeparableConv3d, SeparableConv2d, SeparableConv1d
+from ..util import get_act, get_norm3d, get_norm2d, get_norm1d, get_loss
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class Unet(torch.nn.Module):
         normalization_layer (str): type of normalization layer to use (batch or [instance])
         activation (str): type of activation to use throughout network except final ([relu], lrelu, linear, sigmoid, tanh)
         output_activation (str): final activation in network (relu, lrelu, [linear], sigmoid, tanh)
-        is_3d (bool): if false define a 2d unet, otherwise the network is 3d
+        dim (int): dimension of network (i.e., 1 for 1d, 2 for 2d, 3 for 3d)
         interp_mode (str): use one of {'nearest', 'bilinear', 'trilinear'} for upsampling interpolation method
             depending on if the unet is 3d or 2d
         enable_dropout (bool): enable the use of spatial dropout (if dropout_p is set to zero then there will be no
@@ -85,7 +85,7 @@ class Unet(torch.nn.Module):
     """
     def __init__(self, n_layers:int, kernel_size:Tuple[int]=3, dropout_prob:float=0, channel_base_power:int=5,
                  normalization:str='instance', activation:str='relu', output_activation:str='linear',
-                 is_3d:bool=True, interp_mode:str='nearest', enable_dropout:bool=True,
+                 dim:int=3, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
                  loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False,
                  softmax:bool=False, input_connect:bool=True, all_conv:bool=False, resblock:bool=False,
@@ -94,13 +94,13 @@ class Unet(torch.nn.Module):
         # setup and store instance parameters
         self.n_layers = n_layers
         self.kernel_sz = tuple(kernel_size) if isinstance(kernel_size,(tuple,list)) else \
-                         tuple([kernel_size for _ in range(3 if is_3d else 2)])
+                         tuple([kernel_size for _ in range(dim)])
         self.dropout_prob = dropout_prob
         self.channel_base_power = channel_base_power
         self.norm = nm = normalization
         self.act = a = activation
         self.out_act = oa = output_activation
-        self.is_3d = is_3d
+        self.dim = dim
         self.interp_mode = interp_mode
         self.enable_dropout = enable_dropout
         self.enable_bias = enable_bias
@@ -109,7 +109,7 @@ class Unet(torch.nn.Module):
         self.no_skip = no_skip
         self.noise_lvl = noise_lvl
         self.criterion = get_loss(loss)
-        self.use_attention = attention and not is_3d
+        self.use_attention = attention and dim == 2
         self.separable = separable
         self.inplace = inplace
         self.softmax = softmax
@@ -117,7 +117,7 @@ class Unet(torch.nn.Module):
         self.all_conv = all_conv
         self.resblock = resblock and all_conv
         self.is_unet = self.__class__.__name__ == 'Unet'
-        self.semi_3d = semi_3d if is_3d else 0
+        self.semi_3d = semi_3d if dim == 3 else 0
         nl = n_layers - 1
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
         # define the model layers here to make them visible for autograd
@@ -217,20 +217,23 @@ class Unet(torch.nn.Module):
     def _down(self, x:torch.Tensor, i:int) -> torch.Tensor:
         if not self.all_conv:
             ksz = [(2 if ks != 1 else 1) for ks in self.kernel_sz]
-            return F.max_pool3d(x, ksz) if self.is_3d else F.max_pool2d(x, ksz)
+            return F.max_pool3d(x, ksz) if self.dim == 3 else \
+                   F.max_pool2d(x, ksz) if self.dim == 2 else \
+                   F.max_pool1d(x, ksz)
         else:
             return self.downsampconvs[i](x)
 
     def _up(self, x:torch.Tensor, sz:Union[Tuple[int,int,int], Tuple[int,int]], i:int) -> torch.Tensor:
-        if not self.all_conv or self.is_3d: x = F.interpolate(x, size=sz, mode=self.interp_mode)
+        if not self.all_conv or self.dim != 2: x = F.interpolate(x, size=sz, mode=self.interp_mode)
         x = self.upsampconvs[i](x)
-        if self.all_conv and not self.is_3d and x.shape[2:] != sz: x = F.interpolate(x, sz, mode=self.interp_mode)
+        if self.all_conv and self.dim == 2 and x.shape[2:] != sz: x = F.interpolate(x, sz, mode=self.interp_mode)
         return x
 
     def _add_noise(self, x:torch.Tensor) -> torch.Tensor:
         if self.dropout_prob > 0:
-            x = F.dropout3d(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace) if self.is_3d else \
-                F.dropout2d(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace)
+            x = F.dropout3d(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace) if self.dim == 3 else \
+                F.dropout2d(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace) if self.dim == 2 else \
+                F.dropout(x, self.dropout_prob, training=self.enable_dropout, inplace=self.inplace)
         if self.noise_lvl > 0:
             x = x + (torch.randn_like(x.detach()) * self.noise_lvl)
         return x
@@ -241,15 +244,18 @@ class Unet(torch.nn.Module):
         bias = False if self.norm != 'none' and not bias else True
         stride = stride or tuple([1 for _ in ksz])
         if not self.separable or all([ks == 1 for ks in ksz]):
-            layers = [nn.Conv3d(in_c, out_c, ksz, bias=bias, stride=stride)] if self.is_3d else \
-                     [nn.Conv2d(in_c, out_c, ksz, bias=bias, stride=stride)]
+            layers = [nn.Conv3d(in_c, out_c, ksz, bias=bias, stride=stride)] if self.dim == 3 else \
+                     [nn.Conv2d(in_c, out_c, ksz, bias=bias, stride=stride)] if self.dim == 2 else \
+                     [nn.Conv1d(in_c, out_c, ksz, bias=bias, stride=stride)]
         else:
-            layers = [SeparableConv3d(in_c, out_c, ksz, bias=bias, stride=stride)] if self.is_3d else \
-                     [SeparableConv2d(in_c, out_c, ksz, bias=bias, stride=stride)]
+            layers = [SeparableConv3d(in_c, out_c, ksz, bias=bias, stride=stride)] if self.dim == 3 else \
+                     [SeparableConv2d(in_c, out_c, ksz, bias=bias, stride=stride)] if self.dim == 2 else \
+                     [SeparableConv1d(in_c, out_c, ksz, bias=bias, stride=stride)]
         if any([ks > 1 for ks in ksz]):
             rp = tuple([ks//2 for p in zip(reversed(ksz),reversed(ksz)) for ks in p])
-            layers = [nn.ReplicationPad3d(rp)] + layers if self.is_3d else \
-                     [nn.ReflectionPad2d(rp)] + layers
+            layers = [nn.ReplicationPad3d(rp)] + layers if self.dim == 3 else \
+                     [nn.ReflectionPad2d(rp)] + layers  if self.dim == 2 else \
+                     [nn.ReflectionPad1d(rp)] + layers
         if seq and len(layers) > 1:
             c = nn.Sequential(*layers)
         else:
@@ -264,7 +270,9 @@ class Unet(torch.nn.Module):
         i = 1 if isinstance(c, list) else 0
         layers = [*c] if i == 1 else [c]
         if norm in ['instance', 'batch', 'layer']:
-            layers.append(get_norm3d(norm, out_c) if self.is_3d else get_norm2d(norm, out_c))
+            layers.append(get_norm3d(norm, out_c) if self.dim == 3 else \
+                          get_norm2d(norm, out_c) if self.dim == 2 else \
+                          get_norm1d(norm, out_c))
         elif norm == 'weight':   layers[i] = nn.utils.weight_norm(layers[i])
         elif norm == 'spectral': layers[i] = nn.utils.spectral_norm(layers[i])
         layers.append(activation)
@@ -283,7 +291,7 @@ class Unet(torch.nn.Module):
     def _upsampconv(self, in_c:int, out_c:int, scale:int=2):
         ksz = tuple([(5 if ks != 1 else 1) for ks in self.kernel_sz])
         usc = self._conv(in_c, out_c, ksz, bias=self.enable_bias) if not self.all_conv else \
-              self._conv_act(in_c, out_c, ksz, self.act, self.norm) if self.all_conv and self.is_3d else \
+              self._conv_act(in_c, out_c, ksz, self.act, self.norm) if self.all_conv and self.dim != 2 else \
               nn.Sequential(*self._conv_act(in_c, out_c*(scale**2), (1,1), self.act, self.norm, seq=False),
                             nn.PixelShuffle(scale))
         return usc
