@@ -142,9 +142,6 @@ class ExperimentConfig(dict):
 
     def _check_config(self):
         """ check to make sure requested configuration is valid """
-        if self.ord_params is not None and self.n_output > 1:
-            raise SynthtorchError('Ordinal regression does not support multiple outputs.')
-
         if self.dim == 3 and not (self.ext is None or 'nii' in self.ext):
             logger.warning(f'Cannot train a 3D network with {self.ext} images, creating a 2D network.')
             self.dim = 2
@@ -159,12 +156,6 @@ class ExperimentConfig(dict):
                 self.prob[0], self.prob[1] = 0, 0
                 self.rotate, self.translate, self.scale = 0, None, None
                 self.hflip, self.vflip = False, False
-
-        if self.loss == 'lrds' and not self.dim == 3:
-            raise SynthtorchError('low-rank and sparse decomposition is only supported for 3d')
-
-        if self.loss == 'lrds' and len(self.target_dir) > 1:
-            raise SynthtorchError('low-rank and sparse decomposition is only supported for one output')
 
     @classmethod
     def load_json(cls, fn:str):
