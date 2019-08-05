@@ -21,8 +21,8 @@ from synthtorch.exec.nn_predict import main as nn_predict
 
 try:
     import altdataset
-except ImportError:
-    altdataset = None
+except (ImportError, ModuleNotFoundError):
+    raise unittest.SkipTest('Skipping test since annom toolbox not available.')
 
 
 class TestCLI(unittest.TestCase):
@@ -51,7 +51,6 @@ class TestCLI(unittest.TestCase):
 
 class Test1DNConv(TestCLI):
 
-    @unittest.skipIf(altdataset is None, 'Skipping test since altdataset toolbox not available.')
     def test_1d_nconv_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/nconv1d.mdl -na nconv -ne 1 -nl 2 -bs 2 '
                                   f'-ocf {self.jsonfn}').split()
@@ -61,7 +60,6 @@ class Test1DNConv(TestCLI):
 
 class Test1DUnet(TestCLI):
 
-    @unittest.skipIf(altdataset is None, 'Skipping test since altdataset toolbox not available.')
     def test_1d_unet_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/unet1d.mdl -na unet -ne 1 -nl 2 -bs 2 '
                                   f'-ocf {self.jsonfn}').split()
