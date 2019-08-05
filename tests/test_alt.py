@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-tests.test_exec
+tests.test_alt
 
 test the synthtorch command line interfaces for runtime errors
+with altdataset loaders (not available in this package)
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
-Created on: Sep 07, 2018
+Created on: Aug 01, 2019
 """
 
 import json
