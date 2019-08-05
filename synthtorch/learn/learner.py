@@ -216,11 +216,13 @@ class Learner:
             ssu = int(pct_start * ss)
             ssd = ss - ssu
             cycle_momentum = self.config.optimizer in ('adamw','sgd','sgdw','nsgd','nsgdw','rmsprop')
+            momentum_kwargs = {'cycle_momentum': cycle_momentum}
             if not cycle_momentum and momentum_range is not None:
                 logger.warning(f'{self.config.optimizer} not compatible with momentum cycling, disabling.')
+            elif momentum_range is not None:
+                momentum_kwargs.update({'base_momentum': momentum_range[0], 'max_momentum': momentum_range[1]})
             self.scheduler = CyclicLR(self.optimizer, lr/div_factor, lr, step_size_up=ssu, step_size_down=ssd,
-                                      mode=cycle_mode, cycle_momentum=cycle_momentum,
-                                      base_momentum=momentum_range[0], max_momentum=momentum_range[1])
+                                      mode=cycle_mode, **momentum_kwargs)
         elif lr_scheduler == 'cosinerestarts':
             logger.info('Enabling cosine annealing with restarts LR scheduler')
             self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, restart_period, T_mult=t_mult, eta_min=lr/div_factor)
