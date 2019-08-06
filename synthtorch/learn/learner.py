@@ -292,6 +292,12 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
         except (ImportError, ModuleNotFoundError):
             raise SynthtorchError('Cannot use the HotNet without the annom toolbox.')
         model = BurnNet(inplace=inplace, **config)
+    elif config.nn_arch == 'burn2net':
+        try:
+            from annom.models import Burn2Net
+        except (ImportError, ModuleNotFoundError):
+            raise SynthtorchError('Cannot use the HotNet without the annom toolbox.')
+        model = Burn2Net(inplace=inplace, **config)
     else:
         raise SynthtorchError(f'Invalid NN type: {config.nn_arch}. '
                               f'{{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet,burnnet}} '
