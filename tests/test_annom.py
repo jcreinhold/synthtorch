@@ -56,7 +56,8 @@ class TestCLI(unittest.TestCase):
         self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
         self.jsonfn = f'{self.out_dir}/test.json'
 
-    def _modify_ocf(self, jsonfn, multi=1, calc_var=False, mc=None, predict_seg=False, png_out=False, tif_out=False):
+    def _modify_ocf(self, jsonfn, multi=1, calc_var=False, mc=None, model=None,
+                    predict_seg=False, png_out=False, tif_out=False):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
         with open(jsonfn, 'w') as f:
@@ -64,6 +65,7 @@ class TestCLI(unittest.TestCase):
                                                    [f'{self.train_dir}/png'] if png_out and not tif_out else \
                                                    [f'{self.train_dir}/tif']
             arg_dict['Required']['predict_out'] = f'{self.out_dir}/test'
+            if model is not None: arg_dict['Neural Network Options']['nn_arch'] = model
             arg_dict['Prediction Options']['calc_var'] = calc_var
             arg_dict['Prediction Options']['monte_carlo'] = mc
             arg_dict['SegAE Options']['predict_seg'] = predict_seg
@@ -433,6 +435,26 @@ class TestBurn2Net(TestCLI):
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_burn2p12_2d_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, model='burn2netp12')
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_burn2p21_2d_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn}').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, model='burn2netp21')
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
