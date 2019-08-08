@@ -370,7 +370,7 @@ class TestBurn2Net(TestCLI):
     def test_burn2_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ls 5 -mean 1 1 -std 1 1 --tfm-y').split()
+                             f'-ocf {self.jsonfn} -ls 5 -mean 1 1 -std 1 1 --tfm-y -p 0 0 0 0 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
