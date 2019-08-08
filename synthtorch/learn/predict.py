@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class Predictor:
 
     def __init__(self, model:torch.nn.Module, patch_size:Tuple[int], batch_size:int, device:torch.device,
-                 axis:int=0, dim:int=3, mean:Tuple[float]=None, std:Tuple[float]=None):
+                 axis:int=0, dim:int=3, mean:Tuple[float]=None, std:Tuple[float]=None, tfm_x:bool=True, tfm_y:bool=False):
         self.model = model
         self.patch_size = patch_size
         self.batch_size = batch_size
@@ -37,10 +37,12 @@ class Predictor:
         self.dim = dim
         self.mean = mean
         self.std = std
+        self.tfm_x = tfm_x
+        self.tfm_y = tfm_y
 
     def predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
         """ picks and runs the correct prediction routine based on input info """
-        if self.mean is not None and self.std is not None:
+        if self.tfm_x and self.mean is not None and self.std is not None:
             for i, (m, s) in enumerate(zip(self.mean, self.std)):
                 img[i] = (img[i] - m) / s
         if self.patch_size is not None and self.dim == 3:
@@ -49,6 +51,9 @@ class Predictor:
             out_img = self.whole_3d_predict(img, nsyn, calc_var)
         else:
             out_img = self.slice_predict(img, nsyn, calc_var)
+        if self.tfm_y and self.mean is not None and self.std is not None:
+            for i, (m, s) in enumerate(zip(self.mean, self.std)):
+                out_img[i] = (out_img[i] * s) + m
         return out_img
 
     def whole_3d_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:

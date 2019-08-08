@@ -90,7 +90,7 @@ class Learner:
         model.train()
         if config.freeze: model.freeze()
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
-                              config.dim, config.mean, config.std)
+                              config.dim, config.mean, config.std, config.tfm_x, config.tfm_y)
         return cls(model, device, train_loader, valid_loader, optimizer, predictor, config)
 
     @classmethod
@@ -107,7 +107,7 @@ class Learner:
         if use_cuda: model.cuda(device=device)
         model.eval()
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
-                              config.dim, config.mean, config.std)
+                              config.dim, config.mean, config.std, config.tfm_x, config.tfm_y)
         return cls(model, device, predictor=predictor, config=config)
 
     def fit(self, n_epochs, clip:float=None, checkpoint:int=None, trained_model:str=None):
