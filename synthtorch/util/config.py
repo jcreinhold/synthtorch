@@ -100,7 +100,7 @@ class ExperimentConfig(dict):
         self.lrsd_weights       = None
         # Ord/HotNet Options
         self.beta               = 1.
-        self.laplacian          = False
+        self.temperature        = 1.
         self.ord_params         = None
         # VAE Options
         self.img_dim            = None
@@ -269,12 +269,12 @@ def _get_arg_dict(args):
         },
         "Ord/HotNet Options": {
             "beta": args.beta if hasattr(args,'beta') else None,
-            "laplacian": args.laplacian if hasattr(args,'laplacian') else None,
+            "temperature": args.temperature if hasattr(args,'temperature') else None,
             "ord_params": args.ord_params if hasattr(args,'ord_params') else None
         },
         "VAE Options": {
             "img_dim": args.img_dim if hasattr(args,'img_dim') and args.nn_arch =='vae' else None,
-            "latent_size": args.latent_size if hasattr(args,'latent_size') and args.nn_arch == 'vae' else None
+            "latent_size": args.latent_size if hasattr(args,'latent_size') else None
         },
         "SegAE Options": {
             "freeze_last": args.freeze_last if hasattr(args,'freeze_last') else None,

@@ -182,7 +182,7 @@ def arg_parser():
 
     ordnet_options = parser.add_argument_group('OrdNet/HotNet Options')
     ordnet_options.add_argument('-b1', '--beta', type=float, default=1., help='scale variance [Default=1.]')
-    ordnet_options.add_argument('-lp', '--laplacian', action='store_true', default=False, help='use laplacian [Default=False]')
+    ordnet_options.add_argument('-tp', '--temperature', type=float, default=1., help='temperature parameter [Default=1.]')
     ordnet_options.add_argument('-ord', '--ord-params', type=int, nargs=3, default=None,
                                 help='ordinal regression params (start, stop, n_bins) [Default=None]')
 

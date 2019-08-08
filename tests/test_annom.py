@@ -174,7 +174,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_lap_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -lp -dp 0.5').split()
+                             f'-ocf {self.jsonfn} -ns -l mae -dp 0.5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, mc=2)
@@ -194,7 +194,7 @@ class TestHotNet(TestCLI):
     def test_hot_2d_maeonly_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/hotnet.mdl -na hotnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -dp 0.5 -lp -b1 0').split()
+                             f'-ocf {self.jsonfn} -ns -dp 0.5 -l mae -b1 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, mc=2)
@@ -247,7 +247,7 @@ class TestBurnNet(TestCLI):
     def test_burn_2d_png_cli(self):
         train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
         args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn} -ic').split()
+                             f'-ocf {self.jsonfn} -ic -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -257,7 +257,7 @@ class TestBurnNet(TestCLI):
     def test_burn_2d_softmax_cli(self):
         train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
         args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn} -ic -sx').split()
+                             f'-ocf {self.jsonfn} -ic -sx -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -267,7 +267,7 @@ class TestBurnNet(TestCLI):
     def test_burn_2d_resblock_cli(self):
         train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
         args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn} -acv -rb').split()
+                             f'-ocf {self.jsonfn} -acv -rb -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -277,7 +277,7 @@ class TestBurnNet(TestCLI):
     def test_burn_2d_noskip_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns').split()
+                             f'-ocf {self.jsonfn} -ns -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -287,27 +287,7 @@ class TestBurnNet(TestCLI):
     def test_burn_2d_lap_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -lp').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    def test_burn_2d_mseonly_cli(self):
-        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
-        args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    def test_burn_2d_maeonly_cli(self):
-        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
-        args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -lp').split()
+                             f'-ocf {self.jsonfn} -ns -l mae -ls 5 -l mae').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -317,7 +297,7 @@ class TestBurnNet(TestCLI):
     def test_burn_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn}').split()
+                             f'-ocf {self.jsonfn} -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -327,7 +307,7 @@ class TestBurnNet(TestCLI):
     def test_burn_dropout_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -dp 0.1').split()
+                             f'-ocf {self.jsonfn} -dp 0.1 -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, mc=2)
@@ -337,7 +317,7 @@ class TestBurnNet(TestCLI):
     def test_burn_2d_freeze_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -fr').split()
+                             f'-ocf {self.jsonfn} -fr -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -347,7 +327,7 @@ class TestBurnNet(TestCLI):
     def test_burn_3d_cli(self):
         args = self.train_args + (
             f'-o {self.out_dir}/burnnet.mdl -na burnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -dm 3 '
-            f'-ocf {self.jsonfn}').split()
+            f'-ocf {self.jsonfn} -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -360,7 +340,7 @@ class TestBurn2Net(TestCLI):
     def test_burn2_2d_png_cli(self):
         train_args = f'-s {self.train_dir}/png/ {self.train_dir}/png/ -t {self.train_dir}/png/ {self.train_dir}/png/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
-                             f'-ocf {self.jsonfn} -ic -b1 1').split()
+                             f'-ocf {self.jsonfn} -ic -b1 1 -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
@@ -370,17 +350,7 @@ class TestBurn2Net(TestCLI):
     def test_burn2_2d_noskip_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn, multi=2)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-    def test_burn2_2d_mse_cli(self):
-        train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
-        args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns').split()
+                             f'-ocf {self.jsonfn} -ns -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
@@ -390,7 +360,7 @@ class TestBurn2Net(TestCLI):
     def test_burn2_2d_mae_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -ns -lp').split()
+                             f'-ocf {self.jsonfn} -ns -l mae -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
@@ -400,7 +370,7 @@ class TestBurn2Net(TestCLI):
     def test_burn2_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn}').split()
+                             f'-ocf {self.jsonfn} -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
@@ -410,7 +380,7 @@ class TestBurn2Net(TestCLI):
     def test_burn2_dropout_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -dp 0.1').split()
+                             f'-ocf {self.jsonfn} -dp 0.1 -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2, mc=2)
@@ -420,7 +390,7 @@ class TestBurn2Net(TestCLI):
     def test_burn2_2d_freeze_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -fr').split()
+                             f'-ocf {self.jsonfn} -fr -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
@@ -431,7 +401,7 @@ class TestBurn2Net(TestCLI):
         train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir} {self.train_dir}'.split()
         args = train_args + (
             f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -dm 3 '
-            f'-ocf {self.jsonfn}').split()
+            f'-ocf {self.jsonfn} -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, multi=2)
@@ -441,7 +411,7 @@ class TestBurn2Net(TestCLI):
     def test_burn2p12_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn}').split()
+                             f'-ocf {self.jsonfn} -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, model='burn2netp12')
@@ -451,12 +421,13 @@ class TestBurn2Net(TestCLI):
     def test_burn2p21_2d_cli(self):
         train_args = f'-s {self.train_dir}/tif/ {self.train_dir}/tif/ -t {self.train_dir}/tif/ {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/burn2net.mdl -na burn2net -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn}').split()
+                             f'-ocf {self.jsonfn} -ls 5').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, model='burn2netp21')
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
+
 
 if __name__ == '__main__':
     unittest.main()

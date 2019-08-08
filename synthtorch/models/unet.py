@@ -108,6 +108,7 @@ class Unet(torch.nn.Module):
         self.n_output = n_output
         self.no_skip = no_skip
         self.noise_lvl = noise_lvl
+        self.loss = loss
         self.criterion = get_loss(loss)
         self.use_attention = attention and dim == 2
         self.separable = separable
