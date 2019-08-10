@@ -310,10 +310,16 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
         except (ImportError, ModuleNotFoundError):
             raise SynthtorchError('Cannot use the Burn2NetP21 without the annom toolbox.')
         model = Burn2NetP21(inplace=inplace, **config)
+    elif config.nn_arch == 'unburnnet':
+        try:
+            from annom.models import UnburnNet
+        except (ImportError, ModuleNotFoundError):
+            raise SynthtorchError('Cannot use the Burn2NetP21 without the annom toolbox.')
+        model = UnburnNet(inplace=inplace, **config)
     else:
         raise SynthtorchError(f'Invalid NN type: {config.nn_arch}. '
-                              f'{{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet,burnnet}} '
-                              f'are the only supported options.')
+                              f'{{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet,burnnet,'
+                              f'burn2netp12,burn2netp21,unburnnet}} are the only supported options.')
     return model
 
 

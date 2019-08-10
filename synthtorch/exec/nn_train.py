@@ -140,7 +140,7 @@ def arg_parser():
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
     nn_options.add_argument('-na', '--nn-arch', type=str, default='unet',
                             choices=('unet','nconv','vae','segae','densenet','ordnet','lrsdnet',
-                                     'hotnet','burnnet','burn2net','burn2netp12','burn2netp21'),
+                                     'hotnet','burnnet','burn2net','burn2netp12','burn2netp21','unburnnet'),
                             help='specify neural network architecture to use')
     nn_options.add_argument('-nm', '--normalization', type=str, default='instance',
                             choices=('instance', 'batch', 'layer', 'weight', 'spectral', 'none'),

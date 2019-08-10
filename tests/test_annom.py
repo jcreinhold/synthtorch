@@ -335,6 +335,89 @@ class TestBurnNet(TestCLI):
         self.assertEqual(retval, 0)
 
 
+class TestUnburnNet(TestCLI):
+
+    def test_unburn_2d_png_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/unburnnet.mdl -na unburnnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -ic -ls 5 -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unburn_2d_softmax_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/unburnnet.mdl -na unburnnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -ic -sx -ls 5 -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unburn_2d_resblock_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/unburnnet.mdl -na unburnnet -ne 1 -nl 2 -cbp 1 -ps 32 32 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -acv -rb -ls 5 -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unburn_2d_noskip_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/unburnnet.mdl -na unburnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ns -ls 5 -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unburn_2d_lap_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/unburnnet.mdl -na unburnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ns -l mae -ls 5 -l mae -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unburn_2d_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/unburnnet.mdl -na unburnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ls 5 -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unburn_2d_freeze_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/unburnnet.mdl -na unburnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -fr -ls 5 -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_unburn_3d_cli(self):
+        args = self.train_args + (
+            f'-o {self.out_dir}/unburnnet.mdl -na unburnnet -ne 1 -nl 1 -cbp 1 -ps 32 32 32 -bs 4 -dm 3 '
+            f'-ocf {self.jsonfn} -ls 5 -dp 0.5').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+
 class TestBurn2Net(TestCLI):
 
     def test_burn2_2d_png_cli(self):
