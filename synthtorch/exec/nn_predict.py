@@ -43,7 +43,7 @@ def main(args=None):
         learner = Learner.predict_setup(args)
 
         # determine how many samples we will use in prediction
-        nsyn = (args.monte_carlo or 1) if args.nn_arch != 'hotnet' else 1
+        nsyn = (args.monte_carlo or 1) if (args.nn_arch != 'hotnet' and args.nn_arch != 'unburnnet') else 1
 
         # get relevant prediction directories and determine extension
         predict_dir = args.predict_dir or args.valid_source_dir
@@ -61,6 +61,7 @@ def main(args=None):
                                'directory (e.g., so that img_t1_1 aligns with img_t2_1 etc. for multimodal synth)')
         predict_fns = zip(*[glob_imgs(pd, ext) for pd in predict_dir])
         if 'png' in ext: ext = '.tif'  # force tif output in this case
+        if 'nii' in ext: ext = '.nii.gz'  # force compressed output in this case
 
         if args.dim == 3 and args.patch_size is not None and args.calc_var:
             raise SynthtorchError('Patch-based 3D variance calculation not currently supported.')
@@ -70,7 +71,7 @@ def main(args=None):
             logger.info(f'Starting synthesis of image: {base} ({k+1}/{n_imgs})')
             out_imgs = learner.predict(fn, nsyn, args.calc_var)
             for i, oin in enumerate(out_imgs):
-                out_fn = output_dir + (f'{k}_{i}{ext}')
+                out_fn = output_dir + f'{k}_{i}{ext}'
                 if hasattr(oin,'to_filename'):
                     oin.to_filename(out_fn)
                 else:
