@@ -60,14 +60,14 @@ def main(args=None):
             raise SynthtorchError('Number of images in prediction directories must have an equal number of images in each '
                                'directory (e.g., so that img_t1_1 aligns with img_t2_1 etc. for multimodal synth)')
         predict_fns = zip(*[glob_imgs(pd, ext) for pd in predict_dir])
-        if 'png' in ext: ext = '.tif'  # force tif output in this case
-        if 'nii' in ext: ext = '.nii.gz'  # force compressed output in this case
 
         if args.dim == 3 and args.patch_size is not None and args.calc_var:
             raise SynthtorchError('Patch-based 3D variance calculation not currently supported.')
 
         for k, fn in enumerate(predict_fns):
             _, base, ext = split_filename(fn[0])
+            if 'png' in ext: ext = '.tif'  # force tif output in this case
+            if 'nii' in ext: ext = '.nii.gz'  # force compressed output in this case
             logger.info(f'Starting synthesis of image: {base} ({k+1}/{n_imgs})')
             out_imgs = learner.predict(fn, nsyn, args.calc_var)
             for i, oin in enumerate(out_imgs):
