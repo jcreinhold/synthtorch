@@ -10,7 +10,8 @@ Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 Created on: Feb 21, 2018
 """
 
-__all__ = ['SelfAttention',
+__all__ = ['ChannelAttention',
+           'SelfAttention',
            'SeparableConv1d',
            'SeparableConv2d',
            'SeparableConv3d',
@@ -85,3 +86,22 @@ class Swish(nn.Module):
             return x * torch.sigmoid(x)
 
 
+class ChannelAttention(nn.Module):
+    def __init__(self, gate_channels, reduction_ratio=8):
+        super().__init__()
+        self.gate_channels = gate_channels
+        self.reduction_ratio = reduction_ratio
+        self.mlp = nn.Sequential(
+            nn.Linear(2 * gate_channels, gate_channels // reduction_ratio, bias=False),
+            nn.BatchNorm1d(gate_channels // reduction_ratio),
+            nn.ReLU(inplace=True),
+            nn.Linear(gate_channels // reduction_ratio, gate_channels))
+
+    def forward(self, x:torch.Tensor):
+        xf = x.flatten(start_dim=2)
+        mp, _ = xf.max(dim=2)
+        ap    = xf.mean(dim=2)
+        y = self.mlp(torch.cat((mp, ap), dim=1))
+        scale = torch.sigmoid(y)
+        for _ in range((x.ndimension()-2)): scale = scale.unsqueeze(-1)
+        return x * scale.expand_as(x)

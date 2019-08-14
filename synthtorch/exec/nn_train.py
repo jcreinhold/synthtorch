@@ -152,8 +152,8 @@ def arg_parser():
     unet_options = parser.add_argument_group('UNet Options')
     unet_options.add_argument('-acv', '--all-conv', action='store_true', default=False,
                               help='only use conv layers in unet (max pooling -> strided, upsamp -> shuffle) [Default=False]')
-    unet_options.add_argument('-at', '--attention', action='store_true', default=False,
-                              help='use attention gates in up conv layers in unet[Default=False]')
+    unet_options.add_argument('-at', '--attention', type=str, default=None, choices=('channel','self'),
+                              help='use attention gates in up conv layers in unet [Default=None]')
     unet_options.add_argument('-cbp', '--channel-base-power', type=int, default=5,
                               help='2 ** channel_base_power is the number of channels in the first layer '
                                    'and increases in each proceeding layer such that in the n-th layer there are '

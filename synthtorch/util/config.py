@@ -83,7 +83,7 @@ class ExperimentConfig(dict):
         self.monte_carlo        = None
         # UNet Options
         self.all_conv           = False
-        self.attention          = False
+        self.attention          = None
         self.channel_base_power = 4
         self.enable_bias        = True
         self.input_connect      = True
@@ -146,9 +146,9 @@ class ExperimentConfig(dict):
             logger.warning(f'Cannot train a 3D network with {self.ext} images, creating a 2D network.')
             self.dim = 2
 
-        if self.attention and self.dim == 3:
-            logger.warning('Cannot use attention with 3D networks, not using attention.')
-            self.attention = False
+        if self.attention == 'self' and self.dim == 3:
+            logger.warning('Cannot use self-attention with 3D networks, not using self-attention.')
+            self.attention = None
 
         if self.prob is not None:
             if (self.dim != 2 or self.n_input > 1 or self.n_output > 1) and (self.prob[0] > 0 or self.prob[1] > 0):

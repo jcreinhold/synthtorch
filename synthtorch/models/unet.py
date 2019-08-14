@@ -29,7 +29,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ..learn import SelfAttention, SeparableConv3d, SeparableConv2d, SeparableConv1d
+from ..learn import ChannelAttention, SelfAttention, SeparableConv3d, SeparableConv2d, SeparableConv1d
 from ..util import get_act, get_norm3d, get_norm2d, get_norm1d, get_loss
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class Unet(torch.nn.Module):
         no_skip (bool): use no skip connections [Default=False]
         noise_lvl (float): add gaussian noise to weights with this std [Default=0]
         loss (str): loss function used to train network
-        attention (bool): use (self-)attention gates (only works with 2d networks)
+        attention (str): use (self- or channelwise- )attention gates (self-attn only works with 2d networks)
         inplace (bool): use inplace operations (for prediction)
         separable (bool): use separable convolutions instead of full convolutions
         softmax (bool): use a softmax before the final layer
@@ -87,7 +87,7 @@ class Unet(torch.nn.Module):
                  normalization:str='instance', activation:str='relu', output_activation:str='linear',
                  dim:int=3, interp_mode:str='nearest', enable_dropout:bool=True,
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
-                 loss:Optional[str]=None, attention:bool=False, inplace:bool=False, separable:bool=False,
+                 loss:Optional[str]=None, attention:Optional[str]=None, inplace:bool=False, separable:bool=False,
                  softmax:bool=False, input_connect:bool=True, all_conv:bool=False, resblock:bool=False,
                  semi_3d:int=0, **kwargs):
         super(Unet, self).__init__()
@@ -110,7 +110,7 @@ class Unet(torch.nn.Module):
         self.noise_lvl = noise_lvl
         self.loss = loss
         self.criterion = get_loss(loss)
-        self.use_attention = attention and dim == 2
+        self.attention = attention
         self.separable = separable
         self.inplace = inplace
         self.softmax = softmax
@@ -136,7 +136,10 @@ class Unet(torch.nn.Module):
         self.finish = self._final(lc(0) + n_input if not no_skip and input_connect else lc(0), n_output,
                                   oa, bias=enable_bias)
         self.upsampconvs = nn.ModuleList([self._upsampconv(lc(n+1), lc(n)) for n in reversed(range(nl+1))])
-        if self.use_attention: self.attn = nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(nl+1))])
+        if self.attention is not None:
+            i, is_ch = ((0,1) if no_skip else (1,2)), attention == 'channel'
+            self.attn = nn.ModuleList([ChannelAttention(lc(n)) for n in reversed(range(i[0],nl+i[1]))]) if is_ch else \
+                        nn.ModuleList([SelfAttention(lc(n)) for n in reversed(range(nl+1))])
         if self.all_conv: self.downsampconvs = nn.ModuleList([self._downsampconv(lc(n), lc(n+1)) for n in range(nl+1)])
         if self.semi_3d > 0: self.init_conv = self._conv_act(n_input, lc(0), (3, 3, 3), a, nm)
 
@@ -166,15 +169,17 @@ class Unet(torch.nn.Module):
         x = self._up(self._add_noise(self.bridge[1](x)), dout[-1].shape[2:], 0)
         if self.all_conv: x = self._add_noise(x)
         for i, (ul, d) in enumerate(zip(self.up_layers, reversed(dout)), 1):
-            if self.use_attention: d = self.attn[i-1](d)
+            if self.attention == 'self': d = self.attn[i-1](d)
             if self.resblock: xr = x
             x = torch.cat((x, d), dim=1)
+            if self.attention == 'channel': x = self.attn[i-1](x)
             for uli in ul: x = self._add_noise(uli(x))
             x = self._up((x + xr) if self.resblock else x, dout[-i-1].shape[2:], i)
             if self.all_conv: x = self._add_noise(x)
-        if self.use_attention: dout[1] = self.attn[-1](dout[1])
+        if self.attention == 'self': dout[1] = self.attn[-1](dout[1])
         if self.resblock: xr = x
         x = torch.cat((x, dout[1]), dim=1)
+        if self.attention == 'channel': x = self.attn[-1](x)
         for eli in self.end: x = self._add_noise(eli(x))
         if self.resblock: x = x + xr
         if self.input_connect: x = torch.cat((x, dout[0]), dim=1)
@@ -201,12 +206,12 @@ class Unet(torch.nn.Module):
         x = self._up(self._add_noise(self.bridge[1](x)), sz[-1][2:], 0)
         if self.all_conv: x = self._add_noise(x)
         for i, (ul, s) in enumerate(zip(self.up_layers, reversed(sz)), 1):
-            if self.use_attention: x = self.attn[i-1](x)
+            if self.attention is not None: x = self.attn[i-1](x)
             if self.resblock: xr = x
             for uli in ul: x = self._add_noise(uli(x))
             x = self._up((x + xr) if self.resblock else x, sz[-i-1][2:], i)
             if self.all_conv: x = self._add_noise(x)
-        if self.use_attention: x = self.attn[-1](x)
+        if self.attention is not None: x = self.attn[-1](x)
         if self.resblock: xr = x
         for eli in self.end: x = self._add_noise(eli(x))
         if self.resblock: x = x + xr
@@ -305,7 +310,12 @@ class Unet(torch.nn.Module):
     def _final(self, in_c:int, out_c:int, out_act:Optional[str]=None, bias:bool=False):
         ksz = tuple([1 for _ in self.kernel_sz])
         c = self._conv(in_c, out_c, ksz, bias=bias)
-        if self.semi_3d == 2: c = nn.Sequential(self._conv_act(in_c, in_c, (3,3,3), self.act, self.norm), c)
+        if self.semi_3d != 2 and self.attention == 'channel':
+            c = nn.Sequential(ChannelAttention(in_c), c)
+        if self.semi_3d == 2:
+            cs = [self._conv_act(in_c, in_c, (3,3,3), self.act, self.norm), c]
+            if self.attention == 'channel': cs.insert(1, ChannelAttention(in_c))
+            c = nn.Sequential(*cs)
         fc = nn.Sequential(c, get_act(out_act)) if out_act != 'linear' else c
         return fc
 
@@ -320,7 +330,7 @@ class Unet(torch.nn.Module):
         for p in self.up_layers.parameters(): p.requires_grad = False
         for p in self.end.parameters(): p.requires_grad = False
         for p in self.upsampconvs.parameters(): p.requires_grad = False
-        if self.use_attention:
+        if self.attention is not None:
             for p in self.attn.parameters(): p.requires_grad = False
         if self.all_conv:
             for p in self.downsampconvs.parameters(): p.requires_grad = False
