@@ -39,7 +39,8 @@ nn-train -s t1/ \
          --nn-arch unet \
          --n-layers 3 \
          --n-epochs 100 \
-         --patch-size 64 \
+         --patch-size 64 64 64 \
+         --dim 3 \
          --batch-size 1 \
          --n-jobs 0 \
          --plot-loss loss_test.png \
@@ -235,12 +236,11 @@ would be the following:
 Note that the same assumptions about data applies in this setup as before (e.g., TIFF images must be in correspondence to 
 the same subject/slice across directories).
 
-Finally, to do prediction with 2D synthesis, note that you would use a testing directory structure as shown in 
-the **Example testing directory setup** section. That is, `nn-predict` expects NIfTI files regardless of whether TIFF
-images were used for training! The reason for this is that we want to reuse the test NIfTI file's header for
-the synthesized product. This is precisely the reason why I suggest the TIFF image format, because it supports
-`float32` data types and thus allows you to train on single slices images which contain the exact same type of
-information that is present in a NIfTI file.
+Finally, to do prediction with 2D synthesis, note that you can use a testing directory structure as shown in 
+the **Example testing directory setup** section. That is, `nn-predict` can process NIfTI files regardless of whether TIFF
+images were used for training. The reason why we would want to do this is to reuse the test NIfTI file's header for
+the synthesized product. The TIFF image format supports `float32` data types and thus allows you to train on single slice 
+images which contain the exact same type of information that is present in a (float32) NIfTI file.
 
 ## Final note
 
