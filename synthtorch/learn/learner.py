@@ -410,7 +410,7 @@ def get_data_augmentation(config:ExperimentConfig):
         valid_tfms.append(niftitfms.ToTensor())
 
     # control random cropping patch size (or if used at all)
-    if config.ext is None and config.patch_size is not None:
+    if (config.ext is None or config.ext == 'nii') and config.patch_size is not None:
         cropper = niftitfms.RandomCrop3D(config.patch_size, config.threshold) if config.dim == 3 else \
                   niftitfms.RandomCrop2D(config.patch_size, config.sample_axis, config.threshold)
         train_tfms.append(cropper if config.patch_size is not None and config.dim == 3 else \
