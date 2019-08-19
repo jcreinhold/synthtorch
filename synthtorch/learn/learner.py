@@ -176,11 +176,11 @@ class Learner:
         elif f.endswith('.tif') or f.endswith('.tiff'):
             img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
             out = self.predictor.img_predict(img, nsyn, calc_var)
-            out_img = [Image.fromarray(out)]
+            out_img = [Image.fromarray(o) for o in out]
         elif f.endswith('.png') or f.endswith('.jpg') or f.endswith('.jpeg'):
             img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
             out = self.predictor.png_predict(img, nsyn, calc_var)
-            out_img = [Image.fromarray(out)]
+            out_img = [Image.fromarray(o) for o in out]
         else:
             raise SynthtorchError(f'File: {fn[0]}, not supported.')
         return out_img

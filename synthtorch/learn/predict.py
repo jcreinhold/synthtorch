@@ -135,11 +135,11 @@ class Predictor:
 
     def img_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
         if img.ndim == 3: img = img[np.newaxis, ...]
-        out_img = np.zeros((nsyn, self.n_output) + img.shape[1:])
+        out_img = np.zeros((nsyn, self.n_output) + img.shape[2:])
         for i in range(nsyn):
             out_img[i, ...] = self._fwd(torch.from_numpy(img).to(self.device))
         out_img = np.mean(out_img, axis=0) if not calc_var else np.var(out_img, axis=0)
-        return out_img.squeeze()
+        return out_img
 
     def png_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False,
                     scale:bool=False) -> np.ndarray:
