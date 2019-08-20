@@ -32,6 +32,7 @@ class ExperimentConfig(dict):
         self.trained_model      = None
         # Options
         self.batch_size         = None
+        self.color              = False
         self.disable_cuda       = False
         self.ext                = None
         self.multi_gpu          = False
@@ -193,6 +194,7 @@ def _get_arg_dict(args):
         },
         "Options": {
             "batch_size": args.batch_size,
+            "color": args.color,
             "disable_cuda": args.disable_cuda,
             "ext": args.ext,
             "multi_gpu": args.multi_gpu,

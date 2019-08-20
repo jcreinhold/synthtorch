@@ -47,6 +47,8 @@ def arg_parser():
                          help='gradient clipping threshold [Default=None]')
     options.add_argument('-chk', '--checkpoint', type=int, default=None,
                          help='save the model every `checkpoint` epochs [Default=None]')
+    options.add_argument('-co', '--color', action='store_true', default=False,
+                         help='input and output images are color (ie, 3 channels) [Default=False]')
     options.add_argument('-csv', '--write-csv', type=str, default=None,
                          help="write the loss to a csv file of this filename [Default=None]")
     options.add_argument('--disable-cuda', action='store_true', default=False,

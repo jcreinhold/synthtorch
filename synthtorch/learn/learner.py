@@ -64,7 +64,9 @@ class Learner:
         if isinstance(config.kernel_size, int):
             config.kernel_size = tuple([config.kernel_size for _ in range(config.dim)])
         device, use_cuda = get_device(config.disable_cuda)
+        if config.color: config.n_input, config.n_output = config.n_input * 3, config.n_output * 3
         model = get_model(config, True, False)
+        if config.color: config.n_input, config.n_output = config.n_input // 3, config.n_output // 3
         logger.debug(model)
         logger.info(f'Number of trainable parameters in model: {get_num_params(model)}')
         if os.path.isfile(config.trained_model):
@@ -101,6 +103,7 @@ class Learner:
             config.kernel_size = tuple([config.kernel_size for _ in range(config.dim)])
         device, use_cuda = get_device(config.disable_cuda)
         nsyn = config.monte_carlo or 1
+        if config.color: config.n_input, config.n_output = config.n_input * 3, config.n_output * 3
         model = get_model(config, nsyn > 1 and config.dropout_prob > 0, True)
         logger.debug(model)
         model, _ = load_model(model, config.trained_model, device)
@@ -174,16 +177,20 @@ class Learner:
             out = self.predictor.predict(img, nsyn, calc_var)
             out_img = [nib.Nifti1Image(o, img_nib.affine, img_nib.header) for o in out]
         elif f.endswith('.tif') or f.endswith('.tiff'):
-            img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
-            out = self.predictor.img_predict(img, nsyn, calc_var)
-            out_img = [Image.fromarray(o) for o in out]
+            out_img = self._img_predict(fn, nsyn, calc_var, False)
         elif f.endswith('.png') or f.endswith('.jpg') or f.endswith('.jpeg'):
-            img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
-            out = self.predictor.png_predict(img, nsyn, calc_var)
-            out_img = [Image.fromarray(o) for o in out]
+            out_img = self._img_predict(fn, nsyn, calc_var, True)
         else:
             raise SynthtorchError(f'File: {fn[0]}, not supported.')
         return out_img
+
+    def _img_predict(self, fn, nsyn, calc_var, png:bool=False):
+        pred = self.predictor.png_predict if png else self.predictor.img_predict
+        img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
+        if self.config.color: img = img.transpose((0,3,1,2))
+        out = pred(img, nsyn, calc_var)
+        if self.config.color: out = (out.transpose((1,2,0)))[None,...]  # only support one color image as output
+        return [Image.fromarray(o) for o in out]
 
     def _criterion(self, out, tgt):
         """ helper function to handle multiple outputs in model evaluation """
@@ -349,14 +356,15 @@ def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
         # define dataset and split into training/validation set
         use_nii_ds = config.ext is None or 'nii' in config.ext
         dataset = MultimodalNiftiDataset(config.source_dir, config.target_dir, Compose(train_tfms)) if use_nii_ds else \
-                  MultimodalImageDataset(config.source_dir, config.target_dir, Compose(train_tfms), ext='*.' + config.ext)
+                  MultimodalImageDataset(config.source_dir, config.target_dir, Compose(train_tfms),
+                                         ext='*.' + config.ext, color=config.color)
         logger.info(f'Number of training images: {len(dataset)}')
 
         if config.valid_source_dir is not None and config.valid_target_dir is not None:
             valid_dataset = MultimodalNiftiDataset(config.valid_source_dir, config.valid_target_dir,
                                                    Compose(valid_tfms)) if use_nii_ds else \
                             MultimodalImageDataset(config.valid_source_dir, config.valid_target_dir,
-                                                   Compose(valid_tfms), ext='*.' + config.ext)
+                                                   Compose(valid_tfms), ext='*.' + config.ext, color=config.color)
             logger.info(f'Number of validation images: {len(valid_dataset)}')
             train_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=config.n_jobs, shuffle=True,
                                       pin_memory=config.pin_memory)
