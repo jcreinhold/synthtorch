@@ -140,6 +140,7 @@ class Learner:
                 if clip is not None: nn.utils.clip_grad_norm_(self.model.parameters(), clip)
                 self.optimizer.step()
                 if use_scheduler: self.scheduler.step(((t - 1) + (i / n_batches)) if use_restarts else None)
+                del loss  # save memory by removing ref to gradient tree
             train_losses.append(t_losses)
 
             if checkpoint is not None:
@@ -151,7 +152,7 @@ class Learner:
             # validation
             v_losses = []
             if use_valid: self.model.train(False)
-            with torch.set_grad_enabled(False):
+            with torch.no_grad():
                 for src, tgt in self.valid_loader:
                     src, tgt = src.to(self.device), tgt.to(self.device)
                     out = self.model(src)
