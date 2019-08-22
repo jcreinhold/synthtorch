@@ -34,7 +34,7 @@ Requirements
 - [niftidataset](https://github.com/jcreinhold/niftidataset) >= 0.1.4
 - numpy >= 1.15.4
 - pillow >= 5.3.0
-- torch >= 1.0.0
+- torch >= 1.2.0
 - torchvision >= 0.2.1
 
 Installation

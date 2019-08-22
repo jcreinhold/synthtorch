@@ -127,7 +127,6 @@ class Learner:
             t_losses = []
             if use_valid: self.model.train(True)
             for i, (src, tgt) in enumerate(self.train_loader):
-                if use_scheduler: self.scheduler.step(((t-1) + (i / n_batches)) if use_restarts else None)
                 src, tgt = src.to(self.device), tgt.to(self.device)
                 self.optimizer.zero_grad()
                 out = self.model(src)
@@ -140,6 +139,7 @@ class Learner:
                     loss.backward()
                 if clip is not None: nn.utils.clip_grad_norm_(self.model.parameters(), clip)
                 self.optimizer.step()
+                if use_scheduler: self.scheduler.step(((t - 1) + (i / n_batches)) if use_restarts else None)
             train_losses.append(t_losses)
 
             if checkpoint is not None:
@@ -226,7 +226,7 @@ class Learner:
             ss = int((n_epochs * len(self.train_loader)) / num_cycles)
             ssu = int(pct_start * ss)
             ssd = ss - ssu
-            cycle_momentum = self.config.optimizer in ('adamw','sgd','sgdw','nsgd','nsgdw','rmsprop')
+            cycle_momentum = self.config.optimizer in ('sgd','sgdw','nsgd','nsgdw','rmsprop')
             momentum_kwargs = {'cycle_momentum': cycle_momentum}
             if not cycle_momentum and momentum_range is not None:
                 logger.warning(f'{self.config.optimizer} not compatible with momentum cycling, disabling.')

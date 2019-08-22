@@ -159,8 +159,7 @@ def get_optim(name:str):
     if name.lower() == 'adam':
         optimizer = torch.optim.Adam
     elif name.lower() == 'adamw':
-        from ..learn.optim import AdamW
-        optimizer = AdamW
+        optimizer = torch.optim.AdamW
     elif name.lower() == 'sgd':
         optimizer = torch.optim.SGD
     elif name.lower() == 'sgdw':
