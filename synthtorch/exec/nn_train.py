@@ -143,7 +143,7 @@ def arg_parser():
     nn_options.add_argument('-na', '--nn-arch', type=str, default='unet',
                             choices=('unet','nconv','vae','segae','densenet','ordnet','lrsdnet',
                                      'hotnet','burnnet','burn2net','burn2netp12','burn2netp21',
-                                     'unburnnet','unburn2net'),
+                                     'unburnnet','unburn2net','lavanet'),
                             help='specify neural network architecture to use')
     nn_options.add_argument('-nm', '--normalization', type=str, default='instance',
                             choices=('instance', 'batch', 'layer', 'weight', 'spectral', 'none'),

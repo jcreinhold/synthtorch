@@ -334,10 +334,16 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
         except (ImportError, ModuleNotFoundError):
             raise SynthtorchError('Cannot use the Unburn2Net without the annom toolbox.')
         model = Unburn2Net(inplace=inplace, **config)
+    elif config.nn_arch == 'lavanet':
+        try:
+            from annom.models import LavaNet
+        except (ImportError, ModuleNotFoundError):
+            raise SynthtorchError('Cannot use the LavaNet without the annom toolbox.')
+        model = LavaNet(inplace=inplace, **config)
     else:
         raise SynthtorchError(f'Invalid NN type: {config.nn_arch}. '
                               f'{{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet,burnnet,'
-                              f'burn2netp12,burn2netp21,unburnnet,unburn2net}} are the only supported options.')
+                              f'burn2netp12,burn2netp21,unburnnet,unburn2net,lavanet}} are the only supported options.')
     return model
 
 
