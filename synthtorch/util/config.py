@@ -275,7 +275,7 @@ def _get_arg_dict(args):
             "ord_params": args.ord_params if hasattr(args,'ord_params') else None
         },
         "VAE Options": {
-            "img_dim": args.img_dim if hasattr(args,'img_dim') and args.nn_arch =='vae' else None,
+            "img_dim": args.img_dim if hasattr(args,'img_dim') else None,
             "latent_size": args.latent_size if hasattr(args,'latent_size') else None
         },
         "SegAE Options": {
