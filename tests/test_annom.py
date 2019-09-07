@@ -35,6 +35,7 @@ class TestCLI(unittest.TestCase):
         self.mask_dir = os.path.join(wd, 'test_data', 'masks')
         self.tif_dir = os.path.join(wd, 'test_data', 'tif')
         self.png_dir = os.path.join(wd, 'test_data', 'png')
+        self.color_dir = os.path.join(wd, 'test_data', 'color')
         self.out_dir = tempfile.mkdtemp()
         os.mkdir(os.path.join(self.out_dir, 'models'))
         self.train_dir = os.path.join(self.out_dir, 'imgs')
@@ -42,33 +43,39 @@ class TestCLI(unittest.TestCase):
         os.mkdir(os.path.join(self.train_dir, 'mask'))
         os.mkdir(os.path.join(self.train_dir, 'tif'))
         os.mkdir(os.path.join(self.train_dir, 'png'))
+        os.mkdir(os.path.join(self.train_dir, 'color'))
         nii = glob_imgs(self.nii_dir)[0]
         msk = glob_imgs(self.mask_dir)[0]
         tif = os.path.join(self.tif_dir, 'test.tif')
         png = os.path.join(self.png_dir, 'test.png')
+        color = os.path.join(self.color_dir, 'test.png')
         path, base, ext = split_filename(nii)
         for i in range(8):
             shutil.copy(nii, os.path.join(self.train_dir, base + str(i) + ext))
             shutil.copy(msk, os.path.join(self.train_dir, 'mask', base + str(i) + ext))
             shutil.copy(tif, os.path.join(self.train_dir, 'tif', base + str(i) + '.tif'))
             shutil.copy(png, os.path.join(self.train_dir, 'png', base + str(i) + '.png'))
+            shutil.copy(color, os.path.join(self.train_dir, 'color', base + str(i) + '.png'))
         self.train_args = f'-s {self.train_dir} -t {self.train_dir}'.split()
         self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
         self.jsonfn = f'{self.out_dir}/test.json'
 
-    def _modify_ocf(self, jsonfn, multi=1, calc_var=False, mc=None, model=None,
-                    predict_seg=False, png_out=False, tif_out=False):
+    def _modify_ocf(self, jsonfn, multi=1, calc_var=False, mc=None, predict_seg=False,
+                    png_out=False, tif_out=False, color_out=False, model=None, bs=None):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
         with open(jsonfn, 'w') as f:
-            arg_dict['Required']['predict_dir'] = ([f'{self.nii_dir}'] * multi) if not png_out and not tif_out else \
-                                                   [f'{self.train_dir}/png'] if png_out and not tif_out else \
+            use_nii = not png_out and not tif_out and not color_out
+            arg_dict['Required']['predict_dir'] = ([f'{self.nii_dir}'] * multi) if use_nii else \
+                                                   [f'{self.train_dir}/png'] if png_out else \
+                                                   [f'{self.train_dir}/color'] if color_out else \
                                                    [f'{self.train_dir}/tif']
             arg_dict['Required']['predict_out'] = f'{self.out_dir}/test'
-            if model is not None: arg_dict['Neural Network Options']['nn_arch'] = model
             arg_dict['Prediction Options']['calc_var'] = calc_var
             arg_dict['Prediction Options']['monte_carlo'] = mc
             arg_dict['SegAE Options']['predict_seg'] = predict_seg
+            if bs is not None: arg_dict['Options']['batch_size'] = bs
+            if model is not None: arg_dict['Neural Network Options']['nn_arch'] = model
             json.dump(arg_dict, f, sort_keys=True, indent=2)
 
     def tearDown(self):
@@ -791,7 +798,7 @@ class TestOCNet(TestCLI):
                              f'-ocf {self.jsonfn} -ic -ls 5 -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -801,7 +808,7 @@ class TestOCNet(TestCLI):
                              f'-ocf {self.jsonfn} -ic -sx -ls 5 -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -811,7 +818,7 @@ class TestOCNet(TestCLI):
                              f'-ocf {self.jsonfn} -acv -rb -ls 5 -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -821,7 +828,7 @@ class TestOCNet(TestCLI):
                              f'-ocf {self.jsonfn} -ns -ls 5 -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -831,7 +838,17 @@ class TestOCNet(TestCLI):
                              f'-ocf {self.jsonfn} -ns -l mae -ls 5 -l mae -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet_2d_color_cli(self):
+        train_args = f'-s {self.train_dir}/color/ -t {self.train_dir}/color/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet.mdl -na ocnet -ne 1 -nl 1 -cbp 1 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -ls 5 -id 64 64 -co').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, color_out=True, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -841,7 +858,7 @@ class TestOCNet(TestCLI):
                              f'-ocf {self.jsonfn} -ls 5 -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -851,7 +868,7 @@ class TestOCNet(TestCLI):
                              f'-ocf {self.jsonfn} -dp 0.1 -ls 5 -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn, mc=2)
+        self._modify_ocf(self.jsonfn, mc=2, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -861,7 +878,7 @@ class TestOCNet(TestCLI):
                              f'-ocf {self.jsonfn} -fr -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
@@ -871,7 +888,7 @@ class TestOCNet(TestCLI):
             f'-ocf {self.jsonfn} -id 32 32 32').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
+        self._modify_ocf(self.jsonfn, bs=1)
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
