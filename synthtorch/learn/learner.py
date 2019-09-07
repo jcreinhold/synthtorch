@@ -49,6 +49,7 @@ class Learner:
     def __init__(self, model, device=None, train_loader=None, valid_loader=None, optimizer=None,
                  predictor=None, config=None):
         self.model = model
+        self.model_name = model.__class__.__name__.lower()
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.optimizer = optimizer
@@ -177,22 +178,19 @@ class Learner:
             img = np.stack([np.asarray(nib.load(f).get_data(), dtype=np.float32) for f in fn])
             out = self.predictor.predict(img, nsyn, calc_var)
             out_img = [nib.Nifti1Image(o, img_nib.affine, img_nib.header) for o in out]
-        elif f.endswith('.tif') or f.endswith('.tiff'):
-            out_img = self._img_predict(fn, nsyn, calc_var, False)
-        elif f.endswith('.png') or f.endswith('.jpg') or f.endswith('.jpeg'):
-            out_img = self._img_predict(fn, nsyn, calc_var, True)
+        elif f.split('.')[-1] in ('tif', 'tiff', 'png', 'jpg', 'jpeg'):
+            out_img = self._img_predict(fn, nsyn, calc_var)
         else:
             raise SynthtorchError(f'File: {fn[0]}, not supported.')
         return out_img
 
-    def _img_predict(self, fn, nsyn, calc_var, png:bool=False):
-        pred = self.predictor.png_predict if png else self.predictor.img_predict
+    def _img_predict(self, fn, nsyn, calc_var):
         img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
         if self.config.color: img = img.transpose((0,3,1,2))
-        out = pred(img, nsyn, calc_var)
+        out = self.predictor.img_predict(img, nsyn, calc_var)
         if self.config.color: 
             out = out.transpose((1,2,0))  # only support one color image as output
-            out = [out[...,0:3]] + [out[...,i] for i in range(3,out.shape[-1])] \
+            out = [np.around(out[...,0:3]).astype(np.uint8)] + [out[...,i] for i in range(3,out.shape[-1])] \
                   if self.config.nn_arch not in ('nconv','unet','densenet') else \
                   out[None,...]
         return [Image.fromarray(o) for o in out]
