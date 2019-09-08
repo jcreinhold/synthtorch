@@ -23,7 +23,7 @@ from synthtorch.exec.nn_predict import main as nn_predict
 try:
     import altdataset
 except (ImportError, ModuleNotFoundError):
-    raise unittest.SkipTest('Skipping test since annom toolbox not available.')
+    raise unittest.SkipTest('Skipping test since altdataset toolbox not available.')
 
 
 class TestCLI(unittest.TestCase):

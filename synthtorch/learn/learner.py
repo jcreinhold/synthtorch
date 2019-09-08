@@ -192,7 +192,7 @@ class Learner:
             out = out.transpose((1,2,0))  # only support one color image as output
             out = [np.around(out[...,0:3]).astype(np.uint8)] + [out[...,i] for i in range(3,out.shape[-1])] \
                   if self.config.nn_arch not in ('nconv','unet','densenet') else \
-                  out[None,...]
+                  np.around(out[None,...]).astype(np.uint8)
         return [Image.fromarray(o) for o in out]
 
     def _criterion(self, out, tgt):
