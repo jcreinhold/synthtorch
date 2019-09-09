@@ -828,7 +828,11 @@ class TestOCNet(TestCLI):
     def test_ocnet_2d_freeze_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/ocnet.mdl -na ocnet -ne 1 -nl 1 -cbp 1 -bs 4 -e tif '
-                             f'-ocf {self.jsonfn} -fr -id 64 64').split()
+                             f'-ocf {self.jsonfn} -b1 -1 -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        args = train_args + (f'-o {self.out_dir}/ocnet.mdl -na ocnet -ne 1 -nl 1 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -b1 1 -fr -id 64 64').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn, bs=1)
