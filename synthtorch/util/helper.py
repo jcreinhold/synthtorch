@@ -229,8 +229,10 @@ def init_weights(net, init_type='kaiming', init_gain=0.02):
         elif (classname.find('BatchNorm') != -1 or
               classname.find('InstanceNorm') != -1 or
               classname.find('GroupNorm') != -1):  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
-            nn.init.normal_(m.weight.data, 1.0, init_gain)
-            nn.init.constant_(m.bias.data, 0.0)
+            if m.weight is not None:
+                nn.init.normal_(m.weight.data, 1.0, init_gain)
+            if m.bias is not None:
+                nn.init.constant_(m.bias.data, 0.0)
 
     net.apply(init_func)
     if hasattr(net, 'n_seg'):  # handle segae last layer initialization
