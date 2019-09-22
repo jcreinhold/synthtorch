@@ -860,5 +860,114 @@ class TestOCNet(TestCLI):
         self.assertEqual(retval, 0)
 
 
+class TestOCNet2(TestCLI):
+
+    def test_ocnet2_2d_png_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 2 -cbp 1 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -ic -ls 5 -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_2d_softmax_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 2 -cbp 1 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -ic -sx -ls 5 -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_2d_resblock_cli(self):
+        train_args = f'-s {self.train_dir}/png/ -t {self.train_dir}/png/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 2 -cbp 1 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -acv -rb -ls 5 -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_2d_noskip_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 1 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ns -ls 5 -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_2d_lap_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 1 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ns -l mae -ls 5 -l mae -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_2d_color_cli(self):
+        train_args = f'-s {self.train_dir}/color/ -t {self.train_dir}/color/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 1 -cbp 1 -bs 4 -e png '
+                             f'-ocf {self.jsonfn} -ls 5 -id 64 64 -co '
+                             f'-p 1 1 1 0 1 -r 10 -ts 0.5 -sc 0.1 -mean 1 1 1 -std 1 1 1 '
+                             f'-hf -vf -g 0.1 -gn 0.2 -pwr 1 -tx -ty').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, color_out=True, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_2d_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 1 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -ls 5 -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_dropout_2d_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 1 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -dp 0.1 -ls 5 -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, mc=2, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_2d_freeze_cli(self):
+        train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 1 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -b1 -1 -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        args = train_args + (f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 1 -cbp 1 -bs 4 -e tif '
+                             f'-ocf {self.jsonfn} -b1 1 -fr -id 64 64').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+    def test_ocnet2_3d_cli(self):
+        args = self.train_args + (
+            f'-o {self.out_dir}/ocnet2.mdl -na ocnet2 -ne 1 -nl 1 -cbp 1 -bs 4 -dm 3 '
+            f'-ocf {self.jsonfn} -id 32 32 32').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
+
 if __name__ == '__main__':
     unittest.main()

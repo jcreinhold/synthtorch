@@ -70,6 +70,7 @@ class Unet(torch.nn.Module):
             note: this is an activation-before-addition type residual connection (see Fig 4(c) in [4])
         semi_3d (int): use one or two (based on input, 1 or 2) 3d conv layers in an otherwise 2d network,
             should specify an oblong kernel shape, e.g., (3,3,1)
+        affine (bool): use affine transform in normalization modules
 
     References:
         [1] Ronneberger, Olaf, Philipp Fischer, and Thomas Brox.
@@ -89,7 +90,7 @@ class Unet(torch.nn.Module):
                  enable_bias:bool=False, n_input:int=1, n_output:int=1, no_skip:bool=False, noise_lvl:float=0,
                  loss:Optional[str]=None, attention:Optional[str]=None, inplace:bool=False, separable:bool=False,
                  softmax:bool=False, input_connect:bool=True, all_conv:bool=False, resblock:bool=False,
-                 semi_3d:int=0, **kwargs):
+                 semi_3d:int=0, affine:bool=True, **kwargs):
         super(Unet, self).__init__()
         # setup and store instance parameters
         self.n_layers = n_layers
@@ -97,6 +98,7 @@ class Unet(torch.nn.Module):
                          tuple([kernel_size for _ in range(dim)])
         self.dropout_prob = dropout_prob
         self.channel_base_power = channel_base_power
+        self.affine = affine
         self.norm = nm = normalization
         self.act = a = activation
         self.out_act = oa = output_activation
@@ -276,9 +278,9 @@ class Unet(torch.nn.Module):
         i = 1 if isinstance(c, list) else 0
         layers = [*c] if i == 1 else [c]
         if norm in ['instance', 'batch', 'layer']:
-            layers.append(get_norm3d(norm, out_c) if self.dim == 3 else \
-                          get_norm2d(norm, out_c) if self.dim == 2 else \
-                          get_norm1d(norm, out_c))
+            layers.append(get_norm3d(norm, out_c, self.affine) if self.dim == 3 else \
+                          get_norm2d(norm, out_c, self.affine) if self.dim == 2 else \
+                          get_norm1d(norm, out_c, self.affine))
         elif norm == 'weight':   layers[i] = nn.utils.weight_norm(layers[i])
         elif norm == 'spectral': layers[i] = nn.utils.spectral_norm(layers[i])
         layers.append(activation)

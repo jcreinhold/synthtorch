@@ -350,10 +350,16 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
         except (ImportError, ModuleNotFoundError):
             raise SynthtorchError('Cannot use the OCNet without the annom toolbox.')
         model = OCNet(inplace=inplace if config.dropout_prob == 0 else False, **config)
+    elif config.nn_arch == 'ocnet2':
+        try:
+            from annom.models import OCNet2
+        except (ImportError, ModuleNotFoundError):
+            raise SynthtorchError('Cannot use the OCNet without the annom toolbox.')
+        model = OCNet2(inplace=inplace if config.dropout_prob == 0 else False, **config)
     else:
         raise SynthtorchError(f'Invalid NN type: {config.nn_arch}. '
                               f'{{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet,burnnet,'
-                              f'burn2netp12,burn2netp21,unburnnet,unburn2net,lavanet,lava2net,ocnet}} '
+                              f'burn2netp12,burn2netp21,unburnnet,unburn2net,lavanet,lava2net,ocnet,ocnet2}} '
                               f'are the only supported options.')
     return model
 

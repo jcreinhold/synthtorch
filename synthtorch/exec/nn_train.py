@@ -122,6 +122,8 @@ def arg_parser():
     nn_options.add_argument('-ac', '--activation', type=str, default='relu',
                             choices=('relu', 'lrelu','prelu','elu','celu','selu','tanh','sigmoid','swish'),
                             help='type of activation to use throughout network except output [Default=relu]')
+    nn_options.add_argument('-af', '--affine', action='store_true', default=True,
+                            help='use affine transform on normalization routines [Default=True]')
     nn_options.add_argument('-dm', '--dim', type=int, default=2, choices=(1,2,3),
                             help='create a `dim` dimension network [Default=2]')
     nn_options.add_argument('-dp', '--dropout-prob', type=float, default=0,
@@ -143,7 +145,7 @@ def arg_parser():
     nn_options.add_argument('-na', '--nn-arch', type=str, default='unet',
                             choices=('unet','nconv','vae','segae','densenet','ordnet','lrsdnet',
                                      'hotnet','burnnet','burn2net','burn2netp12','burn2netp21',
-                                     'unburnnet','unburn2net','lavanet','lava2net','ocnet'),
+                                     'unburnnet','unburn2net','lavanet','lava2net','ocnet','ocnet2'),
                             help='specify neural network architecture to use')
     nn_options.add_argument('-nm', '--normalization', type=str, default='instance',
                             choices=('instance', 'batch', 'layer', 'weight', 'spectral', 'none'),

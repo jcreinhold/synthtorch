@@ -73,7 +73,7 @@ def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> nn.Modul
     return act
 
 
-def get_norm1d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Module:
+def get_norm1d(name:str, num_features:int, affine:bool=True, params:Optional[dict]=None) -> nn.Module:
     """
     get a 1d normalization module from pytorch
     must be one of: instance, batch, none
@@ -81,6 +81,7 @@ def get_norm1d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Mod
     Args:
         name (str): name of normalization function desired
         num_features (int): number of channels in the normalization layer
+        affine (bool): learn affine transform after normalization
         params (dict): dictionary of optional other parameters for the normalization layer
             as specified by the pytorch documentation
 
@@ -88,11 +89,13 @@ def get_norm1d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Mod
         norm: instance of normalization layer
     """
     if name.lower() == 'instance':
-        norm = nn.InstanceNorm1d(num_features, affine=True) if params is None else nn.InstanceNorm1d(num_features, **params)
+        norm = nn.InstanceNorm1d(num_features, affine=affine) if params is None else \
+               nn.InstanceNorm1d(num_features, affine=affine, **params)
     elif name.lower() == 'batch':
-        norm = nn.BatchNorm1d(num_features) if params is None else nn.BatchNorm1d(num_features, **params)
+        norm = nn.BatchNorm1d(num_features, affine=affine) if params is None else \
+               nn.BatchNorm1d(num_features, affine=affine, **params)
     elif name.lower() == 'layer':
-        norm = nn.GroupNorm(1, num_features)
+        norm = nn.GroupNorm(1, num_features, affine=affine)
     elif name.lower() == 'none':
         norm = None
     else:
@@ -100,7 +103,7 @@ def get_norm1d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Mod
     return norm
 
 
-def get_norm2d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Module:
+def get_norm2d(name:str, num_features:int, affine:bool=True, params:Optional[dict]=None) -> nn.Module:
     """
     get a 2d normalization module from pytorch
     must be one of: instance, batch, none
@@ -108,6 +111,7 @@ def get_norm2d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Mod
     Args:
         name (str): name of normalization function desired
         num_features (int): number of channels in the normalization layer
+        affine (bool): learn affine transform after normalization
         params (dict): dictionary of optional other parameters for the normalization layer
             as specified by the pytorch documentation
 
@@ -115,11 +119,13 @@ def get_norm2d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Mod
         norm: instance of normalization layer
     """
     if name.lower() == 'instance':
-        norm = nn.InstanceNorm2d(num_features, affine=True) if params is None else nn.InstanceNorm2d(num_features, **params)
+        norm = nn.InstanceNorm2d(num_features, affine=affine) if params is None else \
+               nn.InstanceNorm2d(num_features, affine=affine, **params)
     elif name.lower() == 'batch':
-        norm = nn.BatchNorm2d(num_features) if params is None else nn.BatchNorm2d(num_features, **params)
+        norm = nn.BatchNorm2d(num_features, affine=affine) if params is None else \
+               nn.BatchNorm2d(num_features, affine=affine, **params)
     elif name.lower() == 'layer':
-        norm = nn.GroupNorm(1, num_features)
+        norm = nn.GroupNorm(1, num_features, affine=affine)
     elif name.lower() == 'none':
         norm = None
     else:
@@ -127,7 +133,7 @@ def get_norm2d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Mod
     return norm
 
 
-def get_norm3d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Module:
+def get_norm3d(name:str, num_features:int, affine:bool=True, params:Optional[dict]=None) -> nn.Module:
     """
     get a 3d normalization module from pytorch
     must be one of: instance, batch, none
@@ -135,6 +141,7 @@ def get_norm3d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Mod
     Args:
         name (str): name of normalization function desired
         num_features (int): number of channels in the normalization layer
+        affine (bool): learn affine transform after normalization
         params (dict): dictionary of optional other parameters for the normalization layer
             as specified by the pytorch documentation
 
@@ -142,11 +149,13 @@ def get_norm3d(name:str, num_features:int, params:Optional[dict]=None) -> nn.Mod
         norm: instance of normalization layer
     """
     if name.lower() == 'instance':
-        norm = nn.InstanceNorm3d(num_features, affine=True) if params is None else nn.InstanceNorm3d(num_features, **params)
+        norm = nn.InstanceNorm3d(num_features, affine=affine) if params is None else \
+               nn.InstanceNorm3d(num_features, affine=affine, **params)
     elif name.lower() == 'batch':
-        norm = nn.BatchNorm3d(num_features) if params is None else nn.BatchNorm3d(num_features, **params)
+        norm = nn.BatchNorm3d(num_features, affine=affine) if params is None else \
+               nn.BatchNorm3d(num_features, affine=affine, **params)
     elif name.lower() == 'layer':
-        norm = nn.GroupNorm(1, num_features)
+        norm = nn.GroupNorm(1, num_features, affine=affine)
     elif name.lower() == 'none':
         norm = None
     else:

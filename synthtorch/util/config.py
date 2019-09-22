@@ -59,6 +59,7 @@ class ExperimentConfig(dict):
         self.t_mult             = None
         # Neural Network Options
         self.activation         = "relu"
+        self.affine             = True
         self.dropout_prob       = 0
         self.init               = "kaiming"
         self.init_gain          = 0.02
@@ -224,6 +225,7 @@ def _get_arg_dict(args):
         },
         "Neural Network Options": {
             "activation": args.activation,
+            "affine": args.affine,
             "dim": args.dim,
             "dropout_prob": args.dropout_prob,
             "init": args.init,
