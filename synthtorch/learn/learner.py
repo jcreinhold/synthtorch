@@ -30,8 +30,6 @@ from torch import nn
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, CyclicLR
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from torch.utils.tensorboard import SummaryWriter
-from torchvision.utils import make_grid
 from torchvision.transforms import Compose
 
 from niftidataset import MultimodalNiftiDataset, MultimodalImageDataset, split_filename
@@ -42,6 +40,11 @@ from ..plot.loss import plot_loss
 from .predict import Predictor
 from ..util.config import ExperimentConfig
 from ..util.helper import get_optim, init_weights
+
+try:
+    from torch.utils.tensorboard import SummaryWriter
+except (ImportError, ModuleNotFoundError):
+    SummaryWriter = None
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +122,7 @@ class Learner:
     def fit(self, n_epochs, clip:float=None, checkpoint:int=None, trained_model:str=None):
         """ training loop for neural network """
         self.model.train()
-        use_tb = self.config.tensorboard
+        use_tb = self.config.tensorboard and SummaryWriter is not None
         if use_tb: writer = SummaryWriter()
         use_valid = self.valid_loader is not None
         use_scheduler = hasattr(self, 'scheduler')

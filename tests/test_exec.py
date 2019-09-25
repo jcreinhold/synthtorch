@@ -10,6 +10,7 @@ Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 Created on: Sep 07, 2018
 """
 
+import os
 import unittest
 
 from synthtorch.exec.nn_train import main as nn_train
@@ -210,6 +211,7 @@ class TestNConv(TestCLI):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
+    @unittest.skipIf("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true", "Skipping this test on Travis CI.")
     def test_nconv_color_tb_cli(self):
         train_args = f'-s {self.train_dir}/color/ -t {self.train_dir}/color/'.split()
         args = train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -bs 2 -e png -co -dm 2 '
