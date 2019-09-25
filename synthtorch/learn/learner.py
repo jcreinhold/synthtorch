@@ -269,7 +269,7 @@ class Learner:
     def _histogram_weights(self, writer, epoch):
         """ write histogram of weights to tensorboard """
         for (name, values) in self.model.named_parameters():
-            writer.add_histogram(tag='/weights/'+name, values=values.clone().detach().cpu(), global_step=epoch)
+            writer.add_histogram(tag='weights/'+name, values=values.clone().detach().cpu(), global_step=epoch)
 
 
 def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=False):
