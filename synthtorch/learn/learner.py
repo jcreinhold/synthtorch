@@ -152,7 +152,6 @@ class Learner:
                         is_tuple = isinstance(out, tuple)
                         writer.add_images('target', out[0][:8] if is_tuple else out[:8], t, dataformats='NCHW')
                     if i == 0: self._histogram_weights(writer, t)
-                    if i == 0 and t == 1: writer.add_graph(self.model, src)
                 del loss  # save memory by removing ref to gradient tree
             train_losses.append(t_losses)
 
