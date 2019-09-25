@@ -210,6 +210,16 @@ class TestNConv(TestCLI):
         retval = nn_predict([self.jsonfn])
         self.assertEqual(retval, 0)
 
+    def test_nconv_color_tb_cli(self):
+        train_args = f'-s {self.train_dir}/color/ -t {self.train_dir}/color/'.split()
+        args = train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -bs 2 -e png -co -dm 2 '
+                             f'-ocf {self.jsonfn} -tb').split()
+        retval = nn_train(args)
+        self.assertEqual(retval, 0)
+        self._modify_ocf(self.jsonfn, color_out=True, bs=1)
+        retval = nn_predict([self.jsonfn])
+        self.assertEqual(retval, 0)
+
     def test_nconv_tif_predict_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
         args = train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 1 -nl 1 -cbp 1 -bs 2 -e tif '

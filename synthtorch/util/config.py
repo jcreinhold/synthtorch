@@ -76,6 +76,7 @@ class ExperimentConfig(dict):
         self.n_epochs           = 100
         self.n_jobs             = 6
         self.plot_loss          = None
+        self.tensorboard        = False
         self.valid_source_dir   = None
         self.valid_split        = None
         self.valid_target_dir   = None
@@ -243,6 +244,7 @@ def _get_arg_dict(args):
             "n_epochs": args.n_epochs,
             "n_jobs": args.n_jobs,
             "plot_loss": args.plot_loss,
+            "tensorboard": args.tensorboard,
             "valid_source_dir": args.valid_source_dir,
             "valid_split": args.valid_split,
             "valid_target_dir": args.valid_target_dir,

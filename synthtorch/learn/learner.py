@@ -30,6 +30,8 @@ from torch import nn
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, CyclicLR
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.tensorboard import SummaryWriter
+from torchvision.utils import make_grid
 from torchvision.transforms import Compose
 
 from niftidataset import MultimodalNiftiDataset, MultimodalImageDataset, split_filename
@@ -117,6 +119,8 @@ class Learner:
     def fit(self, n_epochs, clip:float=None, checkpoint:int=None, trained_model:str=None):
         """ training loop for neural network """
         self.model.train()
+        use_tb = self.config.tensorboard
+        if use_tb: writer = SummaryWriter()
         use_valid = self.valid_loader is not None
         use_scheduler = hasattr(self, 'scheduler')
         use_restarts = self.config.lr_scheduler == 'cosinerestarts'
@@ -140,7 +144,15 @@ class Learner:
                     loss.backward()
                 if clip is not None: nn.utils.clip_grad_norm_(self.model.parameters(), clip)
                 self.optimizer.step()
-                if use_scheduler: self.scheduler.step(((t - 1) + (i / n_batches)) if use_restarts else None)
+                if use_scheduler: self.scheduler.step(((t-1)+(i/n_batches)) if use_restarts else None)
+                if use_tb:
+                    if i % 20 == 0: writer.add_scalar('Loss/train', loss.item(), ((t-1)*n_batches)+i)
+                    if i == 0 and self.model.dim == 2:
+                        writer.add_images('source', src[:8], t, dataformats='NCHW')
+                        is_tuple = isinstance(out, tuple)
+                        writer.add_images('target', out[0][:8] if is_tuple else out[:8], t, dataformats='NCHW')
+                    if i == 0: self._histogram_weights(writer, t)
+                    if i == 0 and t == 1: writer.add_graph(self.model, src)
                 del loss  # save memory by removing ref to gradient tree
             train_losses.append(t_losses)
 
@@ -152,14 +164,17 @@ class Learner:
 
             # validation
             v_losses = []
-            if use_valid: self.model.train(False)
-            with torch.no_grad():
-                for src, tgt in self.valid_loader:
-                    src, tgt = src.to(self.device), tgt.to(self.device)
-                    out = self.model(src)
-                    loss = self._criterion(out, tgt)
-                    v_losses.append(loss.item())
-                valid_losses.append(v_losses)
+            if use_valid:
+                self.model.train(False)
+                with torch.no_grad():
+                    for i, (src, tgt) in enumerate(self.valid_loader):
+                        src, tgt = src.to(self.device), tgt.to(self.device)
+                        out = self.model(src)
+                        loss = self._criterion(out, tgt)
+                        if use_tb:
+                            if i % 20 == 0: writer.add_scalar('Loss/valid', loss.item(), ((t-1)*n_batches)+i)
+                        v_losses.append(loss.item())
+                    valid_losses.append(v_losses)
 
             if not np.all(np.isfinite(t_losses)): raise SynthtorchError('NaN or Inf in training loss, cannot recover. Exiting.')
             if logger is not None:
@@ -169,6 +184,7 @@ class Learner:
                 logger.info(log)
 
         self.record = Record(train_losses, valid_losses)
+        if use_tb: writer.close()
 
     def predict(self, fn:str, nsyn:int=1, calc_var:bool=False):
         self.model.eval()
@@ -249,6 +265,11 @@ class Learner:
         state_dict = self.model.module.state_dict() if hasattr(self.model, 'module') else self.model.state_dict()
         state = {'epoch': epoch, 'state_dict': state_dict, 'optimizer': self.optimizer.state_dict()}
         torch.save(state, fn)
+
+    def _histogram_weights(self, writer, epoch):
+        """ write histogram of weights to tensorboard """
+        for (name, values) in self.model.named_parameters():
+            writer.add_histogram(tag='/weights/'+name, values=values.clone().detach().cpu(), global_step=epoch)
 
 
 def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=False):

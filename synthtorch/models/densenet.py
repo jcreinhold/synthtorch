@@ -89,6 +89,7 @@ class DenseNet(nn.Module):
         super(DenseNet, self).__init__()
         self.n_input, self.n_output = n_input, n_output
         self.criterion = get_loss(loss)
+        self.dim = 2
 
         # First convolution
         self.layers = nn.Sequential(OrderedDict([

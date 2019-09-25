@@ -76,6 +76,7 @@ def arg_parser():
     options.add_argument('-sa', '--sample-axis', type=int, default=2,
                             help='axis on which to sample for 2d (None for random orientation when NIfTI images given) [Default=2]')
     options.add_argument('-sd', '--seed', type=int, default=0, help='set seed for reproducibility [Default=0]')
+    options.add_argument('-tb', '--tensorboard', action='store_true', default=False, help='use tensorboard')
     options.add_argument('-vs', '--valid-split', type=float, default=0.2,
                           help='split the data in source_dir and target_dir into train/validation '
                                'with this split percentage [Default=0.2]')
