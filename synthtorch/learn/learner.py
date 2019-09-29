@@ -153,8 +153,9 @@ class Learner:
                     do_plot = i == 0 and ((t - 1) % 5) == 0
                     if do_plot and self.model.dim == 2:
                         writer.add_images('source', src[:8], t, dataformats='NCHW')
-                        is_tuple = isinstance(out, tuple)
-                        writer.add_images('target', out[0][:8] if is_tuple else out[:8], t, dataformats='NCHW')
+                        outimg = out[0][:8] if isinstance(out, tuple) else out[:8]
+                        if self.config.color: outimg = torch.round(outimg)
+                        writer.add_images('target', outimg, t, dataformats='NCHW')
                     if do_plot: self._histogram_weights(writer, t)
                 del loss  # save memory by removing ref to gradient tree
             train_losses.append(t_losses)
