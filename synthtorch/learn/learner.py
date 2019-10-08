@@ -374,23 +374,23 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
             from annom.models import LAutoNet
         except (ImportError, ModuleNotFoundError):
             raise SynthtorchError('Cannot use the LAutoNet without the annom toolbox.')
-        model = LAutoNet(inplace=inplace, **config)
+        model = LAutoNet(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'ocnet1':
         try:
             from annom.models import OCNet1
         except (ImportError, ModuleNotFoundError):
             raise SynthtorchError('Cannot use the OCNet without the annom toolbox.')
-        model = OCNet1(inplace=inplace if config.dropout_prob == 0 else False, **config)
+        model = OCNet1(enable_dropout=enable_dropout, inplace=inplace if config.dropout_prob == 0 else False, **config)
     elif config.nn_arch == 'ocnet2':
         try:
             from annom.models import OCNet2
         except (ImportError, ModuleNotFoundError):
             raise SynthtorchError('Cannot use the OCNet without the annom toolbox.')
-        model = OCNet2(inplace=inplace if config.dropout_prob == 0 else False, **config)
+        model = OCNet2(enable_dropout=enable_dropout, inplace=inplace if config.dropout_prob == 0 else False, **config)
     else:
         raise SynthtorchError(f'Invalid NN type: {config.nn_arch}. '
                               f'{{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet,burnnet,burn2netp12,burn2netp21,'
-                              f'unburnnet,unburn2net,lavanet,lava2net,lautonet,ocnet,ocnet2}} '
+                              f'unburnnet,unburn2net,lavanet,lava2net,lautonet,ocnet1,ocnet2}} '
                               f'are the only supported options.')
     return model
 
