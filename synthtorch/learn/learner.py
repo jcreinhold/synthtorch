@@ -234,7 +234,7 @@ class Learner:
     def fp16(self):
         """ import and initialize mixed precision training package """
         if amp is not None:
-            self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt='O1')
+            self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level='O1')
             self.use_fp16 = True
         else:
             logger.info('Mixed precision training (i.e., the package `apex`) not available.')
