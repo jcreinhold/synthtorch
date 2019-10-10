@@ -106,3 +106,4 @@ ENV/
 # misc
 *.pth
 runs/
+scores.txt

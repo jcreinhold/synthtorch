@@ -46,6 +46,11 @@ try:
 except (ImportError, ModuleNotFoundError):
     SummaryWriter = None
 
+try:
+    from apex import amp
+except (ImportError, ModuleNotFoundError):
+    amp = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,6 +67,7 @@ class Learner:
         self.predictor = predictor
         self.config = config
         self.record = None
+        self.use_fp16 = False
 
     @classmethod
     def train_setup(cls, config:Union[str,ExperimentConfig]):
@@ -74,10 +80,13 @@ class Learner:
         model = get_model(config, True, False)
         if config.color: config.n_input, config.n_output = config.n_input // 3, config.n_output // 3
         logger.debug(model)
-        logger.info(f'Number of trainable parameters in model: {get_num_params(model)}')
-        if os.path.isfile(config.trained_model):
-            model, start_epoch = load_model(model, config.trained_model, device)
-            logger.info(f'Loaded checkpoint: {config.trained_model} (epoch {start_epoch})')
+        logger.info(f'Number of trainable parameters in model: {num_params(model)}')
+        load_chkpt = os.path.isfile(config.trained_model)
+        checkpoint = torch.load(config.trained_model, map_location=device) if load_chkpt else None
+        if load_chkpt:
+            logger.info(f"Loading checkpoint: {config.trained_model} (epoch {checkpoint['epoch']})")
+            model.load_state_dict(checkpoint['model'])
+            model = model.to(device)
         else:
             logger.info(f'Initializing weights with {config.init}')
             init_weights(model, config.init, config.init_gain)
@@ -93,8 +102,8 @@ class Learner:
                 optimizer = gopt(config.optimizer, model.parameters(), momentum=config.betas[0])
             except TypeError:
                 optimizer = gopt(config.optimizer, model.parameters())
-        if os.path.isfile(config.trained_model) and not config.no_load_opt:
-            optimizer = load_opt(optimizer, config.trained_model)
+        if load_chkpt and not config.no_load_opt:
+            optimizer.load_state_dict(checkpoint['optimizer'])
         model.train()
         if config.freeze: model.freeze()
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
@@ -112,7 +121,10 @@ class Learner:
         if config.color: config.n_input, config.n_output = config.n_input * 3, config.n_output * 3
         model = get_model(config, nsyn > 1 and config.dropout_prob > 0, True)
         logger.debug(model)
-        model, _ = load_model(model, config.trained_model, device)
+        checkpoint = torch.load(config.trained_model, map_location=device)
+        print(checkpoint.keys())
+        model.load_state_dict(checkpoint['model'])
+        model = model.to(device)
         if use_cuda: model.cuda(device=device)
         model.eval()
         predictor = Predictor(model, config.patch_size, config.batch_size, device, config.sample_axis,
@@ -127,7 +139,6 @@ class Learner:
         use_valid = self.valid_loader is not None
         use_scheduler = hasattr(self, 'scheduler')
         use_restarts = self.config.lr_scheduler == 'cosinerestarts'
-        fp16 = hasattr(self, 'amp_handle')
         train_losses, valid_losses = [], []
         n_batches = len(self.train_loader)
         for t in range(1, n_epochs + 1):
@@ -140,8 +151,8 @@ class Learner:
                 out = self.model(src)
                 loss = self._criterion(out, tgt)
                 t_losses.append(loss.item())
-                if fp16:
-                    with self.amp_handle.scale_loss(loss, self.optimizer) as scaled_loss:
+                if self.use_fp16:
+                    with amp.scale_loss(loss, self.optimizer) as scaled_loss:
                         scaled_loss.backward()
                 else:
                     loss.backward()
@@ -222,10 +233,10 @@ class Learner:
 
     def fp16(self):
         """ import and initialize mixed precision training package """
-        try:
-            from apex import amp
-            self.amp_handle = amp.init()
-        except ImportError:
+        if amp is not None:
+            self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt='O1')
+            self.use_fp16 = True
+        else:
             logger.info('Mixed precision training (i.e., the package `apex`) not available.')
 
     def multigpu(self):
@@ -261,19 +272,29 @@ class Learner:
         logger.info(f'Max LR: {lr:.2e}, Min LR: {lr/div_factor:.2e}')
 
     def load(self, fn):
-        self.model, _ = load_model(self.model, fn, self.device)
-        self.optimizer = load_opt(self.optimizer, fn)
+        checkpoint = torch.load(fn, map_location=self.device)
+        logger.info(f"Loaded checkpoint: {fn} (epoch {checkpoint['epoch']})")
+        if 'amp' in checkpoint.keys():
+            amp.initialize(self.model, self.optimizer, opt_level='O1')
+            amp.load_state_dict(checkpoint['amp'])
+        self.model.load_state_dict(checkpoint['model']).to(self.device)
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
 
     def save(self, fn, epoch=0):
         """ save a model, an optimizer state and the epoch number to a file """
-        state_dict = self.model.module.state_dict() if hasattr(self.model, 'module') else self.model.state_dict()
-        state = {'epoch': epoch, 'state_dict': state_dict, 'optimizer': self.optimizer.state_dict()}
+        model = self.model.module.state_dict() if hasattr(self.model, 'module') else self.model.state_dict()
+        state = {'epoch': epoch, 'model': model, 'optimizer': self.optimizer.state_dict()}
+        if self.use_fp16: state['amp'] = amp.state_dict()
         torch.save(state, fn)
 
     def _histogram_weights(self, writer, epoch):
         """ write histogram of weights to tensorboard """
         for (name, values) in self.model.named_parameters():
             writer.add_histogram(tag='weights/'+name, values=values.clone().detach().cpu(), global_step=epoch)
+
+
+def num_params(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=False):
@@ -497,36 +518,6 @@ def get_data_augmentation(config:ExperimentConfig):
 
     logger.debug(f'Training transforms: {train_tfms}')
     return train_tfms, valid_tfms
-
-
-def load_model(model, fn, device):
-    """
-    load a model's weights
-
-    Args:
-        model (torch.nn.Module): instance of a synthtorch model
-        fn (str): filename associated with model weights
-        device (torch.device): device to put the model on
-
-    Returns:
-        model, last_epoch: fills in the weights and returns the last epoch
-    """
-    checkpoint = torch.load(fn, map_location=device)
-    last_epoch = checkpoint['epoch']
-    model.load_state_dict(checkpoint['state_dict'])
-    model = model.to(device)
-    return model, last_epoch
-
-
-def load_opt(optimizer, fn):
-    """ load an optimizer state """
-    checkpoint = torch.load(fn)
-    optimizer.load_state_dict(checkpoint['optimizer'])
-    return optimizer
-
-
-def get_num_params(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 @dataclass

@@ -4,11 +4,6 @@
 # Created on: Nov 8, 2018
 # Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
-FASTAI=false
-if [[ "$1" == "--fastai" ]]; then
-  FASTAI=true
-fi
-
 if [[ "$OSTYPE" == "linux-gnu" || "$OSTYPE" == "darwin"* ]]; then
     :
 else
@@ -26,11 +21,8 @@ packages=(
     numpy
     matplotlib
     scikit-learn
+    scikit-image
     scipy
-)
-
-fastai_packages=(
-    fastai==1.0.41
 )
 
 # assume that linux is GPU enabled (except for in CI) but OS X is not
@@ -40,7 +32,7 @@ if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" == false ]]; then
     pytorch_packages=(
         pytorch
         torchvision
-        cudatoolkit=9.0
+        cudatoolkit=9.2
     )
 else
     pytorch_packages=(
@@ -51,18 +43,12 @@ fi
 
 conda_forge_packages=(
     nibabel
-    scikit-image
 )
 
 # create the environment and switch to that environment
 
-if $FASTAI; then
-    echo "conda create --name synthtorch --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes"
-    conda create --name synthtorch --override-channels -c pytorch -c fastai -c defaults ${packages[@]} ${fastai_packages[@]} --yes
-else
-    echo "conda create --name synthtorch --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes"
-    conda create --name synthtorch --override-channels -c pytorch -c defaults python=3.7 ${packages[@]} ${pytorch_packages[@]} --yes
-fi
+echo "conda create --name synthtorch --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes"
+conda create --name synthtorch --override-channels -c pytorch -c defaults python=3.7 ${packages[@]} ${pytorch_packages[@]} --yes
 
 source activate synthtorch
 # add a few other packages
