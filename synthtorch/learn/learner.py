@@ -494,14 +494,14 @@ def get_data_augmentation(config:ExperimentConfig):
         train_tfms.extend(niftitfms.get_transforms(config.prob, config.tfm_x, config.tfm_y, config.rotate, config.translate,
                                                    config.scale, config.vflip, config.hflip, config.gamma, config.gain,
                                                    config.noise_pwr, config.block, config.threshold, config.dim == 3,
-                                                   config.mean, config.std))
+                                                   config.mean, config.std, config.color))
         if config.mean is not None and config.std is not None:
-            valid_tfms.extend([niftitfms.ToTensor(),
+            valid_tfms.extend([niftitfms.ToTensor(config.color),
                                niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y, config.dim == 3)])
     else:
         logger.info('No data augmentation will be used')
-        train_tfms.append(niftitfms.ToTensor())
-        valid_tfms.append(niftitfms.ToTensor())
+        train_tfms.append(niftitfms.ToTensor(config.color))
+        valid_tfms.append(niftitfms.ToTensor(config.color))
 
     # control random cropping patch size (or if used at all)
     if (config.ext is None or config.ext == 'nii') and config.patch_size is not None:
