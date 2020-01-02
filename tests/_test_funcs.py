@@ -53,7 +53,7 @@ class TestCLI(unittest.TestCase):
         self.predict_args = f'-s {self.train_dir} -o {self.out_dir}/test'.split()
         self.jsonfn = f'{self.out_dir}/test.json'
 
-    def _modify_ocf(self, jsonfn, multi=1, calc_var=False, mc=None, predict_seg=False,
+    def _modify_ocf(self, jsonfn, multi=1, calc_var=False, mc=None,
                     png_out=False, tif_out=False, color_out=False, model=None, bs=None):
         with open(jsonfn, 'r') as f:
             arg_dict = json.load(f)
@@ -66,7 +66,6 @@ class TestCLI(unittest.TestCase):
             arg_dict['Required']['predict_out'] = f'{self.out_dir}/test'
             arg_dict['Prediction Options']['calc_var'] = calc_var
             arg_dict['Prediction Options']['monte_carlo'] = mc
-            arg_dict['SegAE Options']['predict_seg'] = predict_seg
             if bs is not None: arg_dict['Options']['batch_size'] = bs
             if model is not None: arg_dict['Neural Network Options']['nn_arch'] = model
             json.dump(arg_dict, f, sort_keys=True, indent=2)

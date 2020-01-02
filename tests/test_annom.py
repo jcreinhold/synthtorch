@@ -64,19 +64,6 @@ class TestOrdNet(TestCLI):
         self.assertEqual(retval, 0)
 
 
-class TestLRSDNet(TestCLI):
-
-    def test_lrsd_cli(self):
-        args = self.train_args + (
-            f'-o {self.out_dir}/lrsdnet.mdl -na lrsdnet -ne 1 -nl 2 -cbp 2 -ps 32 32 32 -bs 4 -dm 3 '
-            f'-ocf {self.jsonfn}').split()
-        retval = nn_train(args)
-        self.assertEqual(retval, 0)
-        self._modify_ocf(self.jsonfn)
-        retval = nn_predict([self.jsonfn])
-        self.assertEqual(retval, 0)
-
-
 class TestHotNet(TestCLI):
 
     def test_hot_2d_png_cli(self):

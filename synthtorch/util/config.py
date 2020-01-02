@@ -40,6 +40,7 @@ class ExperimentConfig(dict):
         self.patch_size         = 0
         self.pin_memory         = True
         self.sample_axis        = None
+        self.sample_pct         = None
         self.seed               = 0
         self.verbosity          = 0
         # Optimizer Options
@@ -204,6 +205,7 @@ def _get_arg_dict(args):
             "patch_size": args.patch_size,
             "pin_memory": args.pin_memory,
             "sample_axis": args.sample_axis,
+            "sample_pct": args.sample_pct,
             "seed": args.seed,
             "verbosity": args.verbosity
         },
@@ -270,9 +272,6 @@ def _get_arg_dict(args):
             "separable": args.separable,
             "softmax": args.softmax
         },
-        "LRSDNet Options": {
-            "lrsd_weights": args.lrsd_weights if hasattr(args,'lrsd_weights') else None
-        },
         "Ord/HotNet Options": {
             "beta": args.beta if hasattr(args,'beta') else None,
             "temperature": args.temperature if hasattr(args,'temperature') else None,
@@ -281,17 +280,6 @@ def _get_arg_dict(args):
         "VAE Options": {
             "img_dim": args.img_dim if hasattr(args,'img_dim') else None,
             "latent_size": args.latent_size if hasattr(args,'latent_size') else None
-        },
-        "SegAE Options": {
-            "freeze_last": args.freeze_last if hasattr(args,'freeze_last') else None,
-            "initialize_seg": args.initialize_seg if hasattr(args,'initialize_seg') else 0,
-            "last_init": args.last_init if hasattr(args,'last_init') else None,
-            "n_seg": args.n_seg if hasattr(args,'n_seg') else None,
-            "norm_penalty": args.norm_penalty if hasattr(args,'norm_penalty') else None,
-            "ortho_penalty": args.ortho_penalty if hasattr(args,'ortho_penalty') else None,
-            "use_mse": args.use_mse if hasattr(args,'use_mse') else None,
-            "use_mask": args.use_mask if hasattr(args,'use_mask') else None,
-            "predict_seg": args.predict_seg if hasattr(args,'predict_seg') else False
         },
         "Internal": {
             "n_gpus": args.n_gpus,

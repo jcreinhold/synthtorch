@@ -75,6 +75,9 @@ def arg_parser():
                             help='plot the loss vs epoch and save at the filename provided here [Default=None]')
     options.add_argument('-sa', '--sample-axis', type=int, default=2,
                             help='axis on which to sample for 2d (None for random orientation when NIfTI images given) [Default=2]')
+    options.add_argument('-spt', '--sample-pct', type=float, default=(0., 1.), nargs=2,
+                         help='percent of image along defined axis on which to sample for 3d patches, e.g., '
+                              'used to exclude neck and above head region in brain images [Default=(0,1)]')
     options.add_argument('-sd', '--seed', type=int, default=0, help='set seed for reproducibility [Default=0]')
     options.add_argument('-tb', '--tensorboard', action='store_true', default=False, help='use tensorboard')
     options.add_argument('-vs', '--valid-split', type=float, default=0.2,
@@ -144,7 +147,7 @@ def arg_parser():
     nn_options.add_argument('-nl', '--n-layers', type=int, default=3,
                             help='number of layers to use in network (different meaning per arch) [Default=3]')
     nn_options.add_argument('-na', '--nn-arch', type=str, default='unet',
-                            choices=('unet','nconv','vae','segae','densenet','ordnet','lrsdnet',
+                            choices=('unet','nconv','vae','densenet','ordnet',
                                      'hotnet','burnnet','burn2net','burn2netp12','burn2netp21',
                                      'unburnnet','unburn2net','lavanet','lava2net','lautonet','ocnet1','ocnet2'),
                             help='specify neural network architecture to use')
@@ -182,10 +185,6 @@ def arg_parser():
     unet_options.add_argument('-sx', '--softmax', action='store_true', default=False,
                               help='use softmax before last layer [Default=False]')
 
-    lrsdnet_options = parser.add_argument_group('LRSDNet Options')
-    lrsdnet_options.add_argument('-lrsd', '--lrsd-weights', type=float, nargs=2, default=None,
-                                 help='penalties for lrsd [Default=None]')
-
     ordnet_options = parser.add_argument_group('OrdNet/HotNet Options')
     ordnet_options.add_argument('-b1', '--beta', type=float, default=1., help='scale variance [Default=1.]')
     ordnet_options.add_argument('-tp', '--temperature', type=float, default=1., help='temperature parameter [Default=1.]')
@@ -197,21 +196,6 @@ def arg_parser():
                              help='if using VAE, then input image dimension must be specified [Default=None]')
     vae_options.add_argument('-ls', '--latent-size', type=int, default=2048,
                              help='if using VAE, this controls latent dimension size [Default=2048]')
-
-    segae_options = parser.add_argument_group('SegAE Options')
-    segae_options.add_argument('-fl', '--freeze-last', action='store_true', default=False,
-                               help='freeze the last layer for training [Default=False]')
-    segae_options.add_argument('-is', '--initialize-seg', type=int, default=0,
-                               help='number of epochs to initialize segmentation layers with seed [Default=0]')
-    segae_options.add_argument('-nseg', '--n-seg', type=int, default=5, help='number of segmentation layers [Default=5]')
-    segae_options.add_argument('-li', '--last-init', type=float, nargs='+', default=None,
-                               help='initial numbers for last layer [Default=None]')
-    segae_options.add_argument('-np', '--norm-penalty', type=float, default=1, help='weight for the norm penalty [Default=1]')
-    segae_options.add_argument('-op', '--ortho-penalty', type=float, default=1, help='weight for the orthogonality penalty [Default=1]')
-    segae_options.add_argument('-mse', '--use-mse', action='store_true', default=False,
-                               help='use mse instead of cosine proximity in loss function [Default=False]')
-    segae_options.add_argument('-mask', '--use-mask', action='store_true', default=False,
-                               help='use brain mask on segmentation and output (during training and testing) [Default=False]')
 
     aug_options = parser.add_argument_group('Data Augmentation Options')
     aug_options.add_argument('-p', '--prob', type=float, nargs=5, default=None, help='probability of (Affine, Flip, Gamma, Block, Noise) [Default=None]')

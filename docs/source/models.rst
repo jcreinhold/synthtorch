@@ -19,12 +19,6 @@ N-layer CNN
 .. automodule:: synthtorch.models.nconvnet
    :members:
 
-SegAE
-~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: synthtorch.models.segae
-   :members:
-
 DenseNet
 ~~~~~~~~~~~~~~~~~~~~
 

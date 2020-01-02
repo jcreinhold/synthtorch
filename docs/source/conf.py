@@ -38,13 +38,13 @@ sys.path.insert(0, local_path)
 # -- Project information -----------------------------------------------------
 
 project = 'synthtorch'
-copyright = '2018-2019, Jacob Reinhold'
+copyright = '2018-2020, Jacob Reinhold'
 author = 'Jacob Reinhold'
 
 # The short X.Y version
 version = '0.3'
 # The full version, including alpha/beta/rc tags
-release = '0.3.9'
+release = '0.3.10'
 
 
 # -- General configuration ---------------------------------------------------

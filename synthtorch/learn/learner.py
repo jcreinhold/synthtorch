@@ -21,6 +21,7 @@ from typing import List, Tuple, Union
 
 import logging
 import os
+import random
 
 import nibabel as nib
 import numpy as np
@@ -161,13 +162,7 @@ class Learner:
                 if use_scheduler: self.scheduler.step(((t-1)+(i/n_batches)) if use_restarts else None)
                 if use_tb:
                     if i % 20 == 0: writer.add_scalar('Loss/train', loss.item(), ((t-1)*n_batches)+i)
-                    do_plot = i == 0 and ((t - 1) % 5) == 0
-                    if do_plot and self.model.dim == 2:
-                        writer.add_images('source', src[:8], t, dataformats='NCHW')
-                        outimg = out[0][:8] if isinstance(out, tuple) else out[:8]
-                        if self.config.color: outimg = torch.round(outimg)
-                        writer.add_images('target', outimg, t, dataformats='NCHW')
-                    if do_plot: self._histogram_weights(writer, t)
+
                 del loss  # save memory by removing ref to gradient tree
             train_losses.append(t_losses)
 
@@ -188,6 +183,13 @@ class Learner:
                         loss = self._criterion(out, tgt)
                         if use_tb:
                             if i % 20 == 0: writer.add_scalar('Loss/valid', loss.item(), ((t-1)*n_batches)+i)
+                            do_plot = i == 0 and ((t - 1) % 5) == 0
+                            if do_plot and self.model.dim == 2:
+                                writer.add_images('source', src[:8], t, dataformats='NCHW')
+                                outimg = out[0][:8] if isinstance(out, tuple) else out[:8]
+                                if self.config.color: outimg = torch.round(outimg)
+                                writer.add_images('target', outimg, t, dataformats='NCHW')
+                            if do_plot: self._histogram_weights(writer, t)
                         v_losses.append(loss.item())
                     valid_losses.append(v_losses)
 
@@ -318,9 +320,6 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
     elif config.nn_arch == 'vae':
         from ..models.vae import VAE
         model = VAE(**config)
-    elif config.nn_arch == 'segae':
-        from ..models.segae import SegAE
-        model = SegAE(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'densenet':
         from ..models.densenet import DenseNet
         model = DenseNet(**config)
@@ -330,12 +329,6 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
         except (ImportError, ModuleNotFoundError):
             raise SynthtorchError('Cannot use the OrdNet without the annom toolbox.')
         model = OrdNet(enable_dropout=enable_dropout, inplace=inplace, **config)
-    elif config.nn_arch == 'lrsdnet':
-        try:
-            from annom.models import LRSDNet
-        except (ImportError, ModuleNotFoundError):
-            raise SynthtorchError('Cannot use the LRSDNet without the annom toolbox.')
-        model = LRSDNet(enable_dropout=enable_dropout, inplace=inplace, **config)
     elif config.nn_arch == 'hotnet':
         try:
             from annom.models import HotNet
@@ -410,7 +403,7 @@ def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=Fa
         model = OCNet2(enable_dropout=enable_dropout, inplace=inplace if config.dropout_prob == 0 else False, **config)
     else:
         raise SynthtorchError(f'Invalid NN type: {config.nn_arch}. '
-                              f'{{nconv,unet,vae,segae,densenet,ordnet,lrsdnet,hotnet,burnnet,burn2netp12,burn2netp21,'
+                              f'{{nconv,unet,vae,densenet,ordnet,hotnet,burnnet,burn2netp12,burn2netp21,'
                               f'unburnnet,unburn2net,lavanet,lava2net,lautonet,ocnet1,ocnet2}} '
                               f'are the only supported options.')
     return model
@@ -453,9 +446,9 @@ def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
                                                    Compose(valid_tfms), ext='*.' + config.ext, color=config.color)
             logger.info(f'Number of validation images: {len(valid_dataset)}')
             train_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=config.n_jobs, shuffle=True,
-                                      pin_memory=config.pin_memory)
+                                      pin_memory=config.pin_memory, worker_init_fn=init_fn)
             valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size, num_workers=config.n_jobs,
-                                      pin_memory=config.pin_memory)
+                                      pin_memory=config.pin_memory, worker_init_fn=init_fn)
         else:
             # setup training and validation set
             num_train = len(dataset)
@@ -467,9 +460,9 @@ def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
             valid_sampler = SubsetRandomSampler(valid_idx)
             # set up data loader for nifti images
             train_loader = DataLoader(dataset, sampler=train_sampler, batch_size=config.batch_size,
-                                      num_workers=config.n_jobs, pin_memory=config.pin_memory)
+                                      num_workers=config.n_jobs, pin_memory=config.pin_memory, worker_init_fn=init_fn)
             valid_loader = DataLoader(dataset, sampler=valid_sampler, batch_size=config.batch_size,
-                                      num_workers=config.n_jobs, pin_memory=config.pin_memory)
+                                      num_workers=config.n_jobs, pin_memory=config.pin_memory, worker_init_fn=init_fn)
     else:
         try:
             from altdataset import CSVDataset
@@ -482,6 +475,11 @@ def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
                                   pin_memory=config.pin_memory)
 
     return train_loader, valid_loader
+
+
+def init_fn(worker_id):
+    random.seed((torch.initial_seed() + worker_id) % (2**32))
+    np.random.seed((torch.initial_seed() + worker_id) % (2**32))
 
 
 def get_data_augmentation(config:ExperimentConfig):
@@ -505,7 +503,7 @@ def get_data_augmentation(config:ExperimentConfig):
 
     # control random cropping patch size (or if used at all)
     if (config.ext is None or config.ext == 'nii') and config.patch_size is not None:
-        cropper = niftitfms.RandomCrop3D(config.patch_size, config.threshold) if config.dim == 3 else \
+        cropper = niftitfms.RandomCrop3D(config.patch_size, config.threshold, config.sample_pct, config.sample_axis) if config.dim == 3 else \
                   niftitfms.RandomCrop2D(config.patch_size, config.sample_axis, config.threshold)
         train_tfms.append(cropper if config.patch_size is not None and config.dim == 3 else \
                           niftitfms.RandomSlice(config.sample_axis))
