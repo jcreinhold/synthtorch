@@ -434,16 +434,17 @@ def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
 
         # define dataset and split into training/validation set
         use_nii_ds = config.ext is None or 'nii' in config.ext
-        dataset = MultimodalNiftiDataset(config.source_dir, config.target_dir, Compose(train_tfms)) if use_nii_ds else \
+        dataset = MultimodalNiftiDataset(config.source_dir, config.target_dir, Compose(train_tfms),
+                                         preload=config.preload) if use_nii_ds else \
                   MultimodalImageDataset(config.source_dir, config.target_dir, Compose(train_tfms),
-                                         ext='*.' + config.ext, color=config.color)
+                                         ext='*.' + config.ext, color=config.color, preload=config.preload)
         logger.info(f'Number of training images: {len(dataset)}')
 
         if config.valid_source_dir is not None and config.valid_target_dir is not None:
             valid_dataset = MultimodalNiftiDataset(config.valid_source_dir, config.valid_target_dir,
-                                                   Compose(valid_tfms)) if use_nii_ds else \
-                            MultimodalImageDataset(config.valid_source_dir, config.valid_target_dir,
-                                                   Compose(valid_tfms), ext='*.' + config.ext, color=config.color)
+                                                   Compose(valid_tfms), preload=config.preload) if use_nii_ds else \
+                            MultimodalImageDataset(config.valid_source_dir, config.valid_target_dir, Compose(valid_tfms),
+                                                   ext='*.' + config.ext, color=config.color, preload=config.preload)
             logger.info(f'Number of validation images: {len(valid_dataset)}')
             train_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=config.n_jobs, shuffle=True,
                                       pin_memory=config.pin_memory, worker_init_fn=init_fn)

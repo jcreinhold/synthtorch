@@ -39,6 +39,7 @@ class ExperimentConfig(dict):
         self.out_config_file    = None
         self.patch_size         = 0
         self.pin_memory         = True
+        self.preload            = False
         self.sample_axis        = None
         self.sample_pct         = None
         self.seed               = 0
@@ -204,6 +205,7 @@ def _get_arg_dict(args):
             "out_config_file": args.out_config_file,
             "patch_size": args.patch_size,
             "pin_memory": args.pin_memory,
+            "preload": args.preload,
             "sample_axis": args.sample_axis,
             "sample_pct": args.sample_pct,
             "seed": args.seed,

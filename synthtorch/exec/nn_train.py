@@ -73,6 +73,7 @@ def arg_parser():
     options.add_argument('-pm','--pin-memory', action='store_true', default=False, help='pin memory in dataloader [Default=False]')
     options.add_argument('-pl', '--plot-loss', type=str, default=None,
                             help='plot the loss vs epoch and save at the filename provided here [Default=None]')
+    options.add_argument('-pr','--preload', action='store_true', default=False, help='preload data to memory in dataloader [Default=False]')
     options.add_argument('-sa', '--sample-axis', type=int, default=2,
                             help='axis on which to sample for 2d (None for random orientation when NIfTI images given) [Default=2]')
     options.add_argument('-spt', '--sample-pct', type=float, default=(0., 1.), nargs=2,
