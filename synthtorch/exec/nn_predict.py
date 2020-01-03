@@ -13,6 +13,7 @@ Created on: Nov 2, 2018
 
 import logging
 import os
+import random
 import sys
 import warnings
 
@@ -34,8 +35,10 @@ def main(args=None):
     logger = logging.getLogger(__name__)
     try:
         # set random seeds for reproducibility
-        torch.manual_seed(args.seed)
+        random.seed(args.seed)
         np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed(args.seed)
 
         # since prediction only uses one gpu (at most), make the batch size small enough to fit
         if args.n_gpus > 1: args.batch_size = args.batch_size // args.n_gpus

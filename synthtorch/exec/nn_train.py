@@ -13,6 +13,7 @@ Created on: Aug 28, 2018
 
 import argparse
 import logging
+import random
 import sys
 import warnings
 
@@ -228,8 +229,10 @@ def main(args=None):
     logger = logging.getLogger(__name__)
     try:
         # set random seeds for reproducibility
-        torch.manual_seed(args.seed)
+        random.seed(args.seed)
         np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed(args.seed)
 
         learner = Learner.train_setup(args)
 
