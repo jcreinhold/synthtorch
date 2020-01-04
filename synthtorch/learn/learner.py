@@ -123,7 +123,6 @@ class Learner:
         model = get_model(config, nsyn > 1 and config.dropout_prob > 0, True)
         logger.debug(model)
         checkpoint = torch.load(config.trained_model, map_location=device)
-        print(checkpoint.keys())
         model.load_state_dict(checkpoint['model'])
         model = model.to(device)
         if use_cuda: model.cuda(device=device)
