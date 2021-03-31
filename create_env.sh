@@ -32,12 +32,13 @@ if [[ "$OSTYPE" == "linux-gnu" && "$ONTRAVIS" == false ]]; then
     pytorch_packages=(
         pytorch
         torchvision
-        cudatoolkit=9.2
+        cudatoolkit=10.2
     )
 else
     pytorch_packages=(
-        pytorch-cpu
-        torchvision-cpu
+        pytorch
+        torchvision
+        cpuonly
     )
 fi
 
@@ -48,7 +49,7 @@ conda_forge_packages=(
 # create the environment and switch to that environment
 
 echo "conda create --name synthtorch --override-channels -c pytorch -c defaults ${packages[@]} ${pytorch_packages[@]} --yes"
-conda create --name synthtorch --override-channels -c pytorch -c defaults python=3.7 ${packages[@]} ${pytorch_packages[@]} --yes
+conda create --name synthtorch --override-channels -c pytorch -c defaults python ${packages[@]} ${pytorch_packages[@]} --yes
 
 source activate synthtorch
 # add a few other packages
