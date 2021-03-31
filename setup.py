@@ -13,7 +13,6 @@ Created on: Nov 2, 2018
 
 from setuptools import setup, find_packages
 
-
 with open('README.md') as f:
     readme = f.read()
 

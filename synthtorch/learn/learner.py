@@ -71,8 +71,8 @@ class Learner:
         self.use_fp16 = False
 
     @classmethod
-    def train_setup(cls, config:Union[str,ExperimentConfig]):
-        if isinstance(config,str):
+    def train_setup(cls, config: Union[str, ExperimentConfig]):
+        if isinstance(config, str):
             config = ExperimentConfig.load_json(config)
         if isinstance(config.kernel_size, int):
             config.kernel_size = tuple([config.kernel_size for _ in range(config.dim)])
@@ -94,8 +94,10 @@ class Learner:
         if use_cuda: model.cuda(device=device)
         train_loader, valid_loader = get_dataloader(config)
         if config.lr_scheduler is None: logger.info(f'LR: {config.learning_rate:.2e}')
+
         def gopt(name, mp, **kwargs):
             return get_optim(name)(mp, lr=config.learning_rate, weight_decay=config.weight_decay, **kwargs)
+
         try:
             optimizer = gopt(config.optimizer, model.parameters(), betas=config.betas)
         except TypeError:
@@ -112,8 +114,8 @@ class Learner:
         return cls(model, device, train_loader, valid_loader, optimizer, predictor, config)
 
     @classmethod
-    def predict_setup(cls, config:Union[str,ExperimentConfig]):
-        if isinstance(config,str):
+    def predict_setup(cls, config: Union[str, ExperimentConfig]):
+        if isinstance(config, str):
             config = ExperimentConfig.load_json(config)
         if isinstance(config.kernel_size, int):
             config.kernel_size = tuple([config.kernel_size for _ in range(config.dim)])
@@ -131,7 +133,7 @@ class Learner:
                               config.dim, config.mean, config.std, config.tfm_x, config.tfm_y)
         return cls(model, device, predictor=predictor, config=config)
 
-    def fit(self, n_epochs, clip:float=None, checkpoint:int=None, trained_model:str=None):
+    def fit(self, n_epochs, clip: float = None, checkpoint: int = None, trained_model: str = None):
         """ training loop for neural network """
         self.model.train()
         use_tb = self.config.tensorboard and SummaryWriter is not None
@@ -158,9 +160,9 @@ class Learner:
                     loss.backward()
                 if clip is not None: nn.utils.clip_grad_norm_(self.model.parameters(), clip)
                 self.optimizer.step()
-                if use_scheduler: self.scheduler.step(((t-1)+(i/n_batches)) if use_restarts else None)
+                if use_scheduler: self.scheduler.step(((t - 1) + (i / n_batches)) if use_restarts else None)
                 if use_tb:
-                    if i % 20 == 0: writer.add_scalar('Loss/train', loss.item(), ((t-1)*n_batches)+i)
+                    if i % 20 == 0: writer.add_scalar('Loss/train', loss.item(), ((t - 1) * n_batches) + i)
 
                 del loss  # save memory by removing ref to gradient tree
             train_losses.append(t_losses)
@@ -181,7 +183,7 @@ class Learner:
                         out = self.model(src)
                         loss = self._criterion(out, tgt)
                         if use_tb:
-                            if i % 20 == 0: writer.add_scalar('Loss/valid', loss.item(), ((t-1)*n_batches)+i)
+                            if i % 20 == 0: writer.add_scalar('Loss/valid', loss.item(), ((t - 1) * n_batches) + i)
                             do_plot = i == 0 and ((t - 1) % 5) == 0
                             if do_plot and self.model.dim == 2:
                                 writer.add_images('source', src[:8], t, dataformats='NCHW')
@@ -192,22 +194,23 @@ class Learner:
                         v_losses.append(loss.item())
                     valid_losses.append(v_losses)
 
-            if not np.all(np.isfinite(t_losses)): raise SynthtorchError('NaN or Inf in training loss, cannot recover. Exiting.')
+            if not np.all(np.isfinite(t_losses)): raise SynthtorchError(
+                'NaN or Inf in training loss, cannot recover. Exiting.')
             if logger is not None:
                 log = f'Epoch: {t} - Training Loss: {np.mean(t_losses):.2e}'
                 if use_valid: log += f', Validation Loss: {np.mean(v_losses):.2e}'
-                if use_scheduler: log += f', LR: {self.scheduler.get_lr()[0]:.2e}'
+                if use_scheduler: log += f', LR: {self.scheduler.get_last_lr()[0]:.2e}'
                 logger.info(log)
 
         self.record = Record(train_losses, valid_losses)
         if use_tb: writer.close()
 
-    def predict(self, fn:str, nsyn:int=1, calc_var:bool=False):
+    def predict(self, fn: str, nsyn: int = 1, calc_var: bool = False):
         self.model.eval()
         f = fn[0].lower()
         if f.endswith('.nii') or f.endswith('.nii.gz'):
             img_nib = nib.load(fn[0])
-            img = np.stack([np.asarray(nib.load(f).get_data(), dtype=np.float32) for f in fn])
+            img = np.stack([nib.load(f).get_fdata(dtype=np.float32) for f in fn])
             out = self.predictor.predict(img, nsyn, calc_var)
             out_img = [nib.Nifti1Image(o, img_nib.affine, img_nib.header) for o in out]
         elif f.split('.')[-1] in ('tif', 'tiff', 'png', 'jpg', 'jpeg'):
@@ -218,18 +221,18 @@ class Learner:
 
     def _img_predict(self, fn, nsyn, calc_var):
         img = np.stack([np.asarray(Image.open(f), dtype=np.float32) for f in fn])
-        if self.config.color: img = img.transpose((0,3,1,2))
+        if self.config.color: img = img.transpose((0, 3, 1, 2))
         out = self.predictor.img_predict(img, nsyn, calc_var)
-        if self.config.color: 
-            out = out.transpose((1,2,0))  # only support one color image as output
-            out = [np.around(out[...,0:3]).astype(np.uint8)] + [out[...,i] for i in range(3,out.shape[-1])] \
-                  if self.config.nn_arch not in ('nconv','unet','densenet') else \
-                  np.around(out[None,...]).astype(np.uint8)
+        if self.config.color:
+            out = out.transpose((1, 2, 0))  # only support one color image as output
+            out = [np.around(out[..., 0:3]).astype(np.uint8)] + [out[..., i] for i in range(3, out.shape[-1])] \
+                if self.config.nn_arch not in ('nconv', 'unet', 'densenet') else \
+                np.around(out[None, ...]).astype(np.uint8)
         return [Image.fromarray(o) for o in out]
 
     def _criterion(self, out, tgt):
         """ helper function to handle multiple outputs in model evaluation """
-        c = self.model.module.criterion if isinstance(self.model,nn.DataParallel) else self.model.criterion
+        c = self.model.module.criterion if isinstance(self.model, nn.DataParallel) else self.model.criterion
         return c(out, tgt)
 
     def fp16(self):
@@ -250,27 +253,29 @@ class Learner:
             self.model = torch.nn.DataParallel(self.model)
 
     def lr_scheduler(self, n_epochs, lr_scheduler='cyclic', restart_period=None, t_mult=None,
-                     num_cycles=1, cycle_mode='triangular', momentum_range=(0.85,0.95), div_factor=25, pct_start=0.3, **kwargs):
+                     num_cycles=1, cycle_mode='triangular', momentum_range=(0.85, 0.95), div_factor=25, pct_start=0.3,
+                     **kwargs):
         lr = self.config.learning_rate
         if lr_scheduler == 'cyclic':
             logger.info(f'Enabling cyclic LR scheduler with {num_cycles} cycle(s)')
             ss = int((n_epochs * len(self.train_loader)) / num_cycles)
             ssu = int(pct_start * ss)
             ssd = ss - ssu
-            cycle_momentum = self.config.optimizer in ('sgd','sgdw','nsgd','nsgdw','rmsprop')
+            cycle_momentum = self.config.optimizer in ('sgd', 'sgdw', 'nsgd', 'nsgdw', 'rmsprop')
             momentum_kwargs = {'cycle_momentum': cycle_momentum}
             if not cycle_momentum and momentum_range is not None:
                 logger.warning(f'{self.config.optimizer} not compatible with momentum cycling, disabling.')
             elif momentum_range is not None:
                 momentum_kwargs.update({'base_momentum': momentum_range[0], 'max_momentum': momentum_range[1]})
-            self.scheduler = CyclicLR(self.optimizer, lr/div_factor, lr, step_size_up=ssu, step_size_down=ssd,
+            self.scheduler = CyclicLR(self.optimizer, lr / div_factor, lr, step_size_up=ssu, step_size_down=ssd,
                                       mode=cycle_mode, **momentum_kwargs)
         elif lr_scheduler == 'cosinerestarts':
             logger.info('Enabling cosine annealing with restarts LR scheduler')
-            self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, restart_period, T_mult=t_mult, eta_min=lr/div_factor)
+            self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, restart_period, T_mult=t_mult,
+                                                         eta_min=lr / div_factor)
         else:
             raise SynthtorchError(f'Invalid type {type} for scheduler.')
-        logger.info(f'Max LR: {lr:.2e}, Min LR: {lr/div_factor:.2e}')
+        logger.info(f'Max LR: {lr:.2e}, Min LR: {lr / div_factor:.2e}')
 
     def load(self, fn):
         checkpoint = torch.load(fn, map_location=self.device)
@@ -291,14 +296,14 @@ class Learner:
     def _histogram_weights(self, writer, epoch):
         """ write histogram of weights to tensorboard """
         for (name, values) in self.model.named_parameters():
-            writer.add_histogram(tag='weights/'+name, values=values.clone().detach().cpu(), global_step=epoch)
+            writer.add_histogram(tag='weights/' + name, values=values.clone().detach().cpu(), global_step=epoch)
 
 
 def num_params(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def get_model(config:ExperimentConfig, enable_dropout:bool=True, inplace:bool=False):
+def get_model(config: ExperimentConfig, enable_dropout: bool = True, inplace: bool = False):
     """
     instantiate a model based on an ExperimentConfig class instance
 
@@ -418,7 +423,7 @@ def get_device(disable_cuda=False):
     return device, use_cuda
 
 
-def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
+def get_dataloader(config: ExperimentConfig, tfms: Tuple[List, List] = None):
     """ get the dataloaders for training/validation """
     if config.dim > 1:
         # get data augmentation if not defined
@@ -433,17 +438,19 @@ def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
 
         # define dataset and split into training/validation set
         use_nii_ds = config.ext is None or 'nii' in config.ext
-        dataset = MultimodalNiftiDataset(config.source_dir, config.target_dir, Compose(train_tfms),
-                                         preload=config.preload) if use_nii_ds else \
-                  MultimodalImageDataset(config.source_dir, config.target_dir, Compose(train_tfms),
-                                         ext='*.' + config.ext, color=config.color, preload=config.preload)
+        dataset = MultimodalNiftiDataset.setup_from_dir(config.source_dir, config.target_dir, Compose(train_tfms),
+                                                        preload=config.preload) if use_nii_ds else \
+            MultimodalImageDataset.setup_from_dir(config.source_dir, config.target_dir, Compose(train_tfms),
+                                                  ext='*.' + config.ext, color=config.color, preload=config.preload)
         logger.info(f'Number of training images: {len(dataset)}')
 
         if config.valid_source_dir is not None and config.valid_target_dir is not None:
-            valid_dataset = MultimodalNiftiDataset(config.valid_source_dir, config.valid_target_dir,
-                                                   Compose(valid_tfms), preload=config.preload) if use_nii_ds else \
-                            MultimodalImageDataset(config.valid_source_dir, config.valid_target_dir, Compose(valid_tfms),
-                                                   ext='*.' + config.ext, color=config.color, preload=config.preload)
+            valid_dataset = MultimodalNiftiDataset.setup_from_dir(config.valid_source_dir, config.valid_target_dir,
+                                                                  Compose(valid_tfms),
+                                                                  preload=config.preload) if use_nii_ds else \
+                MultimodalImageDataset.setup_from_dir(config.valid_source_dir, config.valid_target_dir,
+                                                      Compose(valid_tfms),
+                                                      ext='*.' + config.ext, color=config.color, preload=config.preload)
             logger.info(f'Number of validation images: {len(valid_dataset)}')
             train_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=config.n_jobs, shuffle=True,
                                       pin_memory=config.pin_memory, worker_init_fn=init_fn)
@@ -478,24 +485,26 @@ def get_dataloader(config:ExperimentConfig, tfms:Tuple[List,List]=None):
 
 
 def init_fn(worker_id):
-    random.seed((torch.initial_seed() + worker_id) % (2**32))
-    np.random.seed((torch.initial_seed() + worker_id) % (2**32))
+    random.seed((torch.initial_seed() + worker_id) % (2 ** 32))
+    np.random.seed((torch.initial_seed() + worker_id) % (2 ** 32))
 
 
-def get_data_augmentation(config:ExperimentConfig):
+def get_data_augmentation(config: ExperimentConfig):
     """ get all data augmentation transforms for training """
     train_tfms, valid_tfms = [], []
 
     # add data augmentation if desired
     if config.prob is not None:
         logger.info('Adding data augmentation transforms')
-        train_tfms.extend(niftitfms.get_transforms(config.prob, config.tfm_x, config.tfm_y, config.rotate, config.translate,
-                                                   config.scale, config.vflip, config.hflip, config.gamma, config.gain,
-                                                   config.noise_pwr, config.block, config.threshold, config.dim == 3,
-                                                   config.mean, config.std, config.color))
+        train_tfms.extend(
+            niftitfms.get_transforms(config.prob, config.tfm_x, config.tfm_y, config.rotate, config.translate,
+                                     config.scale, config.vflip, config.hflip, config.gamma, config.gain,
+                                     config.noise_pwr, config.block, config.threshold, config.dim == 3,
+                                     config.mean, config.std, config.color))
         if config.mean is not None and config.std is not None:
             valid_tfms.extend([niftitfms.ToTensor(config.color),
-                               niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y, config.dim == 3)])
+                               niftitfms.Normalize(config.mean, config.std, config.tfm_x, config.tfm_y,
+                                                   config.dim == 3)])
     else:
         logger.info('No data augmentation will be used')
         train_tfms.append(niftitfms.ToTensor(config.color))
@@ -503,12 +512,13 @@ def get_data_augmentation(config:ExperimentConfig):
 
     # control random cropping patch size (or if used at all)
     if (config.ext is None or config.ext == 'nii') and config.patch_size is not None:
-        cropper = niftitfms.RandomCrop3D(config.patch_size, config.threshold, config.sample_pct, config.sample_axis) if config.dim == 3 else \
-                  niftitfms.RandomCrop2D(config.patch_size, config.sample_axis, config.threshold)
+        cropper = niftitfms.RandomCrop3D(config.patch_size, config.threshold, config.sample_pct,
+                                         config.sample_axis) if config.dim == 3 else \
+            niftitfms.RandomCrop2D(config.patch_size, config.sample_axis, config.threshold)
         train_tfms.append(cropper if config.patch_size is not None and config.dim == 3 else \
-                          niftitfms.RandomSlice(config.sample_axis))
+                              niftitfms.RandomSlice(config.sample_axis))
         valid_tfms.append(cropper if config.patch_size is not None and config.dim == 3 else \
-                          niftitfms.RandomSlice(config.sample_axis))
+                              niftitfms.RandomSlice(config.sample_axis))
     else:
         if config.patch_size is not None:
             train_tfms.append(niftitfms.RandomCrop(config.patch_size, config.threshold))
@@ -523,16 +533,16 @@ class Record:
     train_loss: List[List[float]]
     valid_loss: List[List[float]]
 
-    def plot_loss(self, fn:str=None, plot_error:bool=False):
+    def plot_loss(self, fn: str = None, plot_error: bool = False):
         """ plot training and validation losses on the same plot (with or without error bars) """
         ax = plot_loss(self.train_loss, ecolor='darkorchid', label='Train', plot_error=plot_error)
         _ = plot_loss(self.valid_loss, filename=fn, ecolor='firebrick', ax=ax, label='Validation',
                       plot_error=plot_error)
 
-    def write_csv(self, fn:str):
+    def write_csv(self, fn: str):
         """ write training and validation losses to a csv file """
         import csv
-        head = ['epochs','avg train','std train','avg valid','std valid']
+        head = ['epochs', 'avg train', 'std train', 'avg valid', 'std valid']
         epochs = list(range(1, len(self.train_loss) + 1))
         avg_tl = [np.mean(losses) for losses in self.train_loss]
         std_tl = [np.std(losses) for losses in self.train_loss]

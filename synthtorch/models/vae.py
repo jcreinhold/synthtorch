@@ -27,9 +27,9 @@ logger = logging.getLogger(__name__)
 
 
 class VAE(Unet):
-    def __init__(self, n_layers:int, img_dim:Union[Tuple[int,int],Tuple[int,int,int]],
-                 channel_base_power:int=5, activation:str='relu', dim:int=3,
-                 n_input:int=1, n_output:int=1, latent_size=2048, **kwargs):
+    def __init__(self, n_layers: int, img_dim: Union[Tuple[int, int], Tuple[int, int, int]],
+                 channel_base_power: int = 5, activation: str = 'relu', dim: int = 3,
+                 n_input: int = 1, n_output: int = 1, latent_size=2048, **kwargs):
         super(VAE, self).__init__(n_layers, channel_base_power=channel_base_power, activation=activation,
                                   normalization='batch', dim=dim, enable_dropout=False, enable_bias=True,
                                   n_input=n_input, n_output=n_output, no_skip=True, all_conv=False)
@@ -37,7 +37,9 @@ class VAE(Unet):
         self.sz = []
         self.latent_size = latent_size
         self.criterion = VAELoss()
+
         def lc(n): return int(2 ** (channel_base_power + n))  # shortcut to layer channel count
+
         self.lc = lc(n_layers)
         img_dim_conv = self.__test_encode(torch.zeros((1, n_input, *img_dim), dtype=torch.float32))
         self.fsz = img_dim_conv[1:]
@@ -57,12 +59,12 @@ class VAE(Unet):
         self.fc_bn4 = nn.BatchNorm1d(self.esz)
 
         # replace first upsampconv to not reduce channels
-        self.upsampconvs[0] = self._conv(lc(n_layers-1), lc(n_layers-1), self.kernel_sz, bias=True)
+        self.upsampconvs[0] = self._conv(lc(n_layers - 1), lc(n_layers - 1), self.kernel_sz, bias=True)
 
     def encode(self, x):
         for si in self.start: x = si(x)
         x = self._down(x, 0)
-        for i, dl in enumerate(self.down_layers,1):
+        for i, dl in enumerate(self.down_layers, 1):
             for dli in dl: x = dli(x)
             x = self._down(x, i)
         x = F.relu(self.fc_bn1(self.fc1(x.view(x.size(0), self.esz))))
@@ -81,16 +83,17 @@ class VAE(Unet):
         return x.shape
 
     def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
+        std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return eps.mul(std).add_(mu)
 
     def decode(self, z):
         z = F.relu(self.fc_bn3(self.fc3(z)))
-        z = self.upsampconvs[0](self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:], 0))
+        z = self.upsampconvs[0](
+            self._up(F.relu(self.fc_bn4(self.fc4(z))).view(z.size(0), *self.fsz), self.sz[-1][2:], 0))
         for i, ul in enumerate(self.up_layers, 1):
             for uli in ul: z = uli(z)
-            z = self._up(z, self.sz[-i-1][2:], i)
+            z = self._up(z, self.sz[-i - 1][2:], i)
         z = self.finish(z)
         return z
 

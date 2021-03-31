@@ -33,7 +33,7 @@ from ..learn.layers import Swish
 logger = logging.getLogger(__name__)
 
 
-def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> nn.Module:
+def get_act(name: str, inplace: bool = True, params: Optional[dict] = None) -> nn.Module:
     """
     get activation module from pytorch
     must be one of: relu, lrelu, linear, tanh, sigmoid
@@ -73,7 +73,7 @@ def get_act(name:str, inplace:bool=True, params:Optional[dict]=None) -> nn.Modul
     return act
 
 
-def get_norm1d(name:str, num_features:int, affine:bool=True, params:Optional[dict]=None) -> nn.Module:
+def get_norm1d(name: str, num_features: int, affine: bool = True, params: Optional[dict] = None) -> nn.Module:
     """
     get a 1d normalization module from pytorch
     must be one of: instance, batch, none
@@ -90,10 +90,10 @@ def get_norm1d(name:str, num_features:int, affine:bool=True, params:Optional[dic
     """
     if name.lower() == 'instance':
         norm = nn.InstanceNorm1d(num_features, affine=affine) if params is None else \
-               nn.InstanceNorm1d(num_features, affine=affine, **params)
+            nn.InstanceNorm1d(num_features, affine=affine, **params)
     elif name.lower() == 'batch':
         norm = nn.BatchNorm1d(num_features, affine=affine) if params is None else \
-               nn.BatchNorm1d(num_features, affine=affine, **params)
+            nn.BatchNorm1d(num_features, affine=affine, **params)
     elif name.lower() == 'layer':
         norm = nn.GroupNorm(1, num_features, affine=affine)
     elif name.lower() == 'none':
@@ -103,7 +103,7 @@ def get_norm1d(name:str, num_features:int, affine:bool=True, params:Optional[dic
     return norm
 
 
-def get_norm2d(name:str, num_features:int, affine:bool=True, params:Optional[dict]=None) -> nn.Module:
+def get_norm2d(name: str, num_features: int, affine: bool = True, params: Optional[dict] = None) -> nn.Module:
     """
     get a 2d normalization module from pytorch
     must be one of: instance, batch, none
@@ -120,10 +120,10 @@ def get_norm2d(name:str, num_features:int, affine:bool=True, params:Optional[dic
     """
     if name.lower() == 'instance':
         norm = nn.InstanceNorm2d(num_features, affine=affine) if params is None else \
-               nn.InstanceNorm2d(num_features, affine=affine, **params)
+            nn.InstanceNorm2d(num_features, affine=affine, **params)
     elif name.lower() == 'batch':
         norm = nn.BatchNorm2d(num_features, affine=affine) if params is None else \
-               nn.BatchNorm2d(num_features, affine=affine, **params)
+            nn.BatchNorm2d(num_features, affine=affine, **params)
     elif name.lower() == 'layer':
         norm = nn.GroupNorm(1, num_features, affine=affine)
     elif name.lower() == 'none':
@@ -133,7 +133,7 @@ def get_norm2d(name:str, num_features:int, affine:bool=True, params:Optional[dic
     return norm
 
 
-def get_norm3d(name:str, num_features:int, affine:bool=True, params:Optional[dict]=None) -> nn.Module:
+def get_norm3d(name: str, num_features: int, affine: bool = True, params: Optional[dict] = None) -> nn.Module:
     """
     get a 3d normalization module from pytorch
     must be one of: instance, batch, none
@@ -150,10 +150,10 @@ def get_norm3d(name:str, num_features:int, affine:bool=True, params:Optional[dic
     """
     if name.lower() == 'instance':
         norm = nn.InstanceNorm3d(num_features, affine=affine) if params is None else \
-               nn.InstanceNorm3d(num_features, affine=affine, **params)
+            nn.InstanceNorm3d(num_features, affine=affine, **params)
     elif name.lower() == 'batch':
         norm = nn.BatchNorm3d(num_features, affine=affine) if params is None else \
-               nn.BatchNorm3d(num_features, affine=affine, **params)
+            nn.BatchNorm3d(num_features, affine=affine, **params)
     elif name.lower() == 'layer':
         norm = nn.GroupNorm(1, num_features, affine=affine)
     elif name.lower() == 'none':
@@ -163,7 +163,7 @@ def get_norm3d(name:str, num_features:int, affine:bool=True, params:Optional[dic
     return norm
 
 
-def get_optim(name:str):
+def get_optim(name: str):
     """ get an optimizer by name """
     if name.lower() == 'adam':
         optimizer = torch.optim.Adam
@@ -192,7 +192,7 @@ def get_optim(name:str):
     return optimizer
 
 
-def get_loss(name:str):
+def get_loss(name: str):
     """ get a loss function by name """
     if name == 'mse' or name is None:
         loss = nn.MSELoss()
@@ -220,6 +220,7 @@ def init_weights(net, init_type='kaiming', init_gain=0.02):
     Returns:
         None
     """
+
     def init_func(m):  # define the initialization function
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
@@ -237,7 +238,8 @@ def init_weights(net, init_type='kaiming', init_gain=0.02):
                 nn.init.constant_(m.bias.data, 0.0)
         elif (classname.find('BatchNorm') != -1 or
               classname.find('InstanceNorm') != -1 or
-              classname.find('GroupNorm') != -1):  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
+              classname.find(
+                  'GroupNorm') != -1):  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
             if m.weight is not None:
                 nn.init.normal_(m.weight.data, 1.0, init_gain)
             if m.bias is not None:
@@ -250,7 +252,7 @@ def init_weights(net, init_type='kaiming', init_gain=0.02):
         else:
             initial_values = torch.from_numpy(np.sort(np.random.rand(net.n_seg) * 2))
         net.finish[2].weight.data = (initial_values.type_as(net.finish[2].weight.data)
-                                                   .view(net.finish[2].weight.data.size()))
+                                     .view(net.finish[2].weight.data.size()))
 
     if hasattr(net, 'all_conv'):  # handle ICNR initalization of upsample layers
         if net.all_conv and net.dim == 2:
@@ -259,10 +261,10 @@ def init_weights(net, init_type='kaiming', init_gain=0.02):
 
 def icnr(m, scale=2, init=nn.init.kaiming_normal_):
     """ ICNR init of `x`, with `scale` and `init` function """
-    ni,nf,h,w = m.shape
-    ni2 = int(ni/(scale**2))
-    k = init(torch.zeros([ni2,nf,h,w])).transpose(0, 1)
+    ni, nf, h, w = m.shape
+    ni2 = int(ni / (scale ** 2))
+    k = init(torch.zeros([ni2, nf, h, w])).transpose(0, 1)
     k = k.contiguous().view(ni2, nf, -1)
-    k = k.repeat(1, 1, scale**2)
-    k = k.contiguous().view([nf,ni,h,w]).transpose(0, 1)
+    k = k.repeat(1, 1, scale ** 2)
+    k = k.contiguous().view([nf, ni, h, w]).transpose(0, 1)
     m.data.copy_(k)

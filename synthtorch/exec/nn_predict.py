@@ -55,13 +55,14 @@ def main(args=None):
 
         # setup and start prediction loop
         axis = args.sample_axis or 0
-        if axis < 0 or axis > 2 and not isinstance(axis,int):
+        if axis < 0 or axis > 2 and not isinstance(axis, int):
             raise ValueError('sample_axis must be an integer between 0 and 2 inclusive')
         n_imgs = len(glob_imgs(predict_dir[0], ext))
         if n_imgs == 0: raise SynthtorchError('Prediction directory does not contain valid images.')
         if any([len(glob_imgs(pd, ext)) != n_imgs for pd in predict_dir]):
-            raise SynthtorchError('Number of images in prediction directories must have an equal number of images in each '
-                               'directory (e.g., so that img_t1_1 aligns with img_t2_1 etc. for multimodal synth)')
+            raise SynthtorchError(
+                'Number of images in prediction directories must have an equal number of images in each '
+                'directory (e.g., so that img_t1_1 aligns with img_t2_1 etc. for multimodal synth)')
         predict_fns = zip(*[glob_imgs(pd, ext) for pd in predict_dir])
 
         if args.dim == 3 and args.patch_size is not None and args.calc_var:
@@ -71,11 +72,11 @@ def main(args=None):
             _, base, ext = split_filename(fn[0])
             if 'png' in ext: ext = '.tif'  # force tif output in this case
             if 'nii' in ext: ext = '.nii.gz'  # force compressed output in this case
-            logger.info(f'Starting synthesis of image: {base} ({k+1}/{n_imgs})')
+            logger.info(f'Starting synthesis of image: {base} ({k + 1}/{n_imgs})')
             out_imgs = learner.predict(fn, nsyn, args.calc_var)
             for i, oin in enumerate(out_imgs):
                 out_fn = output_dir + f'{k}_{i}{ext}'
-                if hasattr(oin,'to_filename'):
+                if hasattr(oin, 'to_filename'):
                     oin.to_filename(out_fn)
                 else:
                     oin.save(out_fn)

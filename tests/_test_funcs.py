@@ -60,9 +60,9 @@ class TestCLI(unittest.TestCase):
         with open(jsonfn, 'w') as f:
             use_nii = not png_out and not tif_out and not color_out
             arg_dict['Required']['predict_dir'] = ([f'{self.nii_dir}'] * multi) if use_nii else \
-                                                   [f'{self.train_dir}/png'] if png_out else \
-                                                   [f'{self.train_dir}/color'] if color_out else \
-                                                   [f'{self.train_dir}/tif']
+                [f'{self.train_dir}/png'] if png_out else \
+                    [f'{self.train_dir}/color'] if color_out else \
+                        [f'{self.train_dir}/tif']
             arg_dict['Required']['predict_out'] = f'{self.out_dir}/test'
             arg_dict['Prediction Options']['calc_var'] = calc_var
             arg_dict['Prediction Options']['monte_carlo'] = mc

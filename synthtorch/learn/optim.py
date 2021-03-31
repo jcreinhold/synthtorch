@@ -84,16 +84,16 @@ class SGDW(Optimizer):
                         buf.mul_(momentum).add_(d_p)
                     else:
                         buf = param_state['momentum_buffer']
-                        buf.mul_(momentum).add_(1 - dampening, d_p)
+                        buf.mul_(momentum).add_(d_p, alpha=1 - dampening)
                     if nesterov:
-                        d_p = d_p.add(momentum, buf)
+                        d_p = d_p.add(buf, alpha=momentum)
                     else:
                         d_p = buf
 
                 if weight_decay != 0:
-                    p.data.add_(-weight_decay, p.data)
+                    p.data.add_(p.data, alpha=-weight_decay)
 
-                p.data.add_(-group['lr'], d_p)
+                p.data.add_(d_p, alpha=-group['lr'])
 
         return loss
 

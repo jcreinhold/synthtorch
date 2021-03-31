@@ -21,7 +21,7 @@ class TestPlot(unittest.TestCase):
         pass
 
     def test_nn_viz(self):
-        all_losses = [[1,2],[3,4]]
+        all_losses = [[1, 2], [3, 4]]
         _ = plot_loss(all_losses)
 
     def tearDown(self):

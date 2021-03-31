@@ -37,11 +37,13 @@ def setup_log(verbosity):
 def get_args(args, arg_parser=None):
     """ handle arguments (through config file or argparser) for exec scripts """
     if arg_parser is not None:
-        no_config_file = args is not None or (args is None and len(sys.argv[1:]) > 1) or sys.argv[1] == '-h' or sys.argv[1] == '--help'
+        no_config_file = args is not None or (args is None and len(sys.argv[1:]) > 1) or sys.argv[1] == '-h' or \
+                         sys.argv[1] == '--help'
     else:
         no_config_file = not sys.argv[1].endswith('.json') if args is None else not args[0].endswith('json')
     if no_config_file and arg_parser is None:
-        raise SynthtorchError('Only configuration files are supported with nn-predict! Create one with nn-train (see -ocf option).')
+        raise SynthtorchError(
+            'Only configuration files are supported with nn-predict! Create one with nn-train (see -ocf option).')
     elif no_config_file and arg_parser is not None:
         args = ExperimentConfig.from_argparse(arg_parser().parse_args(args))
     else:
@@ -58,6 +60,6 @@ def determine_ext(d):
         raise SynthtorchError(f'Directory {d} contains no supported images.')
     if sum(contains) > 1:
         raise SynthtorchError(f'Directory {d} contains more than two types of supported images, '
-                           f'remove unwanted images from directory')
+                              f'remove unwanted images from directory')
     ext = [e for c, e in zip(contains, exts) if c][0]
     return ext

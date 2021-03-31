@@ -32,16 +32,16 @@ logger = logging.getLogger(__name__)
 
 
 class _DenseLayer(nn.Sequential):
-    def __init__(self, num_input_features:int, growth_rate:int, bn_size:int, drop_rate:float):
+    def __init__(self, num_input_features: int, growth_rate: int, bn_size: int, drop_rate: float):
         super(_DenseLayer, self).__init__()
         self.add_module('norm1', nn.BatchNorm2d(num_input_features)),
         self.add_module('relu1', nn.ReLU(inplace=True)),
         self.add_module('conv1', nn.Conv2d(num_input_features, bn_size *
-                        growth_rate, kernel_size=1, stride=1, bias=False)),
+                                           growth_rate, kernel_size=1, stride=1, bias=False)),
         self.add_module('norm2', nn.BatchNorm2d(bn_size * growth_rate)),
         self.add_module('relu2', nn.ReLU(inplace=True)),
         self.add_module('conv2', nn.Conv2d(bn_size * growth_rate, growth_rate,
-                        kernel_size=3, stride=1, padding=1, bias=False)),
+                                           kernel_size=3, stride=1, padding=1, bias=False)),
         self.drop_rate = drop_rate
 
     def forward(self, x):
@@ -52,7 +52,7 @@ class _DenseLayer(nn.Sequential):
 
 
 class _DenseBlock(nn.Sequential):
-    def __init__(self, num_layers:int, num_input_features:int, bn_size:int, growth_rate:int, drop_rate:float):
+    def __init__(self, num_layers: int, num_input_features: int, bn_size: int, growth_rate: int, drop_rate: float):
         super(_DenseBlock, self).__init__()
         for i in range(num_layers):
             layer = _DenseLayer(num_input_features + i * growth_rate, growth_rate, bn_size, drop_rate)
@@ -60,7 +60,7 @@ class _DenseBlock(nn.Sequential):
 
 
 class _Transition(nn.Sequential):
-    def __init__(self, num_input_features:int, num_output_features:int):
+    def __init__(self, num_input_features: int, num_output_features: int):
         super(_Transition, self).__init__()
         self.add_module('norm', nn.BatchNorm2d(num_input_features))
         self.add_module('relu', nn.ReLU(inplace=True))
@@ -82,9 +82,10 @@ class DenseNet(nn.Module):
         drop_rate (float): dropout rate after each dense layer
     """
 
-    def __init__(self, growth_rate:int=4, block_config:Tuple[int,int,int,int]=(6, 6, 6, 6),
-                 num_init_features:int=32, bn_size:int=4, dropout_prob:float=0, n_input:int=1, n_output:int=1,
-                 loss:Optional[str]=None, **kwargs):
+    def __init__(self, growth_rate: int = 4, block_config: Tuple[int, int, int, int] = (6, 6, 6, 6),
+                 num_init_features: int = 32, bn_size: int = 4, dropout_prob: float = 0, n_input: int = 1,
+                 n_output: int = 1,
+                 loss: Optional[str] = None, **kwargs):
 
         super(DenseNet, self).__init__()
         self.n_input, self.n_output = n_input, n_output
@@ -113,12 +114,11 @@ class DenseNet(nn.Module):
         # Final layer
         self.layers.add_module('final', nn.Conv2d(num_features, n_output, kernel_size=1, bias=True))
 
-
     def forward(self, x):
         out = self.layers(x)
         return out
 
-    def predict(self, x:torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def predict(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         return self.forward(x)
 
     def freeze(self):

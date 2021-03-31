@@ -13,6 +13,10 @@ Created on: Sep 07, 2018
 import os
 import unittest
 
+import torch
+
+torch.autograd.set_detect_anomaly(True)
+
 from synthtorch.exec.nn_train import main as nn_train
 from synthtorch.exec.nn_predict import main as nn_predict
 from ._test_funcs import TestCLI
@@ -31,7 +35,7 @@ class TestNConv(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_nconv_patch_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 ' 
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 '
                                   f'-ocf {self.jsonfn} -bs 2').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -40,7 +44,7 @@ class TestNConv(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_nconv_preload_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 ' 
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 '
                                   f'-ocf {self.jsonfn} -bs 2 -pr').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -49,7 +53,7 @@ class TestNConv(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_nconv_swish_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 ' 
+        args = self.train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 '
                                   f'-ocf {self.jsonfn} -bs 2 -ac swish').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -58,11 +62,11 @@ class TestNConv(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_nconv_checkpoint_and_load_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 2 -nl 1 -ps 16 16 ' 
+        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 2 -nl 1 -ps 16 16 '
                                   f'-ocf {self.jsonfn} -bs 2 -chk 1').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 2 -nl 1 -ps 16 16 ' 
+        args = self.train_args + (f'-o {self.out_dir}/nconv.mdl -na nconv -ne 2 -nl 1 -ps 16 16 '
                                   f'-ocf {self.jsonfn} -bs 2').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -252,7 +256,7 @@ class TestNConv(TestCLI):
 
     def test_nconv_multimodal_cli(self):
         train_args = f'-s {self.train_dir} {self.train_dir} -t {self.train_dir} {self.train_dir}'.split()
-        args = train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 ' 
+        args = train_args + (f'-o {self.out_dir}/nconv_patch.mdl -na nconv -ne 1 -nl 1 -ps 16 16 '
                              f'-ocf {self.jsonfn} -bs 2').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
@@ -499,8 +503,9 @@ class TestUnet(TestCLI):
         self.assertEqual(retval, 0)
 
     def test_unet_no_skip_cli(self):
-        args = self.train_args + (f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 --no-skip '
-                                  f'-ocf {self.jsonfn}').split()
+        args = self.train_args + (
+            f'-o {self.out_dir}/unet.mdl -na unet -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 2 -dm 3 --no-skip '
+            f'-ocf {self.jsonfn}').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
         self._modify_ocf(self.jsonfn)
@@ -584,7 +589,7 @@ class TestVAE(TestCLI):
                              f'--img-dim 32 32 --latent-size 10 -ocf {self.jsonfn} -sa 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        #TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
+        # TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
 
     def test_vae_2d_5l_cli(self):
         train_args = f'-s {self.train_dir}/tif/ -t {self.train_dir}/tif/'.split()
@@ -592,7 +597,7 @@ class TestVAE(TestCLI):
                              f'--img-dim 32 32 --latent-size 10 -ocf {self.jsonfn} -sa 0').split()
         retval = nn_train(args)
         self.assertEqual(retval, 0)
-        #TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
+        # TODO: cannot test 2d prediction here because nii needs to be same size as tiff, fix
 
     def test_vae_3d_cli(self):
         args = self.train_args + (f'-o {self.out_dir}/vae.mdl -na vae -ne 1 -nl 3 -cbp 1 -ps 16 16 16 -bs 4 -dm 3 '

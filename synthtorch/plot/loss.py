@@ -22,13 +22,14 @@ logger = logging.getLogger(__name__)
 
 try:
     import seaborn as sns
+
     sns.set(style='white', font_scale=2)
 except ImportError:
     logger.info('Seaborn not installed, so plots will not be as pretty. :-(')
 
 
-def plot_loss(all_losses: List[list], figsize: Tuple[int,int]=(14,7), scale: int=0, ecolor: str='red',
-              filename: Optional[str]=None, ax: Optional[object]=None, label: str='', plot_error: bool=True):
+def plot_loss(all_losses: List[list], figsize: Tuple[int, int] = (14, 7), scale: int = 0, ecolor: str = 'red',
+              filename: Optional[str] = None, ax: Optional[object] = None, label: str = '', plot_error: bool = True):
     """
     plot loss vs epoch for a given list (of lists) of loss values
 
@@ -50,8 +51,9 @@ def plot_loss(all_losses: List[list], figsize: Tuple[int,int]=(14,7), scale: int
     avg_losses = np.array([np.mean(losses) for losses in all_losses]) * (10 ** scale)
     if plot_error:
         std_losses = np.array([np.std(losses) for losses in all_losses]) * (10 ** scale)
-        ax.errorbar(np.arange(1,len(avg_losses)+1), avg_losses, yerr=std_losses, ecolor=ecolor, lw=3, fmt='none', alpha=0.5)
-    ax.plot(np.arange(1,len(avg_losses)+1), avg_losses, lw=3, label=label)
+        ax.errorbar(np.arange(1, len(avg_losses) + 1), avg_losses, yerr=std_losses, ecolor=ecolor, lw=3, fmt='none',
+                    alpha=0.5)
+    ax.plot(np.arange(1, len(avg_losses) + 1), avg_losses, lw=3, label=label)
     ax.set_title('Loss vs Epoch')
     ax.set_ylabel('Loss')
     ax.set_xlabel('Epoch')

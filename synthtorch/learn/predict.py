@@ -26,8 +26,9 @@ logger = logging.getLogger(__name__)
 
 class Predictor:
 
-    def __init__(self, model:torch.nn.Module, patch_size:Tuple[int], batch_size:int, device:torch.device,
-                 axis:int=0, dim:int=3, mean:Tuple[float]=None, std:Tuple[float]=None, tfm_x:bool=True, tfm_y:bool=False):
+    def __init__(self, model: torch.nn.Module, patch_size: Tuple[int], batch_size: int, device: torch.device,
+                 axis: int = 0, dim: int = 3, mean: Tuple[float] = None, std: Tuple[float] = None, tfm_x: bool = True,
+                 tfm_y: bool = False):
         self.model = model
         self.patch_size = patch_size
         self.batch_size = batch_size
@@ -40,7 +41,7 @@ class Predictor:
         self.tfm_x = tfm_x
         self.tfm_y = tfm_y
 
-    def predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
+    def predict(self, img: np.ndarray, nsyn: int = 1, calc_var: bool = False) -> np.ndarray:
         """ picks and runs the correct prediction routine based on input info """
         if self.tfm_x and self.mean is not None and self.std is not None:
             for i, (m, s) in enumerate(zip(self.mean, self.std)):
@@ -56,7 +57,7 @@ class Predictor:
                 out_img[i] = (out_img[i] * s) + m
         return out_img
 
-    def whole_3d_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
+    def whole_3d_predict(self, img: np.ndarray, nsyn: int = 1, calc_var: bool = False) -> np.ndarray:
         """ 3d whole-image-based prediction """
         if img.ndim == 3: img = img[np.newaxis, ...]
         out_img = np.zeros((nsyn, self.n_output) + img.shape[1:])
@@ -66,13 +67,13 @@ class Predictor:
         out_img = np.mean(out_img, axis=0) if not calc_var else np.var(out_img, axis=0)
         return out_img
 
-    def patch_3d_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
+    def patch_3d_predict(self, img: np.ndarray, nsyn: int = 1, calc_var: bool = False) -> np.ndarray:
         """ 3d patch-by-patch based prediction """
         if img.ndim == 3: img = img[np.newaxis, ...]
         # pad image to get full image coverage in patch-based processing
         sz, psz = img.shape, self.patch_size
-        pad = [int((ps // 2) * np.ceil(sz[i]/(ps // 2)) - sz[i]) for i, ps in enumerate(psz, 1)]
-        img = np.asarray(F.pad(torch.from_numpy(img[np.newaxis,...]),
+        pad = [int((ps // 2) * np.ceil(sz[i] / (ps // 2)) - sz[i]) for i, ps in enumerate(psz, 1)]
+        img = np.asarray(F.pad(torch.from_numpy(img[np.newaxis, ...]),
                                [0, pad[2] if psz[2] != sz[3] else 0,
                                 0, pad[1] if psz[1] != sz[2] else 0,
                                 0, pad[0] if psz[0] != sz[1] else 0], mode='replicate')[0])
@@ -100,20 +101,20 @@ class Predictor:
             logger.warning(f'Part of the synthesized image not covered ({np.sum(count_mtx == 0)} voxels)')
             count_mtx[count_mtx == 0] = 1  # avoid division by zero
         out_img /= count_mtx
-        out_img = out_img[:,:sz[1],:sz[2],:sz[3]]
+        out_img = out_img[:, :sz[1], :sz[2], :sz[3]]
         return out_img
 
     def __batch_3d_proc(self, batch, idxs, nsyn, out_img, count_mtx):
         bs = len(batch)
         batch = torch.from_numpy(np.stack(batch)).to(self.device)
-        predicted = np.zeros((bs,self.n_output,) + batch.shape[2:])
+        predicted = np.zeros((bs, self.n_output,) + batch.shape[2:])
         for _ in range(nsyn):
             predicted += self._fwd(batch) / nsyn
         for ii, (bx, by, bz) in enumerate(idxs):
             out_img[:, bx, by, bz] += predicted[ii, ...]
             count_mtx[bx, by, bz] += 1
 
-    def slice_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
+    def slice_predict(self, img: np.ndarray, nsyn: int = 1, calc_var: bool = False) -> np.ndarray:
         """ slice-by-slice based prediction """
         if img.ndim == 3: img = img[np.newaxis, ...]  # add batch dimension if empty
         out_img = np.zeros((nsyn, self.n_output) + img.shape[1:])
@@ -133,7 +134,7 @@ class Predictor:
         out_img = np.mean(out_img, axis=0) if not calc_var else np.var(out_img, axis=0)
         return out_img
 
-    def img_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False) -> np.ndarray:
+    def img_predict(self, img: np.ndarray, nsyn: int = 1, calc_var: bool = False) -> np.ndarray:
         if img.ndim == 3: img = img[np.newaxis, ...]
         out_img = np.zeros((nsyn, self.n_output) + img.shape[2:])
         for i in range(nsyn):
@@ -141,8 +142,8 @@ class Predictor:
         out_img = np.mean(out_img, axis=0) if not calc_var else np.var(out_img, axis=0)
         return out_img
 
-    def png_predict(self, img:np.ndarray, nsyn:int=1, calc_var:bool=False,
-                    scale:bool=False) -> np.ndarray:
+    def png_predict(self, img: np.ndarray, nsyn: int = 1, calc_var: bool = False,
+                    scale: bool = False) -> np.ndarray:
         out = self.img_predict(img, nsyn, calc_var)
         if scale:
             a = (img.max() - img.min()) / (out.max() - out.min() + np.finfo(np.float32).eps)
@@ -153,7 +154,10 @@ class Predictor:
 
     def _fwd(self, img):
         with torch.no_grad():
-            out = self.model.predict(img).cpu().detach().numpy()
+            out = self.model.predict(img)
+        if isinstance(out, (tuple, list)):
+            out = torch.stack(out)
+        out = out.cpu().detach().numpy()
         return out
 
     def _get_overlapping_3d_idxs(self, psz, img):
@@ -162,21 +166,21 @@ class Predictor:
         return x, y, z
 
     def __unfold(self, idxs, psz, img):
-        return idxs.unfold(0, psz[0], psz[0]//(2 if psz[0] != img.shape[1] else 1))\
-                   .unfold(1, psz[1], psz[1]//(2 if psz[1] != img.shape[2] else 1))\
-                   .unfold(2, psz[2], psz[2]//(2 if psz[2] != img.shape[3] else 1))
+        return idxs.unfold(0, psz[0], psz[0] // (2 if psz[0] != img.shape[1] else 1)) \
+            .unfold(1, psz[1], psz[1] // (2 if psz[1] != img.shape[2] else 1)) \
+            .unfold(2, psz[2], psz[2] // (2 if psz[2] != img.shape[3] else 1))
 
     def _batch2d(self, img, out_img, i, nsyn, bs=None):
         bs = bs or self.batch_size
-        s = np.transpose(img[:,i:i+bs,:,:],[1,0,2,3]) if self.axis == 0 else \
-            np.transpose(img[:,:,i:i+bs,:],[2,0,1,3]) if self.axis == 1 else \
-            np.transpose(img[:,:,:,i:i+bs],[3,0,1,2])
+        s = np.transpose(img[:, i:i + bs, :, :], [1, 0, 2, 3]) if self.axis == 0 else \
+            np.transpose(img[:, :, i:i + bs, :], [2, 0, 1, 3]) if self.axis == 1 else \
+                np.transpose(img[:, :, :, i:i + bs], [3, 0, 1, 2])
         img_b = torch.from_numpy(s).to(self.device)
         for j in range(nsyn):
             x = self._fwd(img_b)
             if self.axis == 0:
-                out_img[j,:,i:i+bs,:,:] = np.transpose(x, [1,0,2,3])
+                out_img[j, :, i:i + bs, :, :] = np.transpose(x, [1, 0, 2, 3])
             elif self.axis == 1:
-                out_img[j,:,:,i:i+bs,:] = np.transpose(x, [1,2,0,3])
+                out_img[j, :, :, i:i + bs, :] = np.transpose(x, [1, 2, 0, 3])
             else:
-                out_img[j,:,:,:,i:i+bs] = np.transpose(x, [1,2,3,0])
+                out_img[j, :, :, :, i:i + bs] = np.transpose(x, [1, 2, 3, 0])
