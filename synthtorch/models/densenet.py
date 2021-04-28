@@ -26,7 +26,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ..util.helper import get_loss
+from synthtorch.util.helper import get_loss
 
 logger = logging.getLogger(__name__)
 

@@ -24,7 +24,7 @@ with warnings.catch_warnings():
     import torch
     from niftidataset import glob_imgs, split_filename
     from synthtorch import Learner, SynthtorchError
-    from .exec import get_args, setup_log, determine_ext
+    from synthtorch.exec.exec import get_args, setup_log, determine_ext
 
 
 ######### Main routine ###########

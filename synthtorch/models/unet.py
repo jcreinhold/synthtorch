@@ -29,8 +29,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ..learn import ChannelAttention, SelfAttention, SeparableConv3d, SeparableConv2d, SeparableConv1d
-from ..util import get_act, get_norm3d, get_norm2d, get_norm1d, get_loss
+from synthtorch.learn import ChannelAttention, SelfAttention, SeparableConv3d, SeparableConv2d, SeparableConv1d
+from synthtorch.util import get_act, get_norm3d, get_norm2d, get_norm1d, get_loss
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +164,7 @@ class Unet(torch.nn.Module):
 
     def _fwd_skip_nf(self, x: torch.Tensor) -> torch.Tensor:
         dout = [x] if self.input_connect else [None]
-        if self.semi_3d: x = self._add_noise(self.init_conv(x))
+        if self.semi_3d > 0: x = self._add_noise(self.init_conv(x))
         x = self._add_noise(self.start[0](x))
         dout.append(self._add_noise(self.start[1](x)))
         x = self._down(dout[-1], 0)
@@ -202,7 +202,7 @@ class Unet(torch.nn.Module):
 
     def _fwd_no_skip_nf(self, x: torch.Tensor) -> torch.Tensor:
         sz = [x.shape]
-        if self.semi_3d: x = self._add_noise(self.init_conv(x))
+        if self.semi_3d > 0: x = self._add_noise(self.init_conv(x))
         for si in self.start: x = self._add_noise(si(x))
         x = self._down(x, 0)
         if self.all_conv: x = self._add_noise(x)

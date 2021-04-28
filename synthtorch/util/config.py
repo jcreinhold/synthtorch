@@ -15,7 +15,7 @@ __all__ = ['ExperimentConfig']
 import json
 import logging
 
-from ..errors import SynthtorchError
+from synthtorch.errors import SynthtorchError
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +101,6 @@ class ExperimentConfig(dict):
         self.semi_3d            = 0
         self.separable          = False
         self.softmax            = False
-        # LRSDNet Options
-        self.lrsd_weights       = None
         # Ord/HotNet Options
         self.beta               = 1.
         self.temperature        = 1.
@@ -110,16 +108,6 @@ class ExperimentConfig(dict):
         # VAE Options
         self.img_dim            = None
         self.latent_size        = None
-        # SegAE Options
-        self.freeze_last        = None
-        self.initialize_seg     = 0
-        self.last_init          = None
-        self.n_seg              = None
-        self.norm_penalty       = None
-        self.ortho_penalty      = None
-        self.predict_seg        = None
-        self.use_mask           = None
-        self.use_mse            = None
         # Internal
         self.n_gpus             = 1
         self.n_input            = 1

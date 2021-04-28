@@ -1,7 +1,7 @@
 synthtorch
 =======================
 
-[![Build Status](https://travis-ci.org/jcreinhold/synthtorch.svg?branch=master)](https://travis-ci.org/jcreinhold/synthtorch)
+[![Build Status](https://api.travis-ci.com/jcreinhold/synthtorch.svg?branch=master&status=passed)](https://travis-ci.com/github/jcreinhold/synthtorch)
 [![Coverage Status](https://coveralls.io/repos/github/jcreinhold/synthtorch/badge.svg?branch=master)](https://coveralls.io/github/jcreinhold/synthtorch?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/synthtorch/badge/?version=latest)](http://synthtorch.readthedocs.io/en/latest/)
 [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/jcreinhold/synthtorch.svg)](https://hub.docker.com/r/jcreinhold/synthtorch/)

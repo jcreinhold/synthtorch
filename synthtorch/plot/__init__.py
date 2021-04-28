@@ -1,1 +1,1 @@
-from .loss import *
+from synthtorch.plot.loss import *

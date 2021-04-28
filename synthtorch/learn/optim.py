@@ -16,7 +16,6 @@ __all__ = ['SGDW',
            'NesterovSGDW']
 
 import logging
-import math
 
 import torch
 from torch.optim import Optimizer, Adam, SGD

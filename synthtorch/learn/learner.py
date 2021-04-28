@@ -36,11 +36,11 @@ from torchvision.transforms import Compose
 from niftidataset import MultimodalNiftiDataset, MultimodalImageDataset, split_filename
 import niftidataset.transforms as niftitfms
 
-from ..errors import SynthtorchError
-from ..plot.loss import plot_loss
-from .predict import Predictor
-from ..util.config import ExperimentConfig
-from ..util.helper import get_optim, init_weights
+from synthtorch.errors import SynthtorchError
+from synthtorch.plot.loss import plot_loss
+from synthtorch.learn.predict import Predictor
+from synthtorch.util.config import ExperimentConfig
+from synthtorch.util.helper import get_optim, init_weights
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -148,6 +148,8 @@ class Learner:
             t_losses = []
             if use_valid: self.model.train(True)
             for i, (src, tgt) in enumerate(self.train_loader):
+                logger.debug(f'Epoch {t} - training iteration {i} - '
+                             f'Src. shape: {src.shape}; Tgt. shape: {tgt.shape}')
                 src, tgt = src.to(self.device), tgt.to(self.device)
                 self.optimizer.zero_grad()
                 out = self.model(src)
@@ -179,6 +181,8 @@ class Learner:
                 self.model.train(False)
                 with torch.no_grad():
                     for i, (src, tgt) in enumerate(self.valid_loader):
+                        logger.debug(f'Epoch {t} - validation iteration {i} - '
+                                     f'Src. shape: {src.shape}; Tgt. shape: {tgt.shape}')
                         src, tgt = src.to(self.device), tgt.to(self.device)
                         out = self.model(src)
                         loss = self._criterion(out, tgt)

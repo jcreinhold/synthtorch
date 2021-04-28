@@ -26,7 +26,7 @@ with warnings.catch_warnings():
     import numpy as np
     import torch
     from synthtorch import Learner
-    from .exec import get_args, setup_log
+    from synthtorch.exec.exec import get_args, setup_log
 
 
 ######## Helper functions ########

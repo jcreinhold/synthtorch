@@ -20,7 +20,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from .unet import Unet
+from synthtorch.models.unet import Unet
 from synthtorch.learn.loss import VAELoss
 
 logger = logging.getLogger(__name__)

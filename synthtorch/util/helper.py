@@ -26,9 +26,9 @@ import numpy as np
 import torch
 from torch import nn
 
-from ..errors import SynthtorchError
-from ..learn.loss import CosineProximityLoss
-from ..learn.layers import Swish
+from synthtorch.errors import SynthtorchError
+from synthtorch.learn.loss import CosineProximityLoss
+from synthtorch.learn.layers import Swish
 
 logger = logging.getLogger(__name__)
 
