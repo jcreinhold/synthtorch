@@ -8,6 +8,8 @@ synthtorch
 [![Python Versions](https://img.shields.io/badge/python-3.6%20%7C%203.7-blue.svg)](https://www.python.org/downloads/release/python-360/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2669612.svg)](https://doi.org/10.5281/zenodo.2669612)
 
+**This package may not work with current versions of PyTorch and will not be supported.**
+
 This package contains deep neural network-based (pytorch) modules to synthesize magnetic resonance (MR) and computed 
 tomography (CT) brain images. Synthesis is the procedure of learning the transformation that takes a specific contrast image to another estimate contrast.
 
